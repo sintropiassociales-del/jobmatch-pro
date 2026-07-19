@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Precios — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+      <a href="publicar-vacante.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:56px;text-align:center">
+  <div class="container">
+    <div class="eyebrow" style="justify-content:center">Planes para empresas</div>
+    <h1>Elige el plan según tu ritmo de contratación</h1>
+    <p class="lead" style="max-width:52ch;margin:0 auto">Candidatos siempre gratis. Empresas pagan solo por publicar y acceder a la base de talento con matching por IA.</p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+
+    <div class="form-card" style="max-width:520px;margin:0 auto 32px">
+      <label for="company-token-input" style="display:block;font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:6px">
+        Token de tu empresa (el que recibiste al publicar tu primera vacante)
+      </label>
+      <input type="text" id="company-token-input" placeholder="Pégalo aquí antes de suscribirte">
+      <div class="hint">Con esto activamos tu plan en cuanto confirmemos el pago. Si aún no has publicado ninguna vacante, <a href="publicar-vacante.html" style="color:var(--purple-700);font-weight:600">publica una gratis primero</a>.</div>
+    </div>
+
+    <div class="plans">
+      <div class="plan-card">
+        <div class="badge-pill" style="align-self:flex-start">Startups / Pymes</div>
+        <h3>Starter</h3>
+        <div class="price">$1,500<span>/mes</span></div>
+        <p style="font-size:.88rem">1–10 empleados · publica y contrata rápido.</p>
+        <ul>
+          <li>2 vacantes activas</li>
+          <li>Matching IA básico</li>
+          <li>Acceso a postulaciones ilimitadas</li>
+          <li>Soporte por correo</li>
+        </ul>
+        <div id="paypal-button-container-P-85J178568B772993JNJN5PGI" class="paypal-slot" data-plan="Starter"></div>
+      </div>
+
+      <div class="plan-card featured">
+        <span class="badge">Más elegido</span>
+        <div class="badge-pill" style="align-self:flex-start">Empresas medianas</div>
+        <h3>Pro</h3>
+        <div class="price">$4,500<span>/mes</span></div>
+        <p style="font-size:.88rem">11–50 empleados · escala tu equipo.</p>
+        <ul>
+          <li>8 vacantes activas simultáneas</li>
+          <li>Matching IA con explicación de afinidad</li>
+          <li>2 vacantes destacadas al mes</li>
+          <li>Dashboard de postulaciones</li>
+          <li>Soporte prioritario</li>
+        </ul>
+        <div id="paypal-button-container-P-3LD64246BP613823WNJN5WGI" class="paypal-slot" data-plan="Pro"></div>
+      </div>
+
+      <div class="plan-card">
+        <div class="badge-pill" style="align-self:flex-start">Corporativos</div>
+        <h3>Business</h3>
+        <div class="price">$9,500<span>/mes</span></div>
+        <p style="font-size:.88rem">51–200 empleados · reclutamiento masivo. Incluye acceso a perfil socioeconómico de candidatos que autoricen compartirlo.</p>
+        <ul>
+          <li>Vacantes activas ilimitadas</li>
+          <li>Página de empresa personalizada</li>
+          <li>5 vacantes destacadas al mes</li>
+          <li>Reportes de reclutamiento</li>
+          <li>Acceso a datos socioeconómicos (con autorización del candidato)</li>
+        </ul>
+        <div id="paypal-button-container-P-2DN85278YV0277106NJN5X3Q" class="paypal-slot" data-plan="Business"></div>
+      </div>
+
+      <div class="plan-card">
+        <div class="badge-pill" style="align-self:flex-start">Enterprise</div>
+        <h3>A la medida</h3>
+        <div class="price">$15,000<span>+/mes</span></div>
+        <p style="font-size:.88rem">200+ empleados · integraciones y soporte dedicado. Incluye acceso a perfil socioeconómico de candidatos que autoricen compartirlo.</p>
+        <ul>
+          <li>Todo lo de Business</li>
+          <li>Integración con tu ATS</li>
+          <li>Gerente de cuenta dedicado</li>
+          <li>SLA de soporte</li>
+        </ul>
+        <div id="paypal-button-container-P-5XY460257T1232402NJN53IY" class="paypal-slot" data-plan="A la medida"></div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:28px;font-size:.82rem;color:var(--ink-soft)">
+      Los pagos se procesan de forma segura con PayPal. Puedes cancelar la suscripción cuando quieras desde tu cuenta de PayPal.
+    </p>
+  </div>
+</section>
+
+<!-- ============ Modal de datos de facturación (aparece tras pagar) ============ -->
+<div id="billing-modal" style="display:none;position:fixed;inset:0;background:rgba(32,6,63,.55);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div class="form-card" style="max-width:520px;width:100%;max-height:90vh;overflow:auto">
+    <div class="eyebrow">¡Pago recibido! 🎉</div>
+    <h2 style="font-size:1.4rem">Últimos datos para tu factura</h2>
+    <p style="font-size:.88rem">Con esto te mandamos tu comprobante y activamos tu plan <strong id="billing-plan-name"></strong>.</p>
+    <form id="billing-form">
+      <div class="field">
+        <label for="b-company-email">Correo de la empresa (donde recibiste tu token)</label>
+        <input type="email" id="b-company-email" required>
+      </div>
+      <div class="field">
+        <label for="b-razon-social">Razón social</label>
+        <input type="text" id="b-razon-social" required>
+      </div>
+      <div class="field">
+        <label for="b-rfc">RFC</label>
+        <input type="text" id="b-rfc" required>
+      </div>
+      <div class="field">
+        <label for="b-direccion">Dirección fiscal</label>
+        <textarea id="b-direccion" required></textarea>
+      </div>
+      <div class="field">
+        <label for="b-cfdi">Uso de CFDI</label>
+        <select id="b-cfdi">
+          <option>G03 - Gastos en general</option>
+          <option>P01 - Por definir</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Enviar y activar mi plan</button>
+      <div class="status-msg" id="billing-status"></div>
+    </form>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
+<script>
+  const PLAN_IDS = {
+    'Starter': 'P-85J178568B772993JNJN5PGI',
+    'Pro': 'P-3LD64246BP613823WNJN5WGI',
+    'Business': 'P-2DN85278YV0277106NJN5X3Q',
+    'A la medida': 'P-5XY460257T1232402NJN53IY',
+  };
+
+  let pendingSubscription = null; // { subscriptionId, plan, payerName, payerEmail }
+
+  document.querySelectorAll('.paypal-slot').forEach((slot) => {
+    const plan = slot.dataset.plan;
+    const planId = PLAN_IDS[plan];
+    paypal.Buttons({
+      style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
+      createSubscription: function (data, actions) {
+        const companyToken = document.getElementById('company-token-input').value.trim();
+        if (!companyToken) {
+          alert('Antes de suscribirte, pega el token de tu empresa (arriba de los planes).');
+          throw new Error('Falta el token de empresa');
+        }
+        return actions.subscription.create({ plan_id: planId });
+      },
+      onApprove: async function (data, actions) {
+        pendingSubscription = { subscriptionId: data.subscriptionID, plan };
+        try {
+          const details = await actions.subscription.get();
+          pendingSubscription.payerName = details?.subscriber?.name
+            ? `${details.subscriber.name.given_name || ''} ${details.subscriber.name.surname || ''}`.trim()
+            : '';
+          pendingSubscription.payerEmail = details?.subscriber?.email_address || '';
+        } catch (e) {
+          // Si PayPal no regresa el detalle, seguimos igual con el modal de facturación
+        }
+        document.getElementById('billing-plan-name').textContent = plan;
+        if (pendingSubscription.payerEmail) document.getElementById('b-company-email').value = pendingSubscription.payerEmail;
+        document.getElementById('billing-modal').style.display = 'flex';
+      },
+    }).render('#' + slot.id);
+  });
+
+  document.getElementById('billing-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('billing-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Enviando comprobante...';
+
+    const companyToken = document.getElementById('company-token-input').value.trim();
+
+    try {
+      await JobMatchAPI.billingReceipt({
+        plan: pendingSubscription.plan,
+        subscriptionId: pendingSubscription.subscriptionId,
+        payerName: pendingSubscription.payerName || '',
+        payerEmail: pendingSubscription.payerEmail || '',
+        companyEmail: document.getElementById('b-company-email').value,
+        razonSocial: document.getElementById('b-razon-social').value,
+        rfc: document.getElementById('b-rfc').value,
+        direccionFiscal: document.getElementById('b-direccion').value,
+        usoCFDI: document.getElementById('b-cfdi').value,
+      });
+
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Listo! Te mandamos tu comprobante por correo. Activaremos tu plan en menos de 24 horas.';
+      setTimeout(() => { document.getElementById('billing-modal').style.display = 'none'; }, 3500);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = 'El pago sí se procesó, pero no pudimos enviar el comprobante automáticamente. Escríbenos a contacto@sintropiasocial.com con tu ID de suscripción: ' + pendingSubscription.subscriptionId;
+    }
+  });
+</script>
+</body>
+</html>

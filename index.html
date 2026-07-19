@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobMatch Pro — Empleo con afinidad real, por Sintropía Social</title>
+<meta name="description" content="Encuentra vacantes que realmente encajan contigo. JobMatch Pro conecta talento y empresas en México con matching asistido por IA.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+      <a href="publicar-vacante.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="eyebrow" style="color:#FFD9BE">Un proyecto de Sintropía Social</div>
+    <h1>Empleo que <em>encaja</em>, no solo que aplica</h1>
+    <p class="lead">JobMatch Pro conecta candidatos con vacantes reales en México usando un matching asistido por IA que mira más allá de las palabras clave: mira afinidad real entre persona y puesto.</p>
+    <div class="hero-actions">
+      <a href="vacantes.html" class="btn btn-white">Buscar vacantes</a>
+      <a href="publicar-vacante.html" class="btn btn-primary">Publicar una vacante →</a>
+    </div>
+
+    <div class="search-card">
+      <input type="text" id="hero-q" placeholder="Puesto, palabra clave o empresa">
+      <select id="hero-modalidad">
+        <option value="">Cualquier modalidad</option>
+        <option value="Remoto">Remoto</option>
+        <option value="Híbrido">Híbrido</option>
+        <option value="Presencial">Presencial</option>
+      </select>
+      <button class="btn btn-primary" id="hero-search">Buscar</button>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat"><b id="stat-jobs">—</b><span>Vacantes activas</span></div>
+      <div class="stat"><b>100%</b><span>Gratis para candidatos</span></div>
+      <div class="stat"><b>IA</b><span>Afinidad calculada, no adivinada</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow">Cómo funciona</div>
+      <h2>Tres pasos, sin fricción</h2>
+    </div>
+    <div class="grid-jobs" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      <div class="job-card">
+        <span class="badge-pill">01</span>
+        <h3>Explora vacantes reales</h3>
+        <p class="desc">Sin cuentas obligatorias, sin relleno. Filtra por modalidad, ubicación y sueldo.</p>
+      </div>
+      <div class="job-card">
+        <span class="badge-pill">02</span>
+        <h3>Postúlate con tu CV</h3>
+        <p class="desc">Subes tu perfil una vez y calculamos qué tan bien encajas con cada vacante.</p>
+      </div>
+      <div class="job-card">
+        <span class="badge-pill">03</span>
+        <h3>La empresa te contacta</h3>
+        <p class="desc">Las empresas ven primero a las personas con mayor afinidad real al puesto.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow">Últimas vacantes</div>
+      <h2>Recién publicadas</h2>
+    </div>
+    <div class="grid-jobs" id="latest-jobs">
+      <!-- Se llena por JS -->
+    </div>
+    <div style="text-align:center;margin-top:36px">
+      <a href="vacantes.html" class="btn btn-ghost">Ver todas las vacantes →</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container" style="text-align:center;max-width:640px">
+    <div class="eyebrow" style="justify-content:center">¿Tienes una empresa?</div>
+    <h2>Publica tu primera vacante gratis</h2>
+    <p>Sin contrato, sin mínimos. Publica hoy y conoce candidatos con afinidad real desde tu primer post.</p>
+    <a href="publicar-vacante.html" class="btn btn-primary">Publicar vacante →</a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo" style="color:#fff"><span class="mark">JM</span> JobMatch Pro</div>
+        <p>Un proyecto de Sintropía Social — investigación social y desarrollo organizacional.</p>
+      </div>
+      <div>
+        <h4>Candidatos</h4>
+        <a href="vacantes.html">Buscar vacantes</a>
+        <a href="vacantes.html">Crear alerta de empleo</a>
+      </div>
+      <div>
+        <h4>Empresas</h4>
+        <a href="publicar-vacante.html">Publicar vacante</a>
+        <a href="precios.html">Planes y precios</a>
+        <a href="admin.html">Panel de empresa</a>
+      </div>
+      <div>
+        <h4>Sintropía Social</h4>
+        <a href="mailto:contacto@sintropiasocial.com">contacto@sintropiasocial.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <span>Hecho en México 🇲🇽</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  document.getElementById('hero-search').addEventListener('click', () => {
+    const q = document.getElementById('hero-q').value;
+    const modalidad = document.getElementById('hero-modalidad').value;
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (modalidad) params.set('modalidad', modalidad);
+    window.location.href = `vacantes.html?${params.toString()}`;
+  });
+
+  async function loadLatest() {
+    const el = document.getElementById('latest-jobs');
+    el.innerHTML = skeletonCards(3);
+    try {
+      const jobs = await JobMatchAPI.listJobs({ limit: 3, orden: 'reciente' });
+      document.getElementById('stat-jobs').textContent = jobs.total ?? jobs.items?.length ?? '—';
+      if (!jobs.items || jobs.items.length === 0) {
+        el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">🗂️</div><p>Todavía no hay vacantes publicadas. ¡Sé la primera empresa!</p></div>`;
+        return;
+      }
+      el.innerHTML = jobs.items.map(jobCardHTML).join('');
+    } catch (e) {
+      el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>Configura APPS_SCRIPT_URL en assets/js/app.js para conectar las vacantes reales.</p></div>`;
+    }
+  }
+  loadLatest();
+</script>
+</body>
+</html>

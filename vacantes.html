@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscar vacantes — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+      <a href="publicar-vacante.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="hero" style="padding:56px 0 84px">
+  <div class="container">
+    <h1 style="font-size:2.2rem">Vacantes disponibles</h1>
+    <p class="lead">Filtra por lo que de verdad importa para ti.</p>
+    <div class="search-card">
+      <input type="text" id="q" placeholder="Puesto, palabra clave o empresa">
+      <select id="modalidad">
+        <option value="">Cualquier modalidad</option>
+        <option value="Remoto">Remoto</option>
+        <option value="Híbrido">Híbrido</option>
+        <option value="Presencial">Presencial</option>
+      </select>
+      <button class="btn btn-primary" id="btn-search">Buscar</button>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:56px">
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <span id="result-count" style="color:var(--ink-soft);font-size:.9rem"></span>
+      <select id="orden" style="border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">
+        <option value="reciente">Más recientes</option>
+        <option value="sueldo">Mayor sueldo</option>
+      </select>
+    </div>
+    <div class="grid-jobs" id="jobs-list"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  document.getElementById('q').value = params.get('q') || '';
+  document.getElementById('modalidad').value = params.get('modalidad') || '';
+
+  async function loadJobs() {
+    const list = document.getElementById('jobs-list');
+    list.innerHTML = skeletonCards(6);
+    const filters = {
+      q: document.getElementById('q').value,
+      modalidad: document.getElementById('modalidad').value,
+      orden: document.getElementById('orden').value,
+    };
+    try {
+      const jobs = await JobMatchAPI.listJobs(filters);
+      const items = jobs.items || [];
+      document.getElementById('result-count').textContent = `${items.length} vacante${items.length === 1 ? '' : 's'} encontrada${items.length === 1 ? '' : 's'}`;
+      list.innerHTML = items.length
+        ? items.map(jobCardHTML).join('')
+        : `<div class="empty-state" style="grid-column:1/-1"><div class="mark">🔍</div><p>No encontramos vacantes con esos filtros. Prueba con otros términos.</p></div>`;
+    } catch (e) {
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>No se pudo conectar con la fuente de vacantes. Revisa APPS_SCRIPT_URL en assets/js/app.js.</p></div>`;
+    }
+  }
+
+  document.getElementById('btn-search').addEventListener('click', loadJobs);
+  document.getElementById('orden').addEventListener('change', loadJobs);
+  loadJobs();
+</script>
+</body>
+</html>

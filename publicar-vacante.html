@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publicar vacante — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+      <a href="publicar-vacante.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:56px">
+  <div class="container" style="max-width:760px">
+    <div class="eyebrow">Para empresas</div>
+    <h1>Publica una vacante</h1>
+    <p class="lead" style="max-width:56ch">Tu primera vacante es gratis. Los candidatos verán tu publicación con afinidad calculada por IA, no solo palabras clave.</p>
+
+    <div class="form-card" style="margin-top:32px">
+      <form id="job-form">
+        <div class="form-grid-2">
+          <div class="field">
+            <label for="empresa">Nombre de la empresa</label>
+            <input type="text" id="empresa" required>
+          </div>
+          <div class="field">
+            <label for="email-contacto">Correo de contacto</label>
+            <input type="email" id="email-contacto" required>
+            <div class="hint">Aquí te llegarán las postulaciones.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="titulo">Puesto</label>
+          <input type="text" id="titulo" required placeholder="Ej. Coordinador/a de Vinculación Comunitaria">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field">
+            <label for="modalidad">Modalidad</label>
+            <select id="modalidad" required>
+              <option value="">Selecciona...</option>
+              <option>Remoto</option>
+              <option>Híbrido</option>
+              <option>Presencial</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ubicacion">Ubicación</label>
+            <input type="text" id="ubicacion" placeholder="Ciudad de México">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field">
+            <label for="salario-min">Sueldo mínimo (MXN, opcional)</label>
+            <input type="number" id="salario-min" min="0">
+          </div>
+          <div class="field">
+            <label for="salario-max">Sueldo máximo (MXN, opcional)</label>
+            <input type="number" id="salario-max" min="0">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="descripcion">Descripción del puesto</label>
+          <textarea id="descripcion" required placeholder="Responsabilidades, requisitos, qué hace especial a esta vacante..."></textarea>
+          <div class="hint">Este texto es lo que la IA compara contra los perfiles de los candidatos para calcular afinidad — entre más específico, mejor el match.</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Publicar vacante</button>
+        <div class="status-msg" id="form-status"></div>
+      </form>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;font-size:.85rem">¿Buscas planes con más vacantes destacadas? <a href="precios.html" style="color:var(--purple-700);font-weight:600">Ver precios →</a></p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  document.getElementById('job-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const status = document.getElementById('form-status');
+    btn.disabled = true;
+    btn.textContent = 'Publicando...';
+    status.className = 'status-msg show pending';
+    status.textContent = 'Un momento...';
+
+    try {
+      const result = await JobMatchAPI.createJob({
+        empresa: document.getElementById('empresa').value,
+        emailContacto: document.getElementById('email-contacto').value,
+        titulo: document.getElementById('titulo').value,
+        modalidad: document.getElementById('modalidad').value,
+        ubicacion: document.getElementById('ubicacion').value,
+        salarioMin: document.getElementById('salario-min').value,
+        salarioMax: document.getElementById('salario-max').value,
+        descripcion: document.getElementById('descripcion').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = `¡Publicada! Guarda este token de acceso para tu panel de empresa: ${result.companyToken || ''}`;
+      btn.textContent = 'Vacante publicada ✓';
+      document.getElementById('job-form').reset();
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = `No se pudo publicar: ${err.message}`;
+      btn.disabled = false;
+      btn.textContent = 'Publicar vacante';
+    }
+  });
+</script>
+</body>
+</html>

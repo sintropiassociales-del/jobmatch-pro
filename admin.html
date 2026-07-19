@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de empresa — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+      <a href="publicar-vacante.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:56px">
+  <div class="container" style="max-width:820px">
+    <div class="eyebrow">Panel de empresa</div>
+    <h1>Tus postulaciones</h1>
+    <p class="lead">Escribe el token que recibiste al publicar tu vacante para ver quién se postuló, ordenado por afinidad.</p>
+
+    <div class="form-card" id="token-card">
+      <div class="field" style="margin-bottom:14px">
+        <label for="token">Token de empresa</label>
+        <input type="text" id="token" placeholder="Pega aquí el token que te dimos al publicar">
+      </div>
+      <button class="btn btn-primary" id="btn-load">Ver postulaciones</button>
+      <div class="status-msg" id="token-status"></div>
+    </div>
+
+    <div id="applications-list" style="margin-top:32px"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  async function verSocioeconomico(jobId, candidatoId, btn) {
+    const box = btn.nextElementSibling;
+    const token = document.getElementById('token').value.trim();
+    btn.disabled = true;
+    btn.textContent = 'Consultando...';
+    try {
+      const data = await JobMatchAPI.getSocioeconomico(token, jobId, candidatoId);
+      if (data.error) throw new Error(data.error);
+      const s = data.socioeconomico;
+      box.innerHTML = `
+        <strong>Ingreso familiar aprox.:</strong> ${s.ingresoFamiliar || 'No especificado'}<br>
+        <strong>Dependientes económicos:</strong> ${s.dependientesEconomicos || 'No especificado'}<br>
+        <strong>Tipo de vivienda:</strong> ${s.tipoVivienda || 'No especificado'}<br>
+        <strong>Escolaridad:</strong> ${s.escolaridad || 'No especificado'}<br>
+        <strong>Contexto adicional:</strong> ${s.situacionVulnerabilidad || '—'}<br>
+        <strong>Notas:</strong> ${s.notasAdicionales || '—'}`;
+      box.style.display = 'block';
+      btn.style.display = 'none';
+    } catch (err) {
+      box.innerHTML = `⚠️ ${err.message}`;
+      box.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '🔒 Ver perfil socioeconómico (autorizado)';
+    }
+  }
+
+  document.getElementById('btn-load').addEventListener('click', async () => {
+    const token = document.getElementById('token').value.trim();
+    const status = document.getElementById('token-status');
+    const list = document.getElementById('applications-list');
+    if (!token) {
+      status.className = 'status-msg show err';
+      status.textContent = 'Escribe tu token de empresa.';
+      return;
+    }
+    status.className = 'status-msg show pending';
+    status.textContent = 'Buscando postulaciones...';
+    list.innerHTML = '';
+
+    try {
+      const data = await JobMatchAPI.listApplications(token);
+      status.className = 'status-msg show ok';
+      status.textContent = `${data.items?.length || 0} postulación(es) encontradas.`;
+
+      if (!data.items || data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="mark">📭</div><p>Todavía no tienes postulaciones.</p></div>`;
+        return;
+      }
+
+      const sorted = [...data.items].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      list.innerHTML = sorted.map((app) => `
+        <div class="job-card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div>
+              <h3 style="font-size:1.05rem">${app.nombre}</h3>
+              <div class="meta"><span>✉️ ${app.email}</span>${app.telefono ? `<span>📱 ${app.telefono}</span>` : ''}</div>
+            </div>
+            <span class="badge-pill">${app.jobTitulo || 'Vacante'}</span>
+          </div>
+          <div class="match">
+            <div class="match-track"><div class="match-fill" style="width:${app.matchScore || 0}%"></div></div>
+            <span class="match-label">${app.matchScore || 0}% afinidad</span>
+          </div>
+          <p class="desc">${app.perfil || ''}</p>
+          ${app.socioeconomicoDisponible
+            ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="verSocioeconomico('${app.jobId}','${app.candidatoId}', this)">🔒 Ver perfil socioeconómico (autorizado)</button>
+               <div class="socio-box" style="display:none;margin-top:12px;background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;font-size:.85rem"></div>`
+            : `<span class="badge-pill" style="opacity:.6">Sin datos socioeconómicos autorizados</span>`}
+        </div>`).join('');
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = `No se pudo verificar el token: ${err.message}`;
+    }
+  });
+</script>
+</body>
+</html>

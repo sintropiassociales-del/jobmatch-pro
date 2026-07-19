@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Sintropía — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="admin.html">Acceso empresas</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:56px">
+  <div class="container" style="max-width:900px">
+    <div class="eyebrow">Uso interno — Sintropía Social</div>
+    <h1>Administración de la plataforma</h1>
+    <p class="lead">Aquí subes el plan de una empresa después de confirmar manualmente su pago en PayPal (revisa el correo que llega a direccion@sintropiasocial.com con cada suscripción nueva).</p>
+
+    <div class="form-card">
+      <div class="field">
+        <label for="admin-key">Clave de administrador</label>
+        <input type="password" id="admin-key" placeholder="La que configuraste en Apps Script → Propiedades del script → ADMIN_KEY">
+      </div>
+      <button class="btn btn-primary" id="btn-load-companies">Ver empresas registradas</button>
+      <div class="status-msg" id="admin-status"></div>
+    </div>
+
+    <div id="companies-list" style="margin-top:28px"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  const PLAN_OPTIONS = ['Starter', 'Pro', 'Business', 'A la medida'];
+
+  document.getElementById('btn-load-companies').addEventListener('click', async () => {
+    const adminKey = document.getElementById('admin-key').value.trim();
+    const status = document.getElementById('admin-status');
+    const list = document.getElementById('companies-list');
+    if (!adminKey) return;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Cargando...';
+
+    try {
+      const data = await JobMatchAPI.adminListCompanies(adminKey);
+      if (data.error) throw new Error(data.error);
+      status.className = 'status-msg show ok';
+      status.textContent = `${data.items.length} vacante(s) / empresa(s) encontradas.`;
+
+      list.innerHTML = data.items.map((job) => `
+        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h3 style="font-size:1rem">${job.empresa}</h3>
+            <div class="meta"><span>${job.titulo}</span><span>Plan actual: <strong>${job.plan || 'Starter'}</strong></span></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="plan-select" style="border:1.5px solid var(--line);border-radius:10px;padding:8px 10px">
+              ${PLAN_OPTIONS.map((p) => `<option value="${p}" ${p === job.plan ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setPlan('${job.companyToken}', this)">Actualizar plan</button>
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  async function setPlan(companyToken, btn) {
+    const adminKey = document.getElementById('admin-key').value.trim();
+    const plan = btn.previousElementSibling.value;
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    try {
+      await JobMatchAPI.adminSetPlan(adminKey, companyToken, plan);
+      btn.textContent = '✓ Actualizado';
+    } catch (err) {
+      btn.textContent = 'Error';
+      alert(err.message);
+    } finally {
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Actualizar plan'; }, 1800);
+    }
+  }
+</script>
+</body>
+</html>
