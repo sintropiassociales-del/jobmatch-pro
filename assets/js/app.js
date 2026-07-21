@@ -2,26 +2,32 @@
    JobMatch Pro (versión ligera) — configuración y helpers
    ========================================================== */
 
-// 1. Pega aquí la URL de tu Web App de Apps Script (ver docs/SETUP-GUIDE.md paso 3)
-const APPS_SCRIPT_URL = "PEGA_AQUI_TU_URL_DE_APPS_SCRIPT";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbBawOkz0E5K8lQ-9EPz4-BRBY29GaIHTH9sTlhhobJFIqR8rndnTd5/exec";
+const CF_WORKER_URL = "https://jobmatch-ai-matching.coordinador1-ce.workers.dev/";
 
-// 2. Pega aquí la URL de tu Cloudflare Worker (mismo patrón que tus otras herramientas)
-const CF_WORKER_URL = "PEGA_AQUI_TU_URL_DE_CLOUDFLARE_WORKER";
+const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
+const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
 
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
   const links = document.querySelector('.nav-links');
   if (toggle && links) {
-    toggle.addEventListener('click', () => links.classList.toggle('open'));
+    toggle.addEventListener('click', () => {
+      const isOpen = links.classList.toggle('open');
+      document.body.classList.toggle('menu-open', isOpen);
+      toggle.textContent = isOpen ? '✕' : '☰';
+    });
+    // Cierra el menú al navegar
+    links.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
+      links.classList.remove('open');
+      document.body.classList.remove('menu-open');
+      toggle.textContent = '☰';
+    }));
   }
 });
 
 /* ---------- Llamadas a Apps Script ---------- */
-// Apps Script Web Apps solo aceptan GET/POST simples (sin headers custom)
-// para evitar problemas de CORS, así que mandamos todo como querystring o
-// x-www-form-urlencoded.
-
 async function asGet(action, params = {}) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set('action', action);
@@ -48,19 +54,37 @@ async function asPost(action, payload = {}) {
 
 /* ---------- API específica del negocio ---------- */
 const JobMatchAPI = {
+  // Vacantes
   listJobs: (filters = {}) => asGet('listJobs', filters),
   getJob: (id) => asGet('getJob', { id }),
-  createJob: (job) => asPost('createJob', job),
-  applyToJob: (application) => asPost('applyJob', application),
-  listApplications: (companyToken) => asGet('listApplications', { token: companyToken }),
+  createJob: (companyToken, job) => asPost('createJob', { companyToken, ...job }),
+  updateJob: (companyToken, jobId, job) => asPost('updateJob', { companyToken, jobId, ...job }),
+
+  // Empresas (cuentas)
+  registerEmpresa: (empresa) => asPost('registerEmpresa', empresa),
+  getEmpresaProfile: (token) => asGet('getEmpresaProfile', { token }),
+  uploadLogo: (companyToken, fileBase64, fileName) => asPost('uploadLogo', { companyToken, fileBase64, fileName }),
+
+  // Candidatos
   registerCandidate: (candidate) => asPost('registerCandidate', candidate),
   uploadCV: (fileBase64, fileName) => asPost('uploadCV', { fileBase64, fileName }),
   getCandidateProfile: (candidateToken) => asGet('getCandidateProfile', { token: candidateToken }),
+
+  // Postulaciones
+  applyToJob: (application) => asPost('applyJob', application),
+  listApplications: (companyToken) => asGet('listApplications', { token: companyToken }),
   getSocioeconomico: (companyToken, jobId, candidatoId) => asGet('getSocioeconomico', { companyToken, jobId, candidatoId }),
+
+  // Administración de la plataforma
   adminListCompanies: (adminKey) => asGet('adminListCompanies', { adminKey }),
   adminSetPlan: (adminKey, companyToken, plan) => asPost('adminSetPlan', { adminKey, companyToken, plan }),
+  adminSetVerificada: (adminKey, companyToken, verificada) => asPost('adminSetVerificada', { adminKey, companyToken, verificada }),
+  adminCreateExternalJob: (adminKey, job) => asPost('adminCreateExternalJob', { adminKey, ...job }),
+
+  // Pagos
   billingReceipt: (payload) => asPost('billingReceipt', payload),
-  // Matching por IA vía Cloudflare Worker (igual patrón que tu proxy hidden-frog-3123)
+
+  // Matching por IA vía Cloudflare Worker
   matchScore: async (cvText, jobDescription) => {
     const res = await fetch(CF_WORKER_URL, {
       method: 'POST',
@@ -68,7 +92,7 @@ const JobMatchAPI = {
       body: JSON.stringify({ cvText, jobDescription }),
     });
     if (!res.ok) throw new Error('Error al calcular afinidad con IA');
-    return res.json(); // { score: 0-100, reasoning: "..." }
+    return res.json();
   },
 };
 
@@ -76,7 +100,7 @@ const JobMatchAPI = {
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]); // quita el prefijo data:...;base64,
+    reader.onload = () => resolve(reader.result.split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
@@ -100,28 +124,31 @@ function timeAgo(dateStr) {
 }
 
 function jobCardHTML(job) {
-  const match = job.matchScore != null ? job.matchScore : null;
+  const isExternal = job.fuente === 'admin';
+  const logo = job.logoUrl
+    ? `<img src="${job.logoUrl}" alt="${job.empresaNombre}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--line)">`
+    : `<div style="width:38px;height:38px;border-radius:8px;background:var(--purple-100);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--purple-700);font-family:var(--font-display)">${(job.empresaNombre || '?').charAt(0)}</div>`;
+
   return `
   <a class="job-card" href="vacante.html?id=${encodeURIComponent(job.id)}">
-    <div class="tag-row">
-      <span class="tag">${job.modalidad || 'No especificado'}</span>
-      ${job.destacada ? '<span class="tag tag-orange">Destacada</span>' : ''}
+    <div class="tag-row" style="justify-content:space-between;align-items:flex-start">
+      <div class="tag-row" style="margin:0">
+        <span class="tag">${job.modalidad || 'No especificado'}</span>
+        ${job.destacada ? '<span class="tag tag-orange">Destacada</span>' : ''}
+        ${isExternal ? '<span class="tag" style="background:#EDEBF7;color:#5B5568">Vacante externa</span>' : ''}
+      </div>
+      ${logo}
     </div>
     <h3>${job.titulo}</h3>
-    <div class="company">${job.empresa}</div>
+    <div class="company">${job.empresaNombre}</div>
     <div class="meta">
       <span>📍 ${job.ubicacion || 'Remoto'}</span>
       <span>🕒 ${timeAgo(job.fecha)}</span>
     </div>
     <p class="desc">${(job.descripcion || '').slice(0, 110)}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
-    ${match !== null ? `
-    <div class="match">
-      <div class="match-track"><div class="match-fill" style="width:${match}%"></div></div>
-      <span class="match-label">${match}% afinidad</span>
-    </div>` : ''}
     <div class="foot">
       <span class="salary">${formatSalary(job.salarioMin, job.salarioMax)}</span>
-      <span class="badge-pill">Ver vacante →</span>
+      <span class="badge-pill">${isExternal ? 'Ver original →' : 'Ver vacante →'}</span>
     </div>
   </a>`;
 }

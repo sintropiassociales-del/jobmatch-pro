@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi cuenta de empresa — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="registro-empresa.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="portal-empresa.html">Acceso empresas</a>
+      <a href="registro-empresa.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:48px">
+  <div class="container" style="max-width:900px">
+
+    <!-- ============ ACCESO ============ -->
+    <div id="access-view">
+      <div class="eyebrow">Empresas</div>
+      <h1>Entra a tu cuenta</h1>
+      <div class="form-card" style="max-width:480px">
+        <div class="field">
+          <label for="login-token">Código de acceso de tu empresa</label>
+          <input type="text" id="login-token" placeholder="Lo recibiste por correo al crear tu cuenta">
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+        <div class="status-msg" id="login-status"></div>
+        <p style="text-align:center;margin-top:16px;font-size:.85rem">¿No tienes cuenta? <a href="registro-empresa.html" style="color:var(--purple-700);font-weight:600">Créala gratis →</a></p>
+      </div>
+    </div>
+
+    <!-- ============ PANEL (oculto hasta entrar) ============ -->
+    <div id="panel-view" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:8px">
+        <div>
+          <div class="eyebrow">Mi cuenta</div>
+          <h1 id="empresa-nombre" style="font-size:1.9rem">—</h1>
+          <span class="plan-chip" id="plan-chip">Plan —</span>
+        </div>
+        <button class="btn btn-ghost" id="btn-logout">Salir</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="publicar">Publicar vacante</button>
+        <button class="tab-btn" data-tab="vacantes">Mis vacantes</button>
+        <button class="tab-btn" data-tab="postulaciones">Postulaciones</button>
+        <button class="tab-btn" data-tab="plan">Mi plan</button>
+      </div>
+
+      <!-- TAB: Publicar vacante -->
+      <div class="tab-panel active" id="tab-publicar">
+        <div id="publicar-limite" class="status-msg show pending" style="margin-bottom:20px"></div>
+        <div class="form-card">
+          <form id="job-form">
+            <div class="field">
+              <label for="titulo">Puesto</label>
+              <input type="text" id="titulo" required placeholder="Ej. Coordinador/a de Vinculación Comunitaria">
+            </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="modalidad">Modalidad</label>
+                <select id="modalidad" required>
+                  <option value="">Selecciona...</option>
+                  <option>Remoto</option>
+                  <option>Híbrido</option>
+                  <option>Presencial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="ubicacion">Ubicación</label>
+                <input type="text" id="ubicacion" placeholder="Ciudad de México">
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="salario-min">Sueldo mínimo (MXN, opcional)</label>
+                <input type="number" id="salario-min" min="0">
+              </div>
+              <div class="field">
+                <label for="salario-max">Sueldo máximo (MXN, opcional)</label>
+                <input type="number" id="salario-max" min="0">
+              </div>
+            </div>
+            <div class="field">
+              <label for="descripcion">Descripción del puesto</label>
+              <textarea id="descripcion" required placeholder="Responsabilidades, requisitos, qué hace especial a esta vacante..."></textarea>
+              <div class="hint">Este texto es lo que la IA compara contra los perfiles de los candidatos.</div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="submit-job-btn">Publicar vacante</button>
+            <div class="status-msg" id="job-form-status"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- TAB: Mis vacantes -->
+      <div class="tab-panel" id="tab-vacantes">
+        <div id="mis-vacantes-list"></div>
+      </div>
+
+      <!-- TAB: Postulaciones -->
+      <div class="tab-panel" id="tab-postulaciones">
+        <div id="postulaciones-list"></div>
+      </div>
+
+      <!-- TAB: Mi plan -->
+      <div class="tab-panel" id="tab-plan">
+        <div class="form-card" style="margin-bottom:24px">
+          <h3 style="font-size:1.05rem">Tu logo</h3>
+          <div id="logo-locked" class="locked-feature" style="display:none">🔒 Subir logo es una función de planes de pago. Mejora tu plan abajo.</div>
+          <div id="logo-upload-area" style="display:none">
+            <div class="field">
+              <label for="logo-file">Sube tu logo (PNG)</label>
+              <input type="file" id="logo-file" accept="image/png">
+            </div>
+            <button class="btn btn-ghost" id="btn-upload-logo">Subir logo</button>
+            <div class="status-msg" id="logo-status"></div>
+          </div>
+        </div>
+
+        <div class="plans">
+          <div class="plan-card">
+            <h3>Starter</h3>
+            <div class="price">$1,500<span>/mes</span></div>
+            <ul><li>2 vacantes activas</li><li>Editar vacantes</li><li>Subir logo</li></ul>
+            <div id="paypal-starter" class="paypal-slot" data-plan="Starter"></div>
+          </div>
+          <div class="plan-card featured">
+            <span class="badge">Más elegido</span>
+            <h3>Pro</h3>
+            <div class="price">$4,500<span>/mes</span></div>
+            <ul><li>8 vacantes activas</li><li>Editar vacantes</li><li>Subir logo</li><li>Vacantes destacadas</li></ul>
+            <div id="paypal-pro" class="paypal-slot" data-plan="Pro"></div>
+          </div>
+          <div class="plan-card">
+            <h3>Business</h3>
+            <div class="price">$9,500<span>/mes</span></div>
+            <ul><li>Vacantes ilimitadas</li><li>Acceso a datos socioeconómicos autorizados</li></ul>
+            <div id="paypal-business" class="paypal-slot" data-plan="Business"></div>
+          </div>
+          <div class="plan-card">
+            <h3>A la medida</h3>
+            <div class="price">$15,000<span>+/mes</span></div>
+            <ul><li>Todo lo de Business</li><li>Integraciones y soporte dedicado</li></ul>
+            <div id="paypal-medida" class="paypal-slot" data-plan="A la medida"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Modal de datos de facturación ============ -->
+<div id="billing-modal" style="display:none;position:fixed;inset:0;background:rgba(32,6,63,.55);z-index:300;align-items:center;justify-content:center;padding:20px">
+  <div class="form-card" style="max-width:520px;width:100%;max-height:90vh;overflow:auto">
+    <div class="eyebrow">¡Pago recibido! 🎉</div>
+    <h2 style="font-size:1.4rem">Últimos datos para tu factura</h2>
+    <p style="font-size:.88rem">Tu plan <strong id="billing-plan-name"></strong> ya se activó automáticamente. Solo nos faltan tus datos para tu factura.</p>
+    <form id="billing-form">
+      <div class="field">
+        <label for="b-razon-social">Razón social</label>
+        <input type="text" id="b-razon-social" required>
+      </div>
+      <div class="field">
+        <label for="b-rfc">RFC</label>
+        <input type="text" id="b-rfc" required>
+      </div>
+      <div class="field">
+        <label for="b-direccion">Dirección fiscal</label>
+        <textarea id="b-direccion" required></textarea>
+      </div>
+      <div class="field">
+        <label for="b-cfdi">Uso de CFDI</label>
+        <select id="b-cfdi">
+          <option>G03 - Gastos en general</option>
+          <option>P01 - Por definir</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Enviar y activar mi plan</button>
+      <div class="status-msg" id="billing-status"></div>
+    </form>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script src="https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
+<script>
+  const PLAN_IDS = {
+    'Starter': 'P-85J178568B772993JNJN5PGI',
+    'Pro': 'P-3LD64246BP613823WNJN5WGI',
+    'Business': 'P-2DN85278YV0277106NJN5X3Q',
+    'A la medida': 'P-5XY460257T1232402NJN53IY',
+  };
+  let currentEmpresa = null;
+  let pendingSubscription = null;
+
+  function showPanel() { document.getElementById('access-view').style.display = 'none'; document.getElementById('panel-view').style.display = 'block'; }
+  function showAccess() { document.getElementById('access-view').style.display = 'block'; document.getElementById('panel-view').style.display = 'none'; }
+
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  async function loadEmpresa(token) {
+    try {
+      const data = await JobMatchAPI.getEmpresaProfile(token);
+      if (data.error) throw new Error(data.error);
+      localStorage.setItem(COMPANY_TOKEN_KEY, token);
+      currentEmpresa = data;
+
+      document.getElementById('empresa-nombre').textContent = data.empresa.razonSocial;
+      document.getElementById('plan-chip').textContent = `Plan ${data.empresa.plan}`;
+
+      const limitTxt = data.limiteVacantes === null
+        ? `Tu plan (${data.empresa.plan}) permite vacantes ilimitadas. Llevas ${data.vacantesActivas}.`
+        : `Llevas ${data.vacantesActivas} de ${data.limiteVacantes} vacante(s) activa(s) de tu plan ${data.empresa.plan}.`;
+      const limiteAlcanzado = data.limiteVacantes !== null && data.vacantesActivas >= data.limiteVacantes;
+      const limiteEl = document.getElementById('publicar-limite');
+      limiteEl.textContent = limitTxt + (limiteAlcanzado ? ' Mejora tu plan en la pestaña "Mi plan" para publicar más.' : '');
+      limiteEl.className = 'status-msg show ' + (limiteAlcanzado ? 'err' : 'pending');
+      document.getElementById('submit-job-btn').disabled = limiteAlcanzado;
+
+      renderMisVacantes(data);
+      loadPostulaciones(token);
+      setupPlanTab(data);
+
+      showPanel();
+    } catch (err) {
+      document.getElementById('login-status').className = 'status-msg show err';
+      document.getElementById('login-status').textContent = err.message;
+      localStorage.removeItem(COMPANY_TOKEN_KEY);
+    }
+  }
+
+  function renderMisVacantes(data) {
+    const list = document.getElementById('mis-vacantes-list');
+    if (data.jobs.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="mark">🗂️</div><p>Todavía no tienes vacantes publicadas.</p></div>`;
+      return;
+    }
+    list.innerHTML = data.jobs.map((job) => `
+      <div class="job-card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div>
+            <h3 style="font-size:1.05rem">${job.titulo}</h3>
+            <div class="meta"><span>📍 ${job.ubicacion || 'Remoto'}</span><span>${job.numPostulaciones} postulación(es)</span></div>
+          </div>
+          <a class="badge-pill" href="vacante.html?id=${job.id}" target="_blank">Ver pública →</a>
+        </div>
+        ${data.puedeEditar
+          ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleEdit('${job.id}', this)">✏️ Editar</button>
+             <div class="edit-box" style="display:none;margin-top:14px"></div>`
+          : `<div class="locked-feature">🔒 Editar vacantes es una función de planes de pago.</div>`}
+      </div>`).join('');
+  }
+
+  function toggleEdit(jobId, btn) {
+    const job = currentEmpresa.jobs.find((j) => String(j.id) === String(jobId));
+    const box = btn.nextElementSibling;
+    if (box.style.display === 'block') { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div class="field"><label>Puesto</label><input type="text" class="e-titulo" value="${job.titulo}"></div>
+      <div class="form-grid-2">
+        <div class="field"><label>Sueldo mínimo</label><input type="number" class="e-min" value="${job.salarioMin || ''}"></div>
+        <div class="field"><label>Sueldo máximo</label><input type="number" class="e-max" value="${job.salarioMax || ''}"></div>
+      </div>
+      <div class="field"><label>Descripción</label><textarea class="e-desc">${job.descripcion || ''}</textarea></div>
+      <button class="btn btn-primary" onclick="saveEdit('${jobId}', this)">Guardar cambios</button>
+      <div class="status-msg e-status"></div>`;
+  }
+
+  async function saveEdit(jobId, btn) {
+    const box = btn.closest('.edit-box');
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    const status = box.querySelector('.e-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      await JobMatchAPI.updateJob(token, jobId, {
+        titulo: box.querySelector('.e-titulo').value,
+        salarioMin: box.querySelector('.e-min').value,
+        salarioMax: box.querySelector('.e-max').value,
+        descripcion: box.querySelector('.e-desc').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = 'Actualizado ✓';
+      loadEmpresa(token);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  }
+
+  async function loadPostulaciones(token) {
+    const list = document.getElementById('postulaciones-list');
+    try {
+      const data = await JobMatchAPI.listApplications(token);
+      if (!data.items || data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="mark">📭</div><p>Todavía no tienes postulaciones.</p></div>`;
+        return;
+      }
+      const sorted = [...data.items].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      list.innerHTML = sorted.map((app) => `
+        <div class="job-card" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div>
+              <h3 style="font-size:1.05rem">${app.nombre}</h3>
+              <div class="meta"><span>✉️ ${app.email}</span>${app.telefono ? `<span>📱 ${app.telefono}</span>` : ''}</div>
+            </div>
+            <span class="badge-pill">${app.jobTitulo || 'Vacante'}</span>
+          </div>
+          <div class="match">
+            <div class="match-track"><div class="match-fill" style="width:${app.matchScore || 0}%"></div></div>
+            <span class="match-label">${app.matchScore || 0}% afinidad</span>
+          </div>
+          <p class="desc">${app.perfil || ''}</p>
+          ${app.socioeconomicoDisponible
+            ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="verSocioeconomico('${app.jobId}','${app.candidatoId}', this)">🔒 Ver perfil socioeconómico (autorizado)</button>
+               <div class="socio-box" style="display:none;margin-top:12px;background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;font-size:.85rem"></div>`
+            : `<span class="badge-pill" style="opacity:.6">Sin datos socioeconómicos autorizados</span>`}
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state"><div class="mark">⚠️</div><p>${err.message}</p></div>`;
+    }
+  }
+
+  async function verSocioeconomico(jobId, candidatoId, btn) {
+    const box = btn.nextElementSibling;
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    btn.disabled = true;
+    btn.textContent = 'Consultando...';
+    try {
+      const data = await JobMatchAPI.getSocioeconomico(token, jobId, candidatoId);
+      if (data.error) throw new Error(data.error);
+      const s = data.socioeconomico;
+      box.innerHTML = `
+        <strong>Ingreso familiar aprox.:</strong> ${s.ingresoFamiliar || 'No especificado'}<br>
+        <strong>Dependientes económicos:</strong> ${s.dependientesEconomicos || 'No especificado'}<br>
+        <strong>Tipo de vivienda:</strong> ${s.tipoVivienda || 'No especificado'}<br>
+        <strong>Escolaridad:</strong> ${s.escolaridad || 'No especificado'}<br>
+        <strong>Contexto adicional:</strong> ${s.situacionVulnerabilidad || '—'}<br>
+        <strong>Notas:</strong> ${s.notasAdicionales || '—'}`;
+      box.style.display = 'block';
+      btn.style.display = 'none';
+    } catch (err) {
+      box.innerHTML = `⚠️ ${err.message}`;
+      box.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = '🔒 Ver perfil socioeconómico (autorizado)';
+    }
+  }
+
+  function setupPlanTab(data) {
+    if (data.puedeSubirLogo) {
+      document.getElementById('logo-locked').style.display = 'none';
+      document.getElementById('logo-upload-area').style.display = 'block';
+    } else {
+      document.getElementById('logo-locked').style.display = 'flex';
+      document.getElementById('logo-upload-area').style.display = 'none';
+    }
+
+    document.querySelectorAll('.paypal-slot').forEach((slot) => {
+      if (slot.dataset.rendered) return;
+      slot.dataset.rendered = 'true';
+      const plan = slot.dataset.plan;
+      paypal.Buttons({
+        style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
+        createSubscription: (d, actions) => actions.subscription.create({
+          plan_id: PLAN_IDS[plan],
+          custom_id: localStorage.getItem(COMPANY_TOKEN_KEY),
+        }),
+        onApprove: async (d, actions) => {
+          pendingSubscription = { subscriptionId: d.subscriptionID, plan };
+          try {
+            const details = await actions.subscription.get();
+            pendingSubscription.payerName = details?.subscriber?.name ? `${details.subscriber.name.given_name || ''} ${details.subscriber.name.surname || ''}`.trim() : '';
+            pendingSubscription.payerEmail = details?.subscriber?.email_address || '';
+          } catch (e) {}
+          document.getElementById('billing-plan-name').textContent = plan;
+          document.getElementById('b-razon-social').value = currentEmpresa.empresa.razonSocial || '';
+          document.getElementById('b-rfc').value = currentEmpresa.empresa.rfc || '';
+          document.getElementById('billing-modal').style.display = 'flex';
+        },
+      }).render('#' + slot.id);
+    });
+  }
+
+  document.getElementById('btn-upload-logo').addEventListener('click', async () => {
+    const status = document.getElementById('logo-status');
+    const fileInput = document.getElementById('logo-file');
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    if (!fileInput.files[0]) { status.className = 'status-msg show err'; status.textContent = 'Selecciona un PNG primero.'; return; }
+    status.className = 'status-msg show pending';
+    status.textContent = 'Subiendo...';
+    try {
+      const base64 = await fileToBase64(fileInput.files[0]);
+      await JobMatchAPI.uploadLogo(token, base64, fileInput.files[0].name);
+      status.className = 'status-msg show ok';
+      status.textContent = 'Logo actualizado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('billing-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('billing-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Enviando comprobante...';
+    try {
+      await JobMatchAPI.billingReceipt({
+        plan: pendingSubscription.plan,
+        subscriptionId: pendingSubscription.subscriptionId,
+        payerName: pendingSubscription.payerName || '',
+        payerEmail: pendingSubscription.payerEmail || '',
+        companyEmail: currentEmpresa.empresa.emailContacto,
+        razonSocial: document.getElementById('b-razon-social').value,
+        rfc: document.getElementById('b-rfc').value,
+        direccionFiscal: document.getElementById('b-direccion').value,
+        usoCFDI: document.getElementById('b-cfdi').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Listo! Te mandamos tu comprobante. Recarga la página en unos segundos para ver tu plan activo.';
+      setTimeout(() => { document.getElementById('billing-modal').style.display = 'none'; }, 3500);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = 'El pago sí se procesó, pero no pudimos enviar el comprobante. Escríbenos con tu ID de suscripción: ' + pendingSubscription.subscriptionId;
+    }
+  });
+
+  document.getElementById('btn-login').addEventListener('click', () => {
+    const token = document.getElementById('login-token').value.trim();
+    if (token) loadEmpresa(token);
+  });
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    localStorage.removeItem(COMPANY_TOKEN_KEY);
+    showAccess();
+  });
+
+  document.getElementById('job-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-job-btn');
+    const status = document.getElementById('job-form-status');
+    btn.disabled = true;
+    btn.textContent = 'Publicando...';
+    status.className = 'status-msg show pending';
+    status.textContent = 'Un momento...';
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    try {
+      await JobMatchAPI.createJob(token, {
+        titulo: document.getElementById('titulo').value,
+        modalidad: document.getElementById('modalidad').value,
+        ubicacion: document.getElementById('ubicacion').value,
+        salarioMin: document.getElementById('salario-min').value,
+        salarioMax: document.getElementById('salario-max').value,
+        descripcion: document.getElementById('descripcion').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Vacante publicada!';
+      document.getElementById('job-form').reset();
+      loadEmpresa(token);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Publicar vacante';
+    }
+  });
+
+  const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
+  if (saved) loadEmpresa(saved);
+</script>
+</body>
+</html>

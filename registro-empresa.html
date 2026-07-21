@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crear cuenta de empresa — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="registro-empresa.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="portal-empresa.html">Acceso empresas</a>
+      <a href="registro-empresa.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="section" style="padding-top:56px">
+  <div class="container" style="max-width:640px">
+    <div class="eyebrow">Para empresas</div>
+    <h1>Crea tu cuenta de empresa</h1>
+    <p class="lead">Gratis para empezar: puedes publicar 1 vacante activa sin costo. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, puedes mejorar tu plan después desde tu cuenta.</p>
+
+    <div class="form-card" style="margin-top:24px">
+      <form id="registro-form">
+        <div class="field">
+          <label for="razon-social">Razón social</label>
+          <input type="text" id="razon-social" required placeholder="Nombre legal de tu empresa">
+        </div>
+        <div class="field">
+          <label for="rfc">RFC de la empresa</label>
+          <input type="text" id="rfc" required placeholder="Ej. ABC123456XYZ" maxlength="13" style="text-transform:uppercase">
+          <div class="hint">Lo pedimos para verificar que quien publica es una empresa real — no compartimos tu RFC con candidatos.</div>
+        </div>
+        <div class="field">
+          <label for="email-contacto">Correo de contacto</label>
+          <input type="email" id="email-contacto" required>
+          <div class="hint">Aquí te llegará tu código de acceso y las postulaciones.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Crear mi cuenta</button>
+        <div class="status-msg" id="form-status"></div>
+      </form>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;font-size:.85rem">¿Ya tienes cuenta? <a href="portal-empresa.html" style="color:var(--purple-700);font-weight:600">Entra aquí →</a></p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <a href="index.html">Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  document.getElementById('registro-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const status = document.getElementById('form-status');
+    btn.disabled = true;
+    btn.textContent = 'Creando cuenta...';
+    status.className = 'status-msg show pending';
+    status.textContent = 'Un momento...';
+
+    try {
+      const result = await JobMatchAPI.registerEmpresa({
+        razonSocial: document.getElementById('razon-social').value,
+        rfc: document.getElementById('rfc').value.trim().toUpperCase(),
+        emailContacto: document.getElementById('email-contacto').value,
+      });
+      localStorage.setItem(COMPANY_TOKEN_KEY, result.companyToken);
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Cuenta creada! Te enviamos tu código por correo. Redirigiendo a tu panel...';
+      setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1500);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Crear mi cuenta';
+    }
+  });
+</script>
+</body>
+</html>

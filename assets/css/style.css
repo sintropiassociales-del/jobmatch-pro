@@ -234,6 +234,25 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .footer-bottom{margin-top:44px;padding-top:22px;border-top:1px solid rgba(255,255,255,.14);font-size:.8rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;}
 .footer-brand p{color:rgba(255,255,255,.66);max-width:34ch;}
 
+/* ---------- Tabs (portal de empresa) ---------- */
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:28px;flex-wrap:wrap;}
+.tab-btn{
+  background:none;border:none;padding:12px 18px;font-family:var(--font-body);font-weight:600;
+  font-size:.9rem;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tab-btn.active{color:var(--purple-700);border-bottom-color:var(--orange-500);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+.locked-feature{
+  display:flex;align-items:center;gap:8px;background:var(--purple-100);color:var(--purple-700);
+  font-size:.82rem;font-weight:600;padding:10px 14px;border-radius:var(--radius-sm);
+}
+.plan-chip{
+  display:inline-flex;align-items:center;gap:6px;background:var(--purple-900);color:#fff;
+  font-size:.78rem;font-weight:700;padding:6px 14px;border-radius:100px;
+}
+
 /* ---------- Utility ---------- */
 .empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
 .empty-state .mark{font-size:2.4rem;margin-bottom:10px;}
@@ -242,9 +261,34 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 @keyframes skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
 
 @media (max-width:900px){
-  .nav-links{position:fixed;inset:64px 0 0 0;background:var(--cream);flex-direction:column;padding:28px 24px;display:none;border-top:1px solid var(--line);}
+  .nav-toggle{display:block;z-index:210;position:relative;}
+  .nav-links{
+    display:none;
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    padding:96px 24px 32px;
+    background:#FAF9F7;
+    opacity:1;
+    flex-direction:column;
+    align-items:stretch;
+    gap:0;
+    z-index:200;
+    overflow-y:auto;
+  }
   .nav-links.open{display:flex;}
-  .nav-toggle{display:block;}
+  .nav-links a{
+    width:100%;
+    padding:16px 4px;
+    border-bottom:1px solid var(--line);
+    color:var(--ink);
+    font-size:1.05rem;
+  }
+  .nav-links a.nav-cta{
+    background:var(--orange-500);color:#fff !important;border-radius:12px;
+    text-align:center;border-bottom:none;margin-top:16px;padding:14px;
+    box-shadow:0 8px 20px rgba(255,107,26,.3);
+  }
+  body.menu-open{overflow:hidden;}
   .footer-grid{grid-template-columns:1fr 1fr;}
   .search-card{grid-template-columns:1fr;}
   .form-grid-2{grid-template-columns:1fr;}

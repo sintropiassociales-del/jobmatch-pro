@@ -13,31 +13,98 @@
     <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
     <nav class="nav-links">
       <a href="vacantes.html">Buscar vacantes</a>
-      <a href="publicar-vacante.html">Publicar vacante</a>
+      <a href="registro-empresa.html">Publicar vacante</a>
       <a href="precios.html">Precios</a>
       <a href="candidato.html">Mi perfil</a>
-      <a href="admin.html">Acceso empresas</a>
+      <a href="portal-empresa.html">Acceso empresas</a>
     </nav>
     <button class="nav-toggle" aria-label="Abrir menú">☰</button>
   </div>
 </header>
 
-<section class="section" style="padding-top:56px">
-  <div class="container" style="max-width:900px">
+<section class="section" style="padding-top:48px">
+  <div class="container" style="max-width:960px">
     <div class="eyebrow">Uso interno — Sintropía Social</div>
     <h1>Administración de la plataforma</h1>
-    <p class="lead">Aquí subes el plan de una empresa después de confirmar manualmente su pago en PayPal (revisa el correo que llega a direccion@sintropiasocial.com con cada suscripción nueva).</p>
 
-    <div class="form-card">
+    <div class="form-card" style="max-width:480px">
       <div class="field">
         <label for="admin-key">Clave de administrador</label>
-        <input type="password" id="admin-key" placeholder="La que configuraste en Apps Script → Propiedades del script → ADMIN_KEY">
+        <input type="password" id="admin-key" placeholder="La que configuraste en Apps Script → ADMIN_KEY">
       </div>
-      <button class="btn btn-primary" id="btn-load-companies">Ver empresas registradas</button>
-      <div class="status-msg" id="admin-status"></div>
+      <button class="btn btn-primary" id="btn-unlock">Entrar</button>
+      <div class="status-msg" id="unlock-status"></div>
     </div>
 
-    <div id="companies-list" style="margin-top:28px"></div>
+    <div id="admin-panel" style="display:none;margin-top:32px">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="empresas">Empresas y planes</button>
+        <button class="tab-btn" data-tab="externas">Publicar vacante externa</button>
+      </div>
+
+      <!-- TAB: Empresas -->
+      <div class="tab-panel active" id="tab-empresas">
+        <p style="font-size:.85rem">Con el webhook de PayPal configurado (ver <code>docs/SETUP-GUIDE.md</code>), los planes se activan solos cuando alguien paga. Usa esto como respaldo si un pago no se reflejó automáticamente, o para dar de baja/subir un plan manualmente por alguna razón.</p>
+        <div id="companies-list" style="margin-top:16px"></div>
+      </div>
+
+      <!-- TAB: Vacante externa -->
+      <div class="tab-panel" id="tab-externas">
+        <p style="font-size:.85rem">Usa esto para vacantes que viste en otro sitio y quieres listar aquí como referencia. No tienen postulación ni matching por IA dentro de la plataforma — solo mandan al candidato al link original. Siempre se muestran después de las vacantes publicadas por empresas registradas.</p>
+
+        <div class="form-card" style="margin-top:16px">
+          <form id="external-form">
+            <div class="field">
+              <label for="ex-empresa">Empresa (texto libre, tal como la quieres mostrar)</label>
+              <input type="text" id="ex-empresa" required placeholder="Ej. Nombre de la empresa que vi en LinkedIn">
+            </div>
+            <div class="field">
+              <label for="ex-titulo">Puesto</label>
+              <input type="text" id="ex-titulo" required>
+            </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="ex-modalidad">Modalidad</label>
+                <select id="ex-modalidad">
+                  <option value="">No especificado</option>
+                  <option>Remoto</option>
+                  <option>Híbrido</option>
+                  <option>Presencial</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="ex-ubicacion">Ubicación</label>
+                <input type="text" id="ex-ubicacion">
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="ex-min">Sueldo mínimo (opcional)</label>
+                <input type="number" id="ex-min">
+              </div>
+              <div class="field">
+                <label for="ex-max">Sueldo máximo (opcional)</label>
+                <input type="number" id="ex-max">
+              </div>
+            </div>
+            <div class="field">
+              <label for="ex-descripcion">Descripción general</label>
+              <textarea id="ex-descripcion" placeholder="Lo que sepas de la vacante, aunque sea breve"></textarea>
+            </div>
+            <div class="field">
+              <label for="ex-link">Link donde está la vacante original</label>
+              <input type="url" id="ex-link" required placeholder="https://...">
+            </div>
+            <div class="field">
+              <label for="ex-nota">Nota que verá el candidato</label>
+              <input type="text" id="ex-nota" value="Sin relación directa con la vacante — solo referencia informativa.">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Publicar vacante externa</button>
+            <div class="status-msg" id="external-status"></div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -52,44 +119,61 @@
 
 <script src="assets/js/app.js"></script>
 <script>
-  const PLAN_OPTIONS = ['Starter', 'Pro', 'Business', 'A la medida'];
+  const PLAN_OPTIONS = ['Gratis', 'Starter', 'Pro', 'Business', 'A la medida'];
+  let adminKey = '';
 
-  document.getElementById('btn-load-companies').addEventListener('click', async () => {
-    const adminKey = document.getElementById('admin-key').value.trim();
-    const status = document.getElementById('admin-status');
-    const list = document.getElementById('companies-list');
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  document.getElementById('btn-unlock').addEventListener('click', async () => {
+    adminKey = document.getElementById('admin-key').value.trim();
+    const status = document.getElementById('unlock-status');
     if (!adminKey) return;
     status.className = 'status-msg show pending';
-    status.textContent = 'Cargando...';
-
+    status.textContent = 'Verificando...';
     try {
       const data = await JobMatchAPI.adminListCompanies(adminKey);
       if (data.error) throw new Error(data.error);
       status.className = 'status-msg show ok';
-      status.textContent = `${data.items.length} vacante(s) / empresa(s) encontradas.`;
-
-      list.innerHTML = data.items.map((job) => `
-        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <h3 style="font-size:1rem">${job.empresa}</h3>
-            <div class="meta"><span>${job.titulo}</span><span>Plan actual: <strong>${job.plan || 'Starter'}</strong></span></div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <select class="plan-select" style="border:1.5px solid var(--line);border-radius:10px;padding:8px 10px">
-              ${PLAN_OPTIONS.map((p) => `<option value="${p}" ${p === job.plan ? 'selected' : ''}>${p}</option>`).join('')}
-            </select>
-            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setPlan('${job.companyToken}', this)">Actualizar plan</button>
-          </div>
-        </div>`).join('');
+      status.textContent = `Acceso concedido. ${data.items.length} empresa(s) registradas.`;
+      document.getElementById('admin-panel').style.display = 'block';
+      renderCompanies(data.items);
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
   });
 
+  function renderCompanies(items) {
+    const list = document.getElementById('companies-list');
+    if (items.length === 0) {
+      list.innerHTML = `<div class="empty-state"><p>Todavía no hay empresas registradas.</p></div>`;
+      return;
+    }
+    list.innerHTML = items.map((c) => `
+      <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <h3 style="font-size:1rem">${c.razonSocial} ${c.verificada === true ? '✅' : '<span style="color:var(--warn);font-size:.8rem">RFC sin verificar</span>'}</h3>
+          <div class="meta"><span>RFC: ${c.rfc}</span><span>${c.emailContacto}</span><span>Plan actual: <strong>${c.plan}</strong></span></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="plan-select" style="border:1.5px solid var(--line);border-radius:10px;padding:8px 10px">
+            ${PLAN_OPTIONS.map((p) => `<option value="${p}" ${p === c.plan ? 'selected' : ''}>${p}</option>`).join('')}
+          </select>
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setPlan('${c.companyToken}', this)">Actualizar plan</button>
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setVerificada('${c.companyToken}', ${c.verificada !== true}, this)">${c.verificada === true ? 'Quitar verificación' : 'Marcar RFC verificado'}</button>
+        </div>
+      </div>`).join('');
+  }
+
   async function setPlan(companyToken, btn) {
-    const adminKey = document.getElementById('admin-key').value.trim();
-    const plan = btn.previousElementSibling.value;
+    const plan = btn.parentElement.querySelector('.plan-select').value;
     btn.disabled = true;
     btn.textContent = 'Guardando...';
     try {
@@ -102,6 +186,44 @@
       setTimeout(() => { btn.disabled = false; btn.textContent = 'Actualizar plan'; }, 1800);
     }
   }
+
+  async function setVerificada(companyToken, value, btn) {
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminSetVerificada(adminKey, companyToken, value);
+      const data = await JobMatchAPI.adminListCompanies(adminKey);
+      renderCompanies(data.items);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('external-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('external-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Publicando...';
+    try {
+      await JobMatchAPI.adminCreateExternalJob(adminKey, {
+        empresaNombre: document.getElementById('ex-empresa').value,
+        titulo: document.getElementById('ex-titulo').value,
+        modalidad: document.getElementById('ex-modalidad').value,
+        ubicacion: document.getElementById('ex-ubicacion').value,
+        salarioMin: document.getElementById('ex-min').value,
+        salarioMax: document.getElementById('ex-max').value,
+        descripcion: document.getElementById('ex-descripcion').value,
+        linkExterno: document.getElementById('ex-link').value,
+        notaAdmin: document.getElementById('ex-nota').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = 'Vacante externa publicada (aparecerá después de las de empresas registradas).';
+      document.getElementById('external-form').reset();
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
 </script>
 </body>
 </html>
