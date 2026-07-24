@@ -1,17 +1,26 @@
 /**
- * JobMatch Pro — Cloudflare Worker de matching por IA
- * Mismo patrón que tu proxy hidden-frog-3123: el frontend nunca ve la
- * API key de OpenAI, el Worker la guarda como variable de entorno secreta.
+ * JobMatch Pro — Cloudflare Worker de matching por IA (usando Google Gemini)
+ * El frontend nunca ve la API key: el Worker la guarda como variable de
+ * entorno secreta y hace la llamada por ti.
+ *
+ * Por qué Gemini y no OpenAI: el modelo gemini-2.5-flash-lite tiene una capa
+ * gratuita de hasta 1,500 llamadas al día, sin necesidad de tarjeta de
+ * crédito — de sobra para el volumen de este proyecto (ver
+ * docs/CUANDO-ESCALAR.md). Si algún día superas ese límite, basta con
+ * cambiar GEMINI_MODEL a una versión de pago o activar facturación en
+ * Google AI Studio; el resto del código no cambia.
  *
  * INSTRUCCIONES DE DESPLIEGUE: ver docs/SETUP-GUIDE.md
  *
- * Variable de entorno necesaria (Settings > Variables > Encrypt):
- *   OPENAI_API_KEY
+ * Variable de entorno necesaria (Settings > Variables and Secrets):
+ *   GEMINI_API_KEY   — sácala gratis en https://aistudio.google.com/apikey
+ *                      con la misma cuenta de Google que usas para el Sheet.
  */
+
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 export default {
   async fetch(request, env) {
-    // Responder preflight CORS
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders() });
     }
@@ -36,27 +45,29 @@ ${cvText}
 DESCRIPCIÓN DE LA VACANTE:
 ${jobDescription}`;
 
-      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+      const geminiRes = await fetch(geminiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          'x-goog-api-key': env.GEMINI_API_KEY,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+          },
         }),
       });
 
-      if (!openaiRes.ok) {
-        const errText = await openaiRes.text();
-        return jsonResponse({ error: 'Error de OpenAI: ' + errText }, 502);
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        return jsonResponse({ error: 'Error de Gemini: ' + errText }, 502);
       }
 
-      const data = await openaiRes.json();
-      const content = data.choices?.[0]?.message?.content || '{}';
+      const data = await geminiRes.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const parsed = JSON.parse(content);
 
       return jsonResponse({

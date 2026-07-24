@@ -30,6 +30,15 @@
     <div id="access-view">
       <div class="eyebrow">Empresas</div>
       <h1>Entra a tu cuenta</h1>
+
+      <div class="form-card" style="max-width:480px;margin-bottom:16px">
+        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Entrar con Google</p>
+        <div id="google-btn"></div>
+        <div class="status-msg" id="google-login-status"></div>
+      </div>
+
+      <div style="max-width:480px;text-align:center;color:var(--ink-soft);font-size:.82rem;margin-bottom:16px">— o —</div>
+
       <div class="form-card" style="max-width:480px">
         <div class="field">
           <label for="login-token">Código de acceso de tu empresa</label>
@@ -204,8 +213,39 @@
 </footer>
 
 <script src="assets/js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
 <script>
+  window.addEventListener('load', () => {
+    if (typeof google === 'undefined' || !google.accounts) return;
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
+    google.accounts.id.renderButton(document.getElementById('google-btn'), {
+      theme: 'outline', size: 'large', text: 'signin_with', width: 320,
+    });
+  });
+
+  async function handleGoogleLogin(response) {
+    const status = document.getElementById('google-login-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Verificando...';
+    try {
+      const data = await JobMatchAPI.loginEmpresaGoogle(response.credential);
+      if (data.error) {
+        if (data.necesitaRegistro) {
+          status.className = 'status-msg show err';
+          status.textContent = 'No tienes cuenta con este correo de Google todavía — créala gratis (link de abajo) y vuelve a intentar con Google.';
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
+      loadEmpresa(data.companyToken);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  }
+
   const PLAN_IDS = {
     'Starter': 'P-85J178568B772993JNJN5PGI',
     'Pro': 'P-3LD64246BP613823WNJN5WGI',

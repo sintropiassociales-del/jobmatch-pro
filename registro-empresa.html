@@ -30,7 +30,17 @@
     <p class="lead">Gratis para empezar: puedes publicar 1 vacante activa sin costo. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, puedes mejorar tu plan después desde tu cuenta.</p>
 
     <div class="form-card" style="margin-top:24px">
-      <form id="registro-form">
+      <div id="google-step">
+        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Primero, verifica tu correo con Google</p>
+        <div id="google-btn"></div>
+        <p style="font-size:.78rem;color:var(--ink-soft);margin-top:10px">Solo usamos tu correo para confirmar que es real — no publicamos nada a tu nombre sin que tú lo hagas.</p>
+      </div>
+
+      <form id="registro-form" style="display:none">
+        <div class="field">
+          <label>Correo verificado</label>
+          <input type="email" id="email-contacto" disabled style="background:var(--purple-100);color:var(--purple-700);font-weight:600">
+        </div>
         <div class="field">
           <label for="razon-social">Razón social</label>
           <input type="text" id="razon-social" required placeholder="Nombre legal de tu empresa">
@@ -39,11 +49,6 @@
           <label for="rfc">RFC de la empresa</label>
           <input type="text" id="rfc" required placeholder="Ej. ABC123456XYZ" maxlength="13" style="text-transform:uppercase">
           <div class="hint">Lo pedimos para verificar que quien publica es una empresa real — no compartimos tu RFC con candidatos.</div>
-        </div>
-        <div class="field">
-          <label for="email-contacto">Correo de contacto</label>
-          <input type="email" id="email-contacto" required>
-          <div class="hint">Aquí te llegará tu código de acceso y las postulaciones.</div>
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Crear mi cuenta</button>
         <div class="status-msg" id="form-status"></div>
@@ -64,7 +69,34 @@
 </footer>
 
 <script src="assets/js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
+  let googleIdToken = null;
+
+  window.addEventListener('load', () => {
+    if (typeof google === 'undefined' || !google.accounts) {
+      document.getElementById('google-step').innerHTML = '<p style="color:var(--warn);font-size:.85rem">No se pudo cargar el botón de Google. Revisa tu conexión y recarga la página.</p>';
+      return;
+    }
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(document.getElementById('google-btn'), {
+      theme: 'outline', size: 'large', text: 'continue_with', width: 320,
+    });
+  });
+
+  function handleGoogleCredential(response) {
+    googleIdToken = response.credential;
+    // Decodifica solo la parte visible del JWT para mostrar el correo (sin verificar nada aquí —
+    // la verificación real y segura la hace Apps Script del lado del servidor).
+    const payload = JSON.parse(atob(response.credential.split('.')[1]));
+    document.getElementById('email-contacto').value = payload.email;
+    document.getElementById('google-step').style.display = 'none';
+    document.getElementById('registro-form').style.display = 'block';
+  }
+
   document.getElementById('registro-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submit-btn');
@@ -75,15 +107,15 @@
     status.textContent = 'Un momento...';
 
     try {
-      const result = await JobMatchAPI.registerEmpresa({
-        razonSocial: document.getElementById('razon-social').value,
-        rfc: document.getElementById('rfc').value.trim().toUpperCase(),
-        emailContacto: document.getElementById('email-contacto').value,
-      });
+      const result = await JobMatchAPI.registerEmpresaGoogle(
+        googleIdToken,
+        document.getElementById('razon-social').value,
+        document.getElementById('rfc').value.trim().toUpperCase()
+      );
       localStorage.setItem(COMPANY_TOKEN_KEY, result.companyToken);
       status.className = 'status-msg show ok';
-      status.textContent = '¡Cuenta creada! Te enviamos tu código por correo. Redirigiendo a tu panel...';
-      setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1500);
+      status.textContent = '¡Cuenta creada! Redirigiendo a tu panel...';
+      setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1200);
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;

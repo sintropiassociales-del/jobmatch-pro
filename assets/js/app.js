@@ -3,7 +3,8 @@
    ========================================================== */
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbBawOkz0E5K8lQ-9EPz4-BRBY29GaIHTH9sTlhhobJFIqR8rndnTd5/exec";
-const CF_WORKER_URL = "https://jobmatch-ai-matching.coordinador1-ce.workers.dev/";
+const CF_WORKER_URL = "jobmatch-ai-matching.coordinador1-ce.workers.dev";
+const GOOGLE_CLIENT_ID = "1048097062338-9dj7eluj20ie8721vt5rfdgi1djk7ihj.apps.googleusercontent.com";
 
 const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
 const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
@@ -62,6 +63,8 @@ const JobMatchAPI = {
 
   // Empresas (cuentas)
   registerEmpresa: (empresa) => asPost('registerEmpresa', empresa),
+  registerEmpresaGoogle: (idToken, razonSocial, rfc) => asPost('registerEmpresaGoogle', { idToken, razonSocial, rfc }),
+  loginEmpresaGoogle: (idToken) => asPost('loginEmpresaGoogle', { idToken }),
   getEmpresaProfile: (token) => asGet('getEmpresaProfile', { token }),
   uploadLogo: (companyToken, fileBase64, fileName) => asPost('uploadLogo', { companyToken, fileBase64, fileName }),
 
