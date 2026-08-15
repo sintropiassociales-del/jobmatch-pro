@@ -19,7 +19,38 @@
    → Añadir propiedad de script**.
 2. Nombre: `ADMIN_KEY`. Valor: una contraseña larga que solo tú conozcas.
 
-### 2.2 Implementar como aplicación web
+### 2.2 Configura "Entrar con Google" (opcional pero recomendado)
+
+Esto permite que las empresas se registren/entren verificando su correo con
+Google, en vez de escribirlo a mano o pegar un código.
+
+1. Ve a [console.cloud.google.com](https://console.cloud.google.com) (con la
+   misma cuenta de Google del Sheet) → crea un proyecto nuevo (o usa uno que
+   ya tengas) → nómbralo, ej. "JobMatch Pro".
+2. Menú lateral → **APIs & Services → OAuth consent screen**.
+   - User type: **External**.
+   - Llena nombre de la app, tu correo de soporte, y guarda (los demás campos
+     puedes dejarlos por default para empezar).
+3. Menú lateral → **APIs & Services → Credentials → Create Credentials →
+   OAuth client ID**.
+   - Application type: **Web application**.
+   - En **"Authorized JavaScript origins"**, agrega la URL de tu sitio en
+     GitHub Pages, ej. `https://tu-usuario.github.io` (sin nada después del
+     dominio).
+   - Dale **Create**. Te muestra un **Client ID** (termina en
+     `.apps.googleusercontent.com`) — cópialo.
+4. Pégalo en **dos** lugares:
+   - `assets/js/app.js` → `const GOOGLE_CLIENT_ID = "..."`.
+   - Apps Script → ⚙️ Configuración del proyecto → Propiedades del script →
+     añade `GOOGLE_CLIENT_ID` con el mismo valor (Apps Script lo usa para
+     confirmar que el token de verificación viene de tu app y no de otra).
+
+> Si no quieres configurar esto todavía, no pasa nada — el registro y login
+> con código por correo (`registro-empresa.html` / `portal-empresa.html`)
+> sigue funcionando igual, el botón de Google es una alternativa, no un
+> reemplazo obligatorio.
+
+### 2.3 Implementar como aplicación web
 
 1. **Implementar → Nueva implementación → Aplicación web**.
    - Ejecutar como: **Yo**. Quién tiene acceso: **Cualquier usuario**.
