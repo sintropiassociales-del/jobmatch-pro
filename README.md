@@ -54,10 +54,11 @@ jobmatch-lite/
   postulación interna, matching por IA, logo si el plan lo permite. **Siempre
   se listan primero.**
 - **`fuente: "admin"`** — las agregas tú desde `admin-plataforma.html` cuando
-  ves una vacante en otro sitio y quieres listarla como referencia. No tienen
-  postulación interna ni logo — solo descripción general + un botón que manda
-  al link original, con la nota "Sin relación directa con la vacante". Siempre
-  se listan **después** de las de empresas registradas.
+  ves una vacante en otro sitio y quieres listarla como referencia (puedes
+  pegar el texto crudo y usar "Extraer con IA" para no llenar los campos a
+  mano). No tienen postulación interna ni logo — solo descripción general +
+  un botón que manda al link original, con la nota "Sin relación directa con
+  la vacante". Siempre se listan **después** de las de empresas registradas.
 
 ## Quiénes tienen acceso a qué
 

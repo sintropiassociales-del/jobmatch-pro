@@ -83,6 +83,7 @@ const JobMatchAPI = {
   adminSetPlan: (adminKey, companyToken, plan) => asPost('adminSetPlan', { adminKey, companyToken, plan }),
   adminSetVerificada: (adminKey, companyToken, verificada) => asPost('adminSetVerificada', { adminKey, companyToken, verificada }),
   adminCreateExternalJob: (adminKey, job) => asPost('adminCreateExternalJob', { adminKey, ...job }),
+  adminExtractJobFromText: (adminKey, rawText) => asPost('adminExtractJobFromText', { adminKey, rawText }),
 
   // Pagos
   billingReceipt: (payload) => asPost('billingReceipt', payload),

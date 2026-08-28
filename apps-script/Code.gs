@@ -145,6 +145,7 @@ function doPost(e) {
     if (action === 'paypalWebhookConfirmed') return jsonOut_(paypalWebhookConfirmed_(e.parameter));
     if (action === 'adminSetVerificada') return jsonOut_(adminSetVerificada_(e.parameter));
     if (action === 'adminCreateExternalJob') return jsonOut_(adminCreateExternalJob_(e.parameter));
+    if (action === 'adminExtractJobFromText') return jsonOut_(adminExtractJobFromText_(e.parameter));
     if (action === 'billingReceipt') return jsonOut_(billingReceipt_(e.parameter));
     return jsonOut_({ error: 'Acción no reconocida: ' + action });
   } catch (err) {
@@ -418,6 +419,56 @@ function updateJob_(p) {
 }
 
 /* ---------- Vacantes externas (agregadas por admin, sin postulación interna) ---------- */
+
+// Nivel 1 de automatización: el admin pega el texto crudo de una vacante
+// (de LinkedIn, un correo, donde sea) y Gemini lo estructura en los campos
+// que usa el formulario. El admin sigue revisando y publicando a mano.
+function adminExtractJobFromText_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  if (!p.rawText) return { error: 'Falta el texto de la vacante' };
+
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) return { error: 'Falta configurar GEMINI_API_KEY en Apps Script (Propiedades del script)' };
+
+  const prompt = `Extrae los datos de esta vacante de empleo y responde ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato exacto (usa "" si no encuentras un dato, y null para los números que no encuentres):
+{"empresa":"","titulo":"","modalidad":"Remoto|Híbrido|Presencial|","ubicacion":"","salarioMin":null,"salarioMax":null,"descripcion":"","linkExterno":""}
+
+Instrucciones:
+- "modalidad" debe ser exactamente una de: Remoto, Híbrido, Presencial, o "" si no se puede inferir.
+- "descripcion" es un resumen breve (3-5 líneas) de responsabilidades/requisitos, en español, parafraseado con tus propias palabras (no copies literalmente si el texto es muy largo).
+- "linkExterno" solo si el texto trae una URL explícita; si no hay ninguna, deja "".
+- Los sueldos van en pesos mexicanos si no se especifica otra moneda; si no hay sueldo, usa null.
+
+TEXTO DE LA VACANTE:
+${p.rawText}`;
+
+  const res = UrlFetchApp.fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-goog-api-key': apiKey },
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+      }),
+      muteHttpExceptions: true,
+    }
+  );
+
+  if (res.getResponseCode() !== 200) return { error: 'Error de Gemini: ' + res.getContentText() };
+
+  const data = JSON.parse(res.getContentText());
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  let extracted;
+  try {
+    extracted = JSON.parse(content);
+  } catch (e) {
+    return { error: 'La IA no devolvió un JSON válido. Intenta con menos texto o revisa manualmente.' };
+  }
+
+  return { extracted };
+}
 
 function adminCreateExternalJob_(p) {
   if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };

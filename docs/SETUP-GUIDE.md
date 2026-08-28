@@ -50,7 +50,26 @@ Google, en vez de escribirlo a mano o pegar un código.
 > sigue funcionando igual, el botón de Google es una alternativa, no un
 > reemplazo obligatorio.
 
-### 2.3 Implementar como aplicación web
+### 2.3 Activa "Extraer con IA" para vacantes externas (opcional)
+
+Esto le permite a `admin-plataforma.html` leer el texto que pegues de una
+vacante (de LinkedIn, un correo, donde sea) y llenar los campos solo, usando
+la misma cuenta gratis de Gemini que ya vas a usar para el matching (sección
+3 más abajo — si todavía no sacaste esa clave, puedes regresar a este paso
+después).
+
+1. ⚙️ Configuración del proyecto → Propiedades del script → Añadir propiedad.
+2. Nombre: `GEMINI_API_KEY`. Valor: la misma clave de
+   [aistudio.google.com/apikey](https://aistudio.google.com/apikey) que vas a
+   poner en el Worker de matching (sección 3).
+3. Guarda.
+
+> Sí, la misma clave va en dos lugares (aquí y en el Worker) porque son dos
+> sistemas distintos llamando a Gemini por separado. No cuesta más por
+> duplicarla — ambos usos entran en la misma capa gratuita de 1,500
+> llamadas/día.
+
+### 2.4 Implementar como aplicación web
 
 1. **Implementar → Nueva implementación → Aplicación web**.
    - Ejecutar como: **Yo**. Quién tiene acceso: **Cualquier usuario**.
