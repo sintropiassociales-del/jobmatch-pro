@@ -7,9 +7,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
 :root{
-  --purple-900:#20063F;
-  --purple-700:#5B21D4;
-  --purple-500:#6B21F5;
+  --purple-900:#1E0A47;
+  --purple-700:#6B21F5;
+  --purple-500:#8B4CF7;
   --purple-100:#F2EEFC;
   --purple-050:#FAF8FE;
   --orange-500:#FF6B1A;
@@ -29,11 +29,12 @@
   --radius-md:16px;
   --radius-lg:28px;
 
-  --shadow-card:0 2px 14px rgba(32,6,63,0.07);
-  --shadow-lift:0 12px 32px rgba(32,6,63,0.14);
+  --shadow-card:0 2px 14px rgba(30,10,71,0.07);
+  --shadow-lift:0 12px 32px rgba(30,10,71,0.14);
 
-  --grad-brand:linear-gradient(120deg,var(--purple-700) 0%,var(--purple-500) 100%);
-  --grad-signal:linear-gradient(90deg,var(--purple-500) 0%,var(--orange-500) 100%);
+  /* Morado = Comprender · Naranja = Actuar (código conceptual del manual de marca) */
+  --grad-brand:var(--purple-700);
+  --grad-signal:linear-gradient(90deg,var(--purple-700) 0%,var(--orange-500) 100%);
 }
 
 *{box-sizing:border-box;}
@@ -84,8 +85,9 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
   font-family:var(--font-display);font-weight:700;font-size:1.25rem;color:var(--purple-900);
 }
 .logo .mark{
-  width:34px;height:34px;border-radius:9px;
-  background:var(--grad-brand);
+  width:34px;height:34px;border-radius:50%;
+  background:var(--purple-700);
+  border:1.5px solid var(--purple-500);
   display:flex;align-items:center;justify-content:center;
   color:#fff;font-family:var(--font-display);font-weight:700;font-size:1.05rem;
 }
