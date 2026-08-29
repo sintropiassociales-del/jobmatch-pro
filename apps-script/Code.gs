@@ -45,8 +45,8 @@ const PLAN_JOB_LIMITS = { 'Gratis': 1, 'Starter': 2, 'Pro': 8, 'Business': Infin
 const BILLING_EMAIL = 'direccion@sintropiasocial.com';
 
 const SHEET_HEADERS = {
-  [SHEET_COMPANIES]: ['id', 'razonSocial', 'rfc', 'verificada', 'emailContacto', 'companyToken', 'plan', 'logoUrl', 'fecha'],
-  [SHEET_JOBS]: ['id', 'empresaId', 'fuente', 'empresaNombre', 'titulo', 'modalidad', 'ubicacion', 'salarioMin', 'salarioMax', 'descripcion', 'fecha', 'destacada', 'linkExterno', 'notaAdmin'],
+  [SHEET_COMPANIES]: ['id', 'razonSocial', 'rfc', 'verificada', 'activa', 'emailContacto', 'companyToken', 'plan', 'logoUrl', 'fecha'],
+  [SHEET_JOBS]: ['id', 'empresaId', 'fuente', 'empresaNombre', 'titulo', 'modalidad', 'ubicacion', 'salarioMin', 'salarioMax', 'descripcion', 'fecha', 'destacada', 'activa', 'linkExterno', 'notaAdmin'],
   [SHEET_APPLICATIONS]: ['id', 'jobId', 'candidatoId', 'nombre', 'email', 'telefono', 'perfil', 'matchScore', 'autorizoSocioeconomico', 'fecha'],
   [SHEET_CANDIDATES]: ['id', 'nombre', 'email', 'candidateToken', 'cvLink', 'fecha'],
   [SHEET_SOCIOECONOMIC]: ['candidatoId', 'ingresoFamiliar', 'dependientesEconomicos', 'tipoVivienda', 'escolaridad', 'situacionVulnerabilidad', 'notasAdicionales', 'fecha'],
@@ -120,6 +120,8 @@ function doGet(e) {
     if (action === 'getCandidateProfile') return jsonOut_(getCandidateProfile_(e.parameter.token));
     if (action === 'getSocioeconomico') return jsonOut_(getSocioeconomico_(e.parameter));
     if (action === 'adminListCompanies') return jsonOut_(adminListCompanies_(e.parameter.adminKey));
+    if (action === 'adminListAllJobs') return jsonOut_(adminListAllJobs_(e.parameter.adminKey));
+    if (action === 'adminListCandidates') return jsonOut_(adminListCandidates_(e.parameter.adminKey));
     return jsonOut_({ error: 'Acción no reconocida: ' + action });
   } catch (err) {
     return jsonOut_({ error: err.message });
@@ -145,6 +147,10 @@ function doPost(e) {
     if (action === 'adminSetPlan') return jsonOut_(adminSetPlan_(e.parameter));
     if (action === 'paypalWebhookConfirmed') return jsonOut_(paypalWebhookConfirmed_(e.parameter));
     if (action === 'adminSetVerificada') return jsonOut_(adminSetVerificada_(e.parameter));
+    if (action === 'adminSetEmpresaActive') return jsonOut_(adminSetEmpresaActive_(e.parameter));
+    if (action === 'adminSetJobActive') return jsonOut_(adminSetJobActive_(e.parameter));
+    if (action === 'adminDeleteJob') return jsonOut_(adminDeleteJob_(e.parameter));
+    if (action === 'adminDeleteCandidate') return jsonOut_(adminDeleteCandidate_(e.parameter));
     if (action === 'adminCreateExternalJob') return jsonOut_(adminCreateExternalJob_(e.parameter));
     if (action === 'adminExtractJobFromText') return jsonOut_(adminExtractJobFromText_(e.parameter));
     if (action === 'billingReceipt') return jsonOut_(billingReceipt_(e.parameter));
@@ -216,6 +222,7 @@ function loginEmpresaGoogle_(p) {
   const empresas = sheetToObjects_(getSheet_(SHEET_COMPANIES));
   const empresa = empresas.find((c) => c.emailContacto.toLowerCase() === google.email.toLowerCase());
   if (!empresa) return { error: 'No existe una cuenta con este correo de Google. Regístrate primero.', necesitaRegistro: true, email: google.email, nombre: google.name };
+  if (empresa.activa === false) return { error: 'Tu cuenta está desactivada. Contacta a Sintropía Social.' };
   return { companyToken: empresa.companyToken };
 }
 
@@ -256,7 +263,7 @@ function registerEmpresa_(p) {
 
   const id = newId_();
   const companyToken = Utilities.getUuid();
-  sheet.appendRow([id, p.razonSocial, p.rfc.toUpperCase(), false, p.emailContacto, companyToken, PLAN_FREE, '', new Date().toISOString()]);
+  sheet.appendRow([id, p.razonSocial, p.rfc.toUpperCase(), false, true, p.emailContacto, companyToken, PLAN_FREE, '', new Date().toISOString()]);
 
   try {
     MailApp.sendEmail({
@@ -276,8 +283,9 @@ function getEmpresaProfile_(token) {
   if (!token) return { error: 'Falta el código de acceso' };
   const empresa = getEmpresaByToken_(token);
   if (!empresa) return { error: 'Código no encontrado' };
+  if (empresa.activa === false) return { error: 'Tu cuenta está desactivada. Contacta a Sintropía Social.' };
 
-  const jobs = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id));
+  const jobs = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id) && j.activa !== false);
   const applications = sheetToObjects_(getSheet_(SHEET_APPLICATIONS));
   const jobIds = jobs.map((j) => String(j.id));
   const jobsWithCounts = jobs.map((j) => ({
@@ -334,7 +342,14 @@ function listJobs_(params) {
   const empresasById = {};
   empresas.forEach((e) => (empresasById[String(e.id)] = e));
 
-  let filtered = jobs;
+  let filtered = jobs.filter((j) => {
+    if (j.activa === false) return false;
+    if (j.fuente === 'empresa') {
+      const empresa = empresasById[String(j.empresaId)];
+      if (!empresa || empresa.activa === false) return false;
+    }
+    return true;
+  });
   if (params.q) {
     const q = params.q.toLowerCase();
     filtered = filtered.filter((j) =>
@@ -373,6 +388,11 @@ function getJob_(id) {
   const empresas = sheetToObjects_(getSheet_(SHEET_COMPANIES));
   const empresasById = {};
   empresas.forEach((e) => (empresasById[String(e.id)] = e));
+  if (job.activa === false) return { error: 'Esta vacante ya no está disponible' };
+  if (job.fuente === 'empresa') {
+    const empresa = empresasById[String(job.empresaId)];
+    if (!empresa || empresa.activa === false) return { error: 'Esta vacante ya no está disponible' };
+  }
   const enriched = enrichJobWithLogo_(job, empresasById);
   if (job.fuente === 'empresa' && empresasById[String(job.empresaId)]) {
     enriched.plan = empresasById[String(job.empresaId)].plan;
@@ -388,8 +408,9 @@ function getJobRaw_(id) {
 function createJob_(p) {
   const empresa = getEmpresaByToken_(p.companyToken);
   if (!empresa) return { error: 'Tu sesión no es válida. Vuelve a entrar a tu cuenta.' };
+  if (empresa.activa === false) return { error: 'Tu cuenta está desactivada. Contacta a Sintropía Social.' };
 
-  const existing = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id));
+  const existing = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id) && j.activa !== false);
   const limit = PLAN_JOB_LIMITS[empresa.plan] ?? 1;
   if (existing.length >= limit) {
     return { error: `Tu plan (${empresa.plan}) permite hasta ${limit} vacante(s) activa(s). Mejora tu plan desde tu cuenta para publicar más.` };
@@ -410,6 +431,7 @@ function createJob_(p) {
     p.descripcion || '',
     new Date().toISOString(),
     false,
+    true,
     '',
     '',
   ]);
@@ -509,6 +531,7 @@ function adminCreateExternalJob_(p) {
     p.descripcion || '',
     new Date().toISOString(),
     false,
+    true,
     p.linkExterno,
     p.notaAdmin || 'Sin relación directa con la vacante — solo referencia informativa.',
   ]);
@@ -765,6 +788,100 @@ function adminSetVerificada_(p) {
   const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
   if (rowIndex < 0) return { error: 'Empresa no encontrada' };
   sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('verificada') + 1).setValue(p.verificada === 'true');
+  return { ok: true };
+}
+
+// Dar de alta/baja una empresa. Una empresa desactivada no puede entrar a su
+// cuenta, publicar vacantes nuevas, y sus vacantes existentes se ocultan del
+// listado público (pero no se borran, por si se reactiva después).
+function adminSetEmpresaActive_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const sheet = getSheet_(SHEET_COMPANIES);
+  const empresas = sheetToObjects_(sheet);
+  const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
+  if (rowIndex < 0) return { error: 'Empresa no encontrada' };
+  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('activa') + 1).setValue(p.activa === 'true');
+  return { ok: true };
+}
+
+/* ---------- Administración de vacantes (todas, sin importar la fuente) ---------- */
+
+function adminListAllJobs_(adminKey) {
+  if (!checkAdmin_(adminKey)) return { error: 'No autorizado' };
+  return { items: sheetToObjects_(getSheet_(SHEET_JOBS)) };
+}
+
+// Pausar/reactivar una vacante sin borrarla — útil para "bajar" una vacante
+// temporalmente (ej. la empresa ya cerró el puesto) sin perder sus datos ni
+// sus postulaciones.
+function adminSetJobActive_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const sheet = getSheet_(SHEET_JOBS);
+  const jobs = sheetToObjects_(sheet);
+  const rowIndex = jobs.findIndex((j) => String(j.id) === String(p.jobId));
+  if (rowIndex < 0) return { error: 'Vacante no encontrada' };
+  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_JOBS].indexOf('activa') + 1).setValue(p.activa === 'true');
+  return { ok: true };
+}
+
+// Borrado permanente de una vacante (y sus postulaciones asociadas).
+function adminDeleteJob_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const sheet = getSheet_(SHEET_JOBS);
+  const jobs = sheetToObjects_(sheet);
+  const rowIndex = jobs.findIndex((j) => String(j.id) === String(p.jobId));
+  if (rowIndex < 0) return { error: 'Vacante no encontrada' };
+  sheet.deleteRow(rowIndex + 2);
+
+  const appSheet = getSheet_(SHEET_APPLICATIONS);
+  const applications = sheetToObjects_(appSheet);
+  // Borra de abajo hacia arriba para no desfasar los índices de fila al eliminar
+  for (let i = applications.length - 1; i >= 0; i--) {
+    if (String(applications[i].jobId) === String(p.jobId)) {
+      appSheet.deleteRow(i + 2);
+    }
+  }
+  return { ok: true };
+}
+
+/* ---------- Administración de candidatos ---------- */
+
+function adminListCandidates_(adminKey) {
+  if (!checkAdmin_(adminKey)) return { error: 'No autorizado' };
+  const candidatos = sheetToObjects_(getSheet_(SHEET_CANDIDATES));
+  const applications = sheetToObjects_(getSheet_(SHEET_APPLICATIONS));
+  const items = candidatos.map((c) => ({
+    ...c,
+    candidateToken: undefined, // no exponer el código de acceso del candidato al listado
+    numPostulaciones: applications.filter((a) => String(a.candidatoId) === String(c.id)).length,
+  }));
+  return { items };
+}
+
+// Borrado permanente del candidato y todo lo asociado a él (postulaciones,
+// perfil socioeconómico) — pensado para solicitudes de baja de datos
+// personales, no solo para "desactivar".
+function adminDeleteCandidate_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+
+  const candSheet = getSheet_(SHEET_CANDIDATES);
+  const candidatos = sheetToObjects_(candSheet);
+  const rowIndex = candidatos.findIndex((c) => String(c.id) === String(p.candidatoId));
+  if (rowIndex < 0) return { error: 'Candidato no encontrado' };
+  candSheet.deleteRow(rowIndex + 2);
+
+  const socioSheet = getSheet_(SHEET_SOCIOECONOMIC);
+  const socios = sheetToObjects_(socioSheet);
+  for (let i = socios.length - 1; i >= 0; i--) {
+    if (String(socios[i].candidatoId) === String(p.candidatoId)) socioSheet.deleteRow(i + 2);
+  }
+
+  const appSheet = getSheet_(SHEET_APPLICATIONS);
+  const applications = sheetToObjects_(appSheet);
+  for (let i = applications.length - 1; i >= 0; i--) {
+    if (String(applications[i].candidatoId) === String(p.candidatoId)) appSheet.deleteRow(i + 2);
+  }
+
   return { ok: true };
 }
 

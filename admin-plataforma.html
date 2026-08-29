@@ -50,6 +50,8 @@
     <div id="admin-panel" style="display:none;margin-top:32px">
       <div class="tabs">
         <button class="tab-btn active" data-tab="empresas">Empresas y planes</button>
+        <button class="tab-btn" data-tab="vacantes-admin">Vacantes</button>
+        <button class="tab-btn" data-tab="candidatos-admin">Candidatos</button>
         <button class="tab-btn" data-tab="externas">Publicar vacante externa</button>
       </div>
 
@@ -57,6 +59,18 @@
       <div class="tab-panel active" id="tab-empresas">
         <p style="font-size:.85rem">Con el webhook de PayPal configurado (ver <code>docs/SETUP-GUIDE.md</code>), los planes se activan solos cuando alguien paga. Usa esto como respaldo si un pago no se reflejó automáticamente, o para dar de baja/subir un plan manualmente por alguna razón.</p>
         <div id="companies-list" style="margin-top:16px"></div>
+      </div>
+
+      <!-- TAB: Vacantes (todas, de cualquier fuente) -->
+      <div class="tab-panel" id="tab-vacantes-admin">
+        <p style="font-size:.85rem">Todas las vacantes de la plataforma, publicadas por empresas o agregadas por ti. Pausar las oculta del sitio público sin borrar sus datos ni postulaciones; eliminar sí es permanente.</p>
+        <div id="admin-jobs-list" style="margin-top:16px"></div>
+      </div>
+
+      <!-- TAB: Candidatos -->
+      <div class="tab-panel" id="tab-candidatos-admin">
+        <p style="font-size:.85rem">Perfiles de candidatos registrados. Eliminar borra permanentemente su perfil, CV, perfil socioeconómico y postulaciones — úsalo para solicitudes de baja de datos personales.</p>
+        <div id="admin-candidates-list" style="margin-top:16px"></div>
       </div>
 
       <!-- TAB: Vacante externa -->
@@ -192,6 +206,8 @@
       document.getElementById('access-view').style.display = 'none';
       document.getElementById('admin-panel').style.display = 'block';
       renderCompanies(data.items);
+      loadAdminJobs();
+      loadAdminCandidates();
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
@@ -205,9 +221,9 @@
       return;
     }
     list.innerHTML = items.map((c) => `
-      <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${c.activa === false ? 'opacity:.55' : ''}">
         <div>
-          <h3 style="font-size:1rem">${c.razonSocial} ${c.verificada === true ? '✅' : '<span style="color:var(--warn);font-size:.8rem">RFC sin verificar</span>'}</h3>
+          <h3 style="font-size:1rem">${c.razonSocial} ${c.verificada === true ? '✅' : '<span style="color:var(--warn);font-size:.8rem">RFC sin verificar</span>'} ${c.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Desactivada</span>' : ''}</h3>
           <div class="meta"><span>RFC: ${c.rfc}</span><span>${c.emailContacto}</span><span>Plan actual: <strong>${c.plan}</strong></span></div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -216,6 +232,7 @@
           </select>
           <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setPlan('${c.companyToken}', this)">Actualizar plan</button>
           <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setVerificada('${c.companyToken}', ${c.verificada !== true}, this)">${c.verificada === true ? 'Quitar verificación' : 'Marcar RFC verificado'}</button>
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setEmpresaActive('${c.companyToken}', ${c.activa === false}, this)">${c.activa === false ? 'Reactivar' : 'Dar de baja'}</button>
         </div>
       </div>`).join('');
   }
@@ -241,6 +258,108 @@
       await JobMatchAPI.adminSetVerificada(adminKey, companyToken, value);
       const data = await JobMatchAPI.adminListCompanies(adminKey);
       renderCompanies(data.items);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function setEmpresaActive(companyToken, value, btn) {
+    if (!value && !confirm('¿Dar de baja esta empresa? No podrá entrar a su cuenta ni publicar, y sus vacantes se ocultan del sitio público.')) return;
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminSetEmpresaActive(adminKey, companyToken, value);
+      const data = await JobMatchAPI.adminListCompanies(adminKey);
+      renderCompanies(data.items);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function loadAdminJobs() {
+    const list = document.getElementById('admin-jobs-list');
+    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
+    try {
+      const data = await JobMatchAPI.adminListAllJobs(adminKey);
+      if (data.error) throw new Error(data.error);
+      if (data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Todavía no hay vacantes.</p></div>`;
+        return;
+      }
+      list.innerHTML = data.items.map((j) => `
+        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${j.activa === false ? 'opacity:.55' : ''}">
+          <div>
+            <h3 style="font-size:1rem">${j.titulo}</h3>
+            <div class="meta">
+              <span>${j.empresaNombre}</span>
+              <span>${j.fuente === 'admin' ? 'Vacante externa' : 'De empresa'}</span>
+              ${j.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Pausada</span>' : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
+            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setJobActive('${j.id}', ${j.activa === false}, this)">${j.activa === false ? 'Reactivar' : 'Pausar'}</button>
+            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteJob('${j.id}', this)">Eliminar</button>
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
+    }
+  }
+
+  async function setJobActive(jobId, value, btn) {
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminSetJobActive(adminKey, jobId, value);
+      loadAdminJobs();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteJob(jobId, btn) {
+    if (!confirm('¿Eliminar esta vacante y todas sus postulaciones? No se puede deshacer.')) return;
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminDeleteJob(adminKey, jobId);
+      loadAdminJobs();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function loadAdminCandidates() {
+    const list = document.getElementById('admin-candidates-list');
+    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
+    try {
+      const data = await JobMatchAPI.adminListCandidates(adminKey);
+      if (data.error) throw new Error(data.error);
+      if (data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Todavía no hay candidatos registrados.</p></div>`;
+        return;
+      }
+      list.innerHTML = data.items.map((c) => `
+        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h3 style="font-size:1rem">${c.nombre || '(sin nombre)'}</h3>
+            <div class="meta"><span>${c.email}</span><span>${c.numPostulaciones} postulación(es)</span>${c.cvLink ? '<span>✅ Tiene CV</span>' : ''}</div>
+          </div>
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteCandidate('${c.id}', this)">Eliminar</button>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
+    }
+  }
+
+  async function deleteCandidate(candidatoId, btn) {
+    if (!confirm('¿Eliminar permanentemente este candidato (perfil, CV, postulaciones y datos socioeconómicos)? No se puede deshacer.')) return;
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminDeleteCandidate(adminKey, candidatoId);
+      loadAdminCandidates();
     } catch (err) {
       alert(err.message);
       btn.disabled = false;
