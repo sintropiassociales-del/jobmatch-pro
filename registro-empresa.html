@@ -27,20 +27,10 @@
   <div class="container" style="max-width:640px">
     <div class="eyebrow">Para empresas</div>
     <h1>Crea tu cuenta de empresa</h1>
-    <p class="lead">Gratis para empezar: puedes publicar 1 vacante activa sin costo. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, puedes mejorar tu plan después desde tu cuenta.</p>
+    <p class="lead">Gratis para empezar: hasta 2 vacantes nuevas al mes, 1 activa a la vez. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, mejora tu plan después desde tu cuenta.</p>
 
     <div class="form-card" style="margin-top:24px">
-      <div id="google-step">
-        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Primero, verifica tu correo con Google</p>
-        <div id="google-btn"></div>
-        <p style="font-size:.78rem;color:var(--ink-soft);margin-top:10px">Solo usamos tu correo para confirmar que es real — no publicamos nada a tu nombre sin que tú lo hagas.</p>
-      </div>
-
-      <form id="registro-form" style="display:none">
-        <div class="field">
-          <label>Correo verificado</label>
-          <input type="email" id="email-contacto" disabled style="background:var(--purple-100);color:var(--purple-700);font-weight:600">
-        </div>
+      <form id="registro-form">
         <div class="field">
           <label for="razon-social">Razón social</label>
           <input type="text" id="razon-social" required placeholder="Nombre legal de tu empresa">
@@ -48,8 +38,21 @@
         <div class="field">
           <label for="rfc">RFC de la empresa</label>
           <input type="text" id="rfc" required placeholder="Ej. ABC123456XYZ" maxlength="13" style="text-transform:uppercase">
-          <div class="hint">Lo pedimos para verificar que quien publica es una empresa real — no compartimos tu RFC con candidatos.</div>
+          <div class="hint">Siempre obligatorio, sin importar cómo te registres — es lo que verifica que quien publica es una empresa real. No lo compartimos con candidatos.</div>
         </div>
+
+        <div class="field">
+          <label for="email-contacto">Correo de contacto</label>
+          <input type="email" id="email-contacto" required placeholder="tucorreo@empresa.com">
+          <div class="hint" id="email-hint">Aquí te llegará tu código de acceso y las postulaciones.</div>
+        </div>
+
+        <div id="google-shortcut" style="background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;margin-bottom:20px">
+          <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Atajo opcional: verifica tu correo con Google</p>
+          <div id="google-btn"></div>
+          <p style="font-size:.76rem;color:var(--ink-soft);margin-top:8px;margin-bottom:0">No es obligatorio — solo confirma que el correo es tuyo. Puedes escribirlo directo arriba si prefieres.</p>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Crear mi cuenta</button>
         <div class="status-msg" id="form-status"></div>
       </form>
@@ -74,27 +77,38 @@
   let googleIdToken = null;
 
   window.addEventListener('load', () => {
-    if (typeof google === 'undefined' || !google.accounts) {
-      document.getElementById('google-step').innerHTML = '<p style="color:var(--warn);font-size:.85rem">No se pudo cargar el botón de Google. Revisa tu conexión y recarga la página.</p>';
-      return;
-    }
+    if (typeof google === 'undefined' || !google.accounts) return; // el atajo es opcional; si no carga, el formulario normal sigue funcionando
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleGoogleCredential,
     });
     google.accounts.id.renderButton(document.getElementById('google-btn'), {
-      theme: 'outline', size: 'large', text: 'continue_with', width: 320,
+      theme: 'outline', size: 'large', text: 'continue_with', width: 300,
     });
   });
 
   function handleGoogleCredential(response) {
     googleIdToken = response.credential;
     // Decodifica solo la parte visible del JWT para mostrar el correo (sin verificar nada aquí —
-    // la verificación real y segura la hace Apps Script del lado del servidor).
+    // la verificación real y segura la hace Apps Script del lado del servidor al enviar el formulario).
     const payload = JSON.parse(atob(response.credential.split('.')[1]));
-    document.getElementById('email-contacto').value = payload.email;
-    document.getElementById('google-step').style.display = 'none';
-    document.getElementById('registro-form').style.display = 'block';
+    const emailField = document.getElementById('email-contacto');
+    emailField.value = payload.email;
+    emailField.disabled = true;
+    emailField.style.background = 'var(--purple-100)';
+    emailField.style.color = 'var(--purple-700)';
+    emailField.style.fontWeight = '600';
+    document.getElementById('email-hint').innerHTML = '✅ Verificado con Google. <a href="#" id="undo-google" style="color:var(--purple-700);font-weight:600">Escribir otro correo en su lugar</a>';
+    document.getElementById('undo-google').addEventListener('click', (e) => {
+      e.preventDefault();
+      googleIdToken = null;
+      emailField.disabled = false;
+      emailField.value = '';
+      emailField.style.background = '';
+      emailField.style.color = '';
+      emailField.style.fontWeight = '';
+      document.getElementById('email-hint').textContent = 'Aquí te llegará tu código de acceso y las postulaciones.';
+    });
   }
 
   document.getElementById('registro-form').addEventListener('submit', async (e) => {
@@ -106,15 +120,17 @@
     status.className = 'status-msg show pending';
     status.textContent = 'Un momento...';
 
+    const razonSocial = document.getElementById('razon-social').value;
+    const rfc = document.getElementById('rfc').value.trim().toUpperCase();
+
     try {
-      const result = await JobMatchAPI.registerEmpresaGoogle(
-        googleIdToken,
-        document.getElementById('razon-social').value,
-        document.getElementById('rfc').value.trim().toUpperCase()
-      );
+      const result = googleIdToken
+        ? await JobMatchAPI.registerEmpresaGoogle(googleIdToken, razonSocial, rfc)
+        : await JobMatchAPI.registerEmpresa({ razonSocial, rfc, emailContacto: document.getElementById('email-contacto').value });
+
       localStorage.setItem(COMPANY_TOKEN_KEY, result.companyToken);
       status.className = 'status-msg show ok';
-      status.textContent = '¡Cuenta creada! Redirigiendo a tu panel...';
+      status.textContent = '¡Cuenta creada! Te enviamos tu código por correo. Redirigiendo a tu panel...';
       setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1200);
     } catch (err) {
       status.className = 'status-msg show err';

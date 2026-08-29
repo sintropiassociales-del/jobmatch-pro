@@ -277,10 +277,16 @@
       document.getElementById('empresa-nombre').textContent = data.empresa.razonSocial;
       document.getElementById('plan-chip').textContent = `Plan ${data.empresa.plan}`;
 
-      const limitTxt = data.limiteVacantes === null
+      let limitTxt = data.limiteVacantes === null
         ? `Tu plan (${data.empresa.plan}) permite vacantes ilimitadas. Llevas ${data.vacantesActivas}.`
         : `Llevas ${data.vacantesActivas} de ${data.limiteVacantes} vacante(s) activa(s) de tu plan ${data.empresa.plan}.`;
-      const limiteAlcanzado = data.limiteVacantes !== null && data.vacantesActivas >= data.limiteVacantes;
+      let limiteAlcanzado = data.limiteVacantes !== null && data.vacantesActivas >= data.limiteVacantes;
+
+      if (data.limiteMensual !== null) {
+        limitTxt += ` Además, el plan Gratis permite hasta ${data.limiteMensual} vacantes nuevas por mes — llevas ${data.publicadasEsteMes} este mes.`;
+        if (data.publicadasEsteMes >= data.limiteMensual) limiteAlcanzado = true;
+      }
+
       const limiteEl = document.getElementById('publicar-limite');
       limiteEl.textContent = limitTxt + (limiteAlcanzado ? ' Mejora tu plan en la pestaña "Mi plan" para publicar más.' : '');
       limiteEl.className = 'status-msg show ' + (limiteAlcanzado ? 'err' : 'pending');
