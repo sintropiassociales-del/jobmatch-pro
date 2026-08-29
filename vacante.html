@@ -41,6 +41,7 @@
       <div class="eyebrow">Vacante externa</div>
       <h2>Esta vacante vive en otro sitio</h2>
       <p id="external-nota">Sin relación directa con la vacante — solo referencia informativa.</p>
+      <p id="external-link-text" style="font-size:.82rem;color:var(--ink-soft);word-break:break-all;margin-bottom:14px"></p>
       <a href="#" id="external-link" target="_blank" rel="noopener" class="btn btn-primary btn-block">Ver vacante original →</a>
     </div>
 
@@ -126,7 +127,9 @@
       if (isExternal) {
         document.getElementById('external-card').style.display = 'block';
         document.getElementById('external-nota').textContent = job.notaAdmin || 'Sin relación directa con la vacante — solo referencia informativa.';
-        document.getElementById('external-link').href = job.linkExterno;
+        const linkExterno = /^https?:\/\//i.test(job.linkExterno || '') ? job.linkExterno : `https://${job.linkExterno}`;
+        document.getElementById('external-link').href = linkExterno;
+        document.getElementById('external-link-text').textContent = linkExterno;
       } else {
         document.getElementById('apply-card').style.display = 'block';
         if (job.plan === 'Business' || job.plan === 'A la medida') {
