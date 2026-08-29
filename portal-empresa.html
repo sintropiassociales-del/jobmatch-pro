@@ -30,7 +30,7 @@
   <div class="container" style="max-width:900px">
     <div class="eyebrow">Empresas</div>
     <h1>Tu cuenta de JobMatch Pro</h1>
-    <p>Publica, edita, revisa postulaciones y gestiona tu plan — todo desde aquí.</p>
+    <p>Publica, edita, revisa postulaciones y gestiona tu plan — todo desde aquí, con el equipo de Sintropía Social detrás, no solo un panel automatizado.</p>
   </div>
 </section>
 
@@ -65,7 +65,10 @@
           <h2 id="empresa-nombre" style="font-size:1.6rem;color:var(--purple-900)">—</h2>
           <span class="plan-chip" id="plan-chip">Plan —</span>
         </div>
-        <button class="btn btn-ghost" id="btn-logout">Salir</button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <a href="mailto:comunicacion@sintropiasocial.com" style="font-size:.82rem;color:var(--purple-700);font-weight:600">¿Dudas? Escríbele al equipo →</a>
+          <button class="btn btn-ghost" id="btn-logout">Salir</button>
+        </div>
       </div>
 
       <div class="tabs">
@@ -321,8 +324,8 @@
       <div class="job-card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div>
-            <h3 style="font-size:1.05rem">${job.titulo}</h3>
-            <div class="meta"><span>📍 ${job.ubicacion || 'Remoto'}</span><span>${job.numPostulaciones} postulación(es)</span></div>
+            <h3 style="font-size:1.05rem">${escapeHtml(job.titulo)}</h3>
+            <div class="meta"><span>📍 ${escapeHtml(job.ubicacion) || 'Remoto'}</span><span>${job.numPostulaciones} postulación(es)</span></div>
           </div>
           <a class="badge-pill" href="vacante.html?id=${job.id}" target="_blank">Ver pública →</a>
         </div>
@@ -339,7 +342,7 @@
     if (box.style.display === 'block') { box.style.display = 'none'; return; }
     box.style.display = 'block';
     box.innerHTML = `
-      <div class="field"><label>Puesto</label><input type="text" class="e-titulo" value="${job.titulo}"></div>
+      <div class="field"><label>Puesto</label><input type="text" class="e-titulo" value="${escapeHtml(job.titulo)}"></div>
       <div class="form-grid-2">
         <div class="field"><label>Sueldo mínimo</label><input type="number" class="e-min" value="${job.salarioMin || ''}"></div>
         <div class="field"><label>Sueldo máximo</label><input type="number" class="e-max" value="${job.salarioMax || ''}"></div>
@@ -384,16 +387,16 @@
         <div class="job-card" style="margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
             <div>
-              <h3 style="font-size:1.05rem">${app.nombre}</h3>
-              <div class="meta"><span>✉️ ${app.email}</span>${app.telefono ? `<span>📱 ${app.telefono}</span>` : ''}</div>
+              <h3 style="font-size:1.05rem">${escapeHtml(app.nombre)}</h3>
+              <div class="meta"><span>✉️ ${escapeHtml(app.email)}</span>${app.telefono ? `<span>📱 ${escapeHtml(app.telefono)}</span>` : ''}</div>
             </div>
-            <span class="badge-pill">${app.jobTitulo || 'Vacante'}</span>
+            <span class="badge-pill">${escapeHtml(app.jobTitulo) || 'Vacante'}</span>
           </div>
           <div class="match">
             <div class="match-track"><div class="match-fill" style="width:${app.matchScore || 0}%"></div></div>
             <span class="match-label">${app.matchScore || 0}% afinidad</span>
           </div>
-          <p class="desc">${app.perfil || ''}</p>
+          <p class="desc">${escapeHtml(app.perfil)}</p>
           ${app.socioeconomicoDisponible
             ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="verSocioeconomico('${app.jobId}','${app.candidatoId}', this)">🔒 Ver perfil socioeconómico (autorizado)</button>
                <div class="socio-box" style="display:none;margin-top:12px;background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;font-size:.85rem"></div>`
@@ -414,12 +417,12 @@
       if (data.error) throw new Error(data.error);
       const s = data.socioeconomico;
       box.innerHTML = `
-        <strong>Ingreso familiar aprox.:</strong> ${s.ingresoFamiliar || 'No especificado'}<br>
-        <strong>Dependientes económicos:</strong> ${s.dependientesEconomicos || 'No especificado'}<br>
-        <strong>Tipo de vivienda:</strong> ${s.tipoVivienda || 'No especificado'}<br>
-        <strong>Escolaridad:</strong> ${s.escolaridad || 'No especificado'}<br>
-        <strong>Contexto adicional:</strong> ${s.situacionVulnerabilidad || '—'}<br>
-        <strong>Notas:</strong> ${s.notasAdicionales || '—'}`;
+        <strong>Ingreso familiar aprox.:</strong> ${escapeHtml(s.ingresoFamiliar) || 'No especificado'}<br>
+        <strong>Dependientes económicos:</strong> ${escapeHtml(s.dependientesEconomicos) || 'No especificado'}<br>
+        <strong>Tipo de vivienda:</strong> ${escapeHtml(s.tipoVivienda) || 'No especificado'}<br>
+        <strong>Escolaridad:</strong> ${escapeHtml(s.escolaridad) || 'No especificado'}<br>
+        <strong>Contexto adicional:</strong> ${escapeHtml(s.situacionVulnerabilidad) || '—'}<br>
+        <strong>Notas:</strong> ${escapeHtml(s.notasAdicionales) || '—'}`;
       box.style.display = 'block';
       btn.style.display = 'none';
     } catch (err) {

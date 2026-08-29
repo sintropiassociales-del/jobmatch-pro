@@ -33,7 +33,7 @@
     <div id="access-view">
       <div class="eyebrow">Candidatos</div>
       <h1>Tu perfil en JobMatch Pro</h1>
-      <p class="lead">Sube tu CV, completa tu perfil y decide tú quién ve tu información.</p>
+      <p class="lead">Sube tu CV, completa tu perfil y decide tú quién ve tu información. Y si algo no funciona o tienes dudas, no es un buzón vacío — hay alguien de Sintropía Social del otro lado.</p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px" class="form-grid-2">
         <div class="form-card">
@@ -190,8 +190,8 @@
       } else {
         list.innerHTML = data.applications.map((a) => `
           <div class="job-card" style="margin-bottom:12px">
-            <h3 style="font-size:1rem">${a.jobTitulo}</h3>
-            <div class="company">${a.jobEmpresa}</div>
+            <h3 style="font-size:1rem">${escapeHtml(a.jobTitulo)}</h3>
+            <div class="company">${escapeHtml(a.jobEmpresa)}</div>
             <div class="match">
               <div class="match-track"><div class="match-fill" style="width:${a.matchScore || 0}%"></div></div>
               <span class="match-label">${a.matchScore || 0}% afinidad</span>
