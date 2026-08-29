@@ -117,6 +117,23 @@ function fileToBase64(file) {
   });
 }
 
+/* ---------- Seguridad: limpiar texto de usuarios antes de mostrarlo ----------
+   Cualquier dato que venga de un usuario (nombre, descripción de vacante,
+   mensaje de postulación, etc.) SIEMPRE debe pasar por aquí antes de
+   insertarse en el HTML de la página. Sin esto, alguien podría escribir
+   código malicioso en un campo de texto normal (ej. el título de una
+   vacante) y ese código se ejecutaría en el navegador de quien lo vea
+   después — esto se llama XSS (Cross-Site Scripting). */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /* ---------- Render helpers ---------- */
 function formatSalary(min, max) {
   if (!min && !max) return 'Salario a convenir';
@@ -136,27 +153,30 @@ function timeAgo(dateStr) {
 
 function jobCardHTML(job) {
   const isExternal = job.fuente === 'admin';
+  const empresaNombre = escapeHtml(job.empresaNombre);
   const logo = job.logoUrl
-    ? `<img src="${job.logoUrl}" alt="${job.empresaNombre}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--line)">`
-    : `<div style="width:38px;height:38px;border-radius:8px;background:var(--purple-100);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--purple-700);font-family:var(--font-display)">${(job.empresaNombre || '?').charAt(0)}</div>`;
+    ? `<img src="${escapeHtml(job.logoUrl)}" alt="${empresaNombre}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--line)">`
+    : `<div style="width:38px;height:38px;border-radius:8px;background:var(--purple-100);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--purple-700);font-family:var(--font-display)">${escapeHtml((job.empresaNombre || '?').charAt(0))}</div>`;
+
+  const descSnippet = (job.descripcion || '').slice(0, 110);
 
   return `
   <a class="job-card" href="vacante.html?id=${encodeURIComponent(job.id)}">
     <div class="tag-row" style="justify-content:space-between;align-items:flex-start">
       <div class="tag-row" style="margin:0">
-        <span class="tag">${job.modalidad || 'No especificado'}</span>
+        <span class="tag">${escapeHtml(job.modalidad) || 'No especificado'}</span>
         ${job.destacada ? '<span class="tag tag-orange">Destacada</span>' : ''}
         ${isExternal ? '<span class="tag" style="background:#EDEBF7;color:#5B5568">Vacante externa</span>' : ''}
       </div>
       ${logo}
     </div>
-    <h3>${job.titulo}</h3>
-    <div class="company">${job.empresaNombre}</div>
+    <h3>${escapeHtml(job.titulo)}</h3>
+    <div class="company">${empresaNombre}</div>
     <div class="meta">
-      <span>📍 ${job.ubicacion || 'Remoto'}</span>
+      <span>📍 ${escapeHtml(job.ubicacion) || 'Remoto'}</span>
       <span>🕒 ${timeAgo(job.fecha)}</span>
     </div>
-    <p class="desc">${(job.descripcion || '').slice(0, 110)}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
+    <p class="desc">${escapeHtml(descSnippet)}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
     <div class="foot">
       <span class="salary">${formatSalary(job.salarioMin, job.salarioMax)}</span>
       <span class="badge-pill">${isExternal ? 'Ver original →' : 'Ver vacante →'}</span>
