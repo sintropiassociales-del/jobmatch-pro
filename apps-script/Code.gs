@@ -135,6 +135,7 @@ function doPost(e) {
     if (action === 'registerEmpresa') return jsonOut_(registerEmpresa_(e.parameter));
     if (action === 'registerEmpresaGoogle') return jsonOut_(registerEmpresaGoogle_(e.parameter));
     if (action === 'loginEmpresaGoogle') return jsonOut_(loginEmpresaGoogle_(e.parameter));
+    if (action === 'adminLoginGoogle') return jsonOut_(adminLoginGoogle_(e.parameter));
     if (action === 'createJob') return jsonOut_(createJob_(e.parameter));
     if (action === 'updateJob') return jsonOut_(updateJob_(e.parameter));
     if (action === 'uploadLogo') return jsonOut_(uploadLogo_(e.parameter));
@@ -216,6 +217,25 @@ function loginEmpresaGoogle_(p) {
   const empresa = empresas.find((c) => c.emailContacto.toLowerCase() === google.email.toLowerCase());
   if (!empresa) return { error: 'No existe una cuenta con este correo de Google. Regístrate primero.', necesitaRegistro: true, email: google.email, nombre: google.name };
   return { companyToken: empresa.companyToken };
+}
+
+// Login de administrador vía Google, restringido a una lista blanca de
+// correos. Configúrala en Propiedades del script: ADMIN_EMAILS, separando
+// varios correos con coma si hace falta más de un admin
+// (ej. "sintropiassociales@gmail.com,direccion@sintropiasocial.com").
+function adminLoginGoogle_(p) {
+  const google = verifyGoogleToken_(p.idToken);
+  if (!google) return { error: 'No se pudo verificar tu cuenta de Google. Intenta de nuevo.' };
+
+  const allowedRaw = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAILS') || '';
+  const allowed = allowedRaw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (!allowed.includes(google.email.toLowerCase())) {
+    return { error: 'Tu correo (' + google.email + ') no está autorizado como administrador.' };
+  }
+
+  const adminKey = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+  if (!adminKey) return { error: 'Falta configurar ADMIN_KEY en Apps Script' };
+  return { adminKey };
 }
 
 /* ---------- Empresas (cuentas) ---------- */

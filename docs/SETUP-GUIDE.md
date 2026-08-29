@@ -18,6 +18,24 @@
 1. Ícono de engrane ⚙️ **Configuración del proyecto → Propiedades del script
    → Añadir propiedad de script**.
 2. Nombre: `ADMIN_KEY`. Valor: una contraseña larga que solo tú conozcas.
+   Esta sigue funcionando como respaldo aunque configures Google abajo.
+
+### 2.1.1 (Opcional) Entra como admin con tu correo de Google, sin contraseña
+
+Requiere que ya tengas configurado `GOOGLE_CLIENT_ID` (sección 2.2, más
+abajo) — si todavía no llegas ahí, puedes regresar a esto después.
+
+1. Misma pantalla de Propiedades del script → **Añadir propiedad**.
+2. Nombre: `ADMIN_EMAILS`. Valor: el o los correos de Google autorizados como
+   administrador, separados por coma si son varios (ej.
+   `sintropiassociales@gmail.com,direccion@sintropiasocial.com`).
+3. Guarda.
+
+Con esto, en `admin-plataforma.html` puedes darle clic a "Entrar con Google"
+en vez de escribir la clave — el sistema verifica tu correo real de Google
+contra esta lista antes de dejarte entrar. La clave (`ADMIN_KEY`) sigue
+funcionando también, por si algún día no tienes acceso a esa cuenta de
+Google.
 
 ### 2.2 Configura "Entrar con Google" (opcional pero recomendado)
 

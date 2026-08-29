@@ -27,13 +27,24 @@
     <div class="eyebrow">Uso interno — Sintropía Social</div>
     <h1>Administración de la plataforma</h1>
 
-    <div class="form-card" style="max-width:480px">
-      <div class="field">
-        <label for="admin-key">Clave de administrador</label>
-        <input type="password" id="admin-key" placeholder="La que configuraste en Apps Script → ADMIN_KEY">
+    <div id="access-view">
+      <div class="form-card" style="max-width:480px;margin-bottom:16px">
+        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Entrar con Google</p>
+        <div id="google-btn"></div>
+        <p style="font-size:.78rem;color:var(--ink-soft);margin-top:10px">Solo funciona si tu correo está en la lista de administradores autorizados.</p>
+        <div class="status-msg" id="google-login-status"></div>
       </div>
-      <button class="btn btn-primary" id="btn-unlock">Entrar</button>
-      <div class="status-msg" id="unlock-status"></div>
+
+      <div style="max-width:480px;text-align:center;color:var(--ink-soft);font-size:.82rem;margin-bottom:16px">— o —</div>
+
+      <div class="form-card" style="max-width:480px">
+        <div class="field">
+          <label for="admin-key">Clave de administrador</label>
+          <input type="password" id="admin-key" placeholder="La que configuraste en Apps Script → ADMIN_KEY">
+        </div>
+        <button class="btn btn-ghost btn-block" id="btn-unlock">Entrar con la clave</button>
+        <div class="status-msg" id="unlock-status"></div>
+      </div>
     </div>
 
     <div id="admin-panel" style="display:none;margin-top:32px">
@@ -129,6 +140,7 @@
 </footer>
 
 <script src="assets/js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   const PLAN_OPTIONS = ['Gratis', 'Starter', 'Pro', 'Business', 'A la medida'];
   let adminKey = '';
@@ -142,24 +154,49 @@
     });
   });
 
-  document.getElementById('btn-unlock').addEventListener('click', async () => {
-    adminKey = document.getElementById('admin-key').value.trim();
-    const status = document.getElementById('unlock-status');
-    if (!adminKey) return;
+  window.addEventListener('load', () => {
+    if (typeof google === 'undefined' || !google.accounts) return;
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleAdminLogin });
+    google.accounts.id.renderButton(document.getElementById('google-btn'), {
+      theme: 'outline', size: 'large', text: 'signin_with', width: 320,
+    });
+  });
+
+  async function handleGoogleAdminLogin(response) {
+    const status = document.getElementById('google-login-status');
     status.className = 'status-msg show pending';
     status.textContent = 'Verificando...';
     try {
-      const data = await JobMatchAPI.adminListCompanies(adminKey);
+      const data = await JobMatchAPI.adminLoginGoogle(response.credential);
       if (data.error) throw new Error(data.error);
-      status.className = 'status-msg show ok';
-      status.textContent = `Acceso concedido. ${data.items.length} empresa(s) registradas.`;
+      await unlockAdmin(data.adminKey);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  }
+
+  document.getElementById('btn-unlock').addEventListener('click', () => {
+    const key = document.getElementById('admin-key').value.trim();
+    if (key) unlockAdmin(key);
+  });
+
+  async function unlockAdmin(key) {
+    const status = document.getElementById('unlock-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Verificando...';
+    try {
+      const data = await JobMatchAPI.adminListCompanies(key);
+      if (data.error) throw new Error(data.error);
+      adminKey = key;
+      document.getElementById('access-view').style.display = 'none';
       document.getElementById('admin-panel').style.display = 'block';
       renderCompanies(data.items);
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
-  });
+  }
 
   function renderCompanies(items) {
     const list = document.getElementById('companies-list');
