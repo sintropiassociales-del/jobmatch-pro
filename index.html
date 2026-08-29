@@ -29,20 +29,25 @@
     <div class="eyebrow" style="color:#FFD9BE">Un proyecto de Sintropía Social</div>
     <h1>Antes de aplicar, hay que <em>entender si encaja</em></h1>
     <p class="lead">Una vacante no es solo un puesto vacío — es un contexto. JobMatch Pro compara tu experiencia contra la descripción real del puesto, no solo contra palabras clave, y te dice qué tanto encajas antes de que envíes tu postulación.</p>
-    <div class="hero-actions">
-      <a href="vacantes.html" class="btn btn-white">Buscar vacantes</a>
-      <a href="registro-empresa.html" class="btn btn-primary">Publicar una vacante →</a>
-    </div>
 
-    <div class="search-card">
-      <input type="text" id="hero-q" placeholder="Puesto, palabra clave o empresa">
-      <select id="hero-modalidad">
-        <option value="">Cualquier modalidad</option>
-        <option value="Remoto">Remoto</option>
-        <option value="Híbrido">Híbrido</option>
-        <option value="Presencial">Presencial</option>
-      </select>
-      <button class="btn btn-primary" id="hero-search">Buscar</button>
+    <div class="dos-caminos">
+      <div class="camino-card">
+        <div class="camino-icon" style="background:var(--purple-100);color:var(--purple-700)">🔍</div>
+        <div class="eyebrow" style="color:var(--purple-700)">Busco empleo</div>
+        <h3 style="color:var(--purple-900)">Encuentra la vacante que sí encaja contigo</h3>
+        <p class="camino-desc">Gratis, sin cuentas obligatorias. Filtra por lo que de verdad importa.</p>
+        <div class="field">
+          <input type="text" id="hero-q" placeholder="Puesto, palabra clave o empresa" style="border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;width:100%;font-family:var(--font-body);color:var(--ink);background:var(--purple-050)">
+        </div>
+        <button class="btn btn-primary btn-block" id="hero-search">Buscar vacantes</button>
+      </div>
+      <div class="camino-card">
+        <div class="camino-icon" style="background:#FFEADB;color:var(--orange-600)">💼</div>
+        <div class="eyebrow" style="color:var(--orange-500)">Publico vacantes</div>
+        <h3 style="color:var(--purple-900)">Encuentra talento con afinidad real, no solo currículums</h3>
+        <p class="camino-desc">Gratis para empezar — hasta 2 vacantes nuevas al mes, 1 activa a la vez.</p>
+        <a href="registro-empresa.html" class="btn btn-primary btn-block" style="margin-top:auto">Publicar vacante →</a>
+      </div>
     </div>
 
     <div class="hero-stats">
@@ -56,24 +61,25 @@
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <div class="eyebrow">Cómo funciona</div>
-      <h2>No se trata de aplicar más veces — se trata de entender antes</h2>
+      <div class="eyebrow">Por qué es distinto</div>
+      <h2>No competimos por volumen de vacantes — competimos por que encajen</h2>
     </div>
-    <div class="grid-jobs" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="grid-jobs" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
       <div class="job-card">
-        <span class="badge-pill">01</span>
-        <h3>Explora vacantes reales</h3>
-        <p class="desc">Sin cuentas obligatorias, sin relleno. Filtra por modalidad, ubicación y sueldo.</p>
+        <h3 style="font-size:1.05rem">Comparamos contexto, no palabras clave</h3>
+        <p class="desc">La IA lee tu experiencia contra la descripción real del puesto — no filtra por coincidencias de texto sueltas.</p>
       </div>
       <div class="job-card">
-        <span class="badge-pill">02</span>
-        <h3>Cuéntanos tu experiencia</h3>
-        <p class="desc">Una vez, no en cada postulación. Calculamos qué tanto encaja realmente con cada puesto — no solo si comparte palabras.</p>
+        <h3 style="font-size:1.05rem">Gratis para quien busca empleo</h3>
+        <p class="desc">Sin cuentas premium, sin postulaciones limitadas. El costo lo asumen las empresas que quieren funciones extra.</p>
       </div>
       <div class="job-card">
-        <span class="badge-pill">03</span>
-        <h3>La empresa te contacta</h3>
-        <p class="desc">Las empresas ven primero a quienes de verdad encajan con lo que están buscando.</p>
+        <h3 style="font-size:1.05rem">Curaduría humana, no solo scraping</h3>
+        <p class="desc">Además de las vacantes que publican las empresas, revisamos y agregamos vacantes de otros sitios cuando vale la pena.</p>
+      </div>
+      <div class="job-card">
+        <h3 style="font-size:1.05rem">Tus datos sensibles, bajo tu control</h3>
+        <p class="desc">La información socioeconómica es opcional y solo se comparte si tú autorizas, vacante por vacante.</p>
       </div>
     </div>
   </div>
@@ -137,11 +143,12 @@
 <script>
   document.getElementById('hero-search').addEventListener('click', () => {
     const q = document.getElementById('hero-q').value;
-    const modalidad = document.getElementById('hero-modalidad').value;
     const params = new URLSearchParams();
     if (q) params.set('q', q);
-    if (modalidad) params.set('modalidad', modalidad);
     window.location.href = `vacantes.html?${params.toString()}`;
+  });
+  document.getElementById('hero-q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('hero-search').click();
   });
 
   async function loadLatest() {
