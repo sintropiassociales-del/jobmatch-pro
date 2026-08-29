@@ -82,7 +82,7 @@
       document.getElementById('result-count').textContent = `${items.length} vacante${items.length === 1 ? '' : 's'} encontrada${items.length === 1 ? '' : 's'}`;
       list.innerHTML = items.length
         ? items.map(jobCardHTML).join('')
-        : `<div class="empty-state" style="grid-column:1/-1"><div class="mark">🔍</div><p>No encontramos vacantes con esos filtros. Prueba con otros términos.</p></div>`;
+        : `<div class="empty-state" style="grid-column:1/-1"><p>No encontramos vacantes con esos filtros. Prueba con otros términos.</p></div>`;
     } catch (e) {
       list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>No se pudo conectar con la fuente de vacantes. Revisa APPS_SCRIPT_URL en assets/js/app.js.</p></div>`;
     }

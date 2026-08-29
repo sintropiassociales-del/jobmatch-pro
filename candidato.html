@@ -183,7 +183,7 @@
 
       const list = document.getElementById('my-applications');
       if (!data.applications || data.applications.length === 0) {
-        list.innerHTML = `<div class="empty-state"><div class="mark">📭</div><p>Todavía no te has postulado a ninguna vacante.</p></div>`;
+        list.innerHTML = `<div class="empty-state"><p>Todavía no te has postulado a ninguna vacante.</p></div>`;
       } else {
         list.innerHTML = data.applications.map((a) => `
           <div class="job-card" style="margin-bottom:12px">

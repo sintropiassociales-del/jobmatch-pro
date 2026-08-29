@@ -47,7 +47,7 @@
         <h3 style="color:var(--purple-900)">Encuentra talento con afinidad real, no solo currículums</h3>
         <p class="camino-desc">Gratis para empezar — hasta 2 vacantes nuevas al mes, 1 activa a la vez.</p>
         <a href="registro-empresa.html" class="btn btn-primary btn-block" style="margin-top:auto">Publicar vacante →</a>
-        <a href="https://sintropiassociales-del.github.io/panel/muestra_se.html" target="_blank" rel="noopener" style="font-size:.78rem;color:var(--orange-600);font-weight:600;text-align:center;margin-top:12px">🚦 Evalúa el riesgo de tu proceso de contratación (Sintropía Social) →</a>
+        <a href="https://sintropiassociales-del.github.io/panel/muestra_se.html" target="_blank" rel="noopener" style="font-size:.78rem;color:var(--orange-600);font-weight:600;text-align:center;margin-top:12px">Evalúa el riesgo de tu proceso de contratación (Sintropía Social) →</a>
       </div>
     </div>
 
@@ -160,7 +160,7 @@
       const jobs = await JobMatchAPI.listJobs({ limit: 3, orden: 'reciente' });
       document.getElementById('stat-jobs').textContent = jobs.total ?? jobs.items?.length ?? '—';
       if (!jobs.items || jobs.items.length === 0) {
-        el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">🗂️</div><p>Todavía no hay vacantes publicadas. ¡Sé la primera empresa!</p></div>`;
+        el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Todavía no hay vacantes publicadas. ¡Sé la primera empresa!</p></div>`;
         return;
       }
       el.innerHTML = jobs.items.map(jobCardHTML).join('');
