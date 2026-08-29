@@ -169,8 +169,8 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
   max-width:980px;margin:0 auto;
 }
 .sintropia-block-img{
-  width:100%;max-width:300px;justify-self:center;
-  filter:drop-shadow(0 12px 24px rgba(30,10,71,.12));
+  width:100%;max-width:440px;justify-self:center;
+  opacity:.35;
 }
 @media (max-width:800px){
   .sintropia-block{grid-template-columns:1fr;text-align:center;}
