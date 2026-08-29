@@ -3,7 +3,7 @@
  * El frontend nunca ve la API key: el Worker la guarda como variable de
  * entorno secreta y hace la llamada por ti.
  *
- * Por qué Gemini y no OpenAI: el modelo gemini-2.5-flash-lite tiene una capa
+ * Por qué Gemini y no OpenAI: el modelo gemini-3.5-flash-lite tiene una capa
  * gratuita de hasta 1,500 llamadas al día, sin necesidad de tarjeta de
  * crédito — de sobra para el volumen de este proyecto (ver
  * docs/CUANDO-ESCALAR.md). Si algún día superas ese límite, basta con
@@ -17,7 +17,7 @@
  *                      con la misma cuenta de Google que usas para el Sheet.
  */
 
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 export default {
   async fetch(request, env) {

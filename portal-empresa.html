@@ -10,7 +10,10 @@
 
 <header class="site-header">
   <div class="container bar">
-    <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
+    </div>
     <nav class="nav-links">
       <a href="vacantes.html">Buscar vacantes</a>
       <a href="registro-empresa.html">Publicar vacante</a>
@@ -23,14 +26,19 @@
   </div>
 </header>
 
-<section class="section" style="padding-top:48px">
+<section class="mini-hero">
+  <div class="container" style="max-width:900px">
+    <div class="eyebrow">Empresas</div>
+    <h1>Tu cuenta de JobMatch Pro</h1>
+    <p>Publica, edita, revisa postulaciones y gestiona tu plan — todo desde aquí.</p>
+  </div>
+</section>
+
+<section class="section content-lift" style="padding-top:0">
   <div class="container" style="max-width:900px">
 
     <!-- ============ ACCESO ============ -->
     <div id="access-view">
-      <div class="eyebrow">Empresas</div>
-      <h1>Entra a tu cuenta</h1>
-
       <div class="form-card" style="max-width:480px;margin-bottom:16px">
         <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Entrar con Google</p>
         <div id="google-btn"></div>
@@ -54,8 +62,7 @@
     <div id="panel-view" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:8px">
         <div>
-          <div class="eyebrow">Mi cuenta</div>
-          <h1 id="empresa-nombre" style="font-size:1.9rem">—</h1>
+          <h2 id="empresa-nombre" style="font-size:1.6rem;color:var(--purple-900)">—</h2>
           <span class="plan-chip" id="plan-chip">Plan —</span>
         </div>
         <button class="btn btn-ghost" id="btn-logout">Salir</button>

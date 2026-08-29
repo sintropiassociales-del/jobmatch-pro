@@ -42,6 +42,7 @@ const PLAN_FREE = 'Gratis';
 const PLANS_PAID = ['Starter', 'Pro', 'Business', 'A la medida'];
 const PLANS_WITH_SOCIOECONOMIC_ACCESS = ['Business', 'A la medida'];
 const PLAN_JOB_LIMITS = { 'Gratis': 1, 'Starter': 2, 'Pro': 8, 'Business': Infinity, 'A la medida': Infinity };
+const FREE_PLAN_MONTHLY_POST_LIMIT = 2; // además del límite de activas, el plan Gratis solo publica 2 vacantes nuevas por mes
 const BILLING_EMAIL = 'direccion@sintropiasocial.com';
 
 const SHEET_HEADERS = {
@@ -185,8 +186,9 @@ function seedDemoAccounts() {
     empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('companyToken') + 1).setValue(DEMO_EMPRESA_TOKEN);
     empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('plan') + 1).setValue('Pro');
     empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('verificada') + 1).setValue(true);
+    empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('activa') + 1).setValue(true);
   } else {
-    empresaSheet.appendRow([newId_(), 'Empresa Demo — Sintropía Social', 'DEMO010101AB1', true, DEMO_EMPRESA_EMAIL, DEMO_EMPRESA_TOKEN, 'Pro', '', new Date().toISOString()]);
+    empresaSheet.appendRow([newId_(), 'Empresa Demo — Sintropía Social', 'DEMO010101AB1', true, true, DEMO_EMPRESA_EMAIL, DEMO_EMPRESA_TOKEN, 'Pro', '', new Date().toISOString()]);
   }
 
   // --- Candidato demo ---
@@ -295,6 +297,16 @@ function getEmpresaProfile_(token) {
 
   const { companyToken, ...safeEmpresa } = empresa;
   const limit = PLAN_JOB_LIMITS[empresa.plan] ?? 1;
+
+  let publicadasEsteMes = null;
+  let limiteMensual = null;
+  if (empresa.plan === PLAN_FREE) {
+    const allJobsFromEmpresa = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id));
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    publicadasEsteMes = allJobsFromEmpresa.filter((j) => (j.fecha || '').slice(0, 7) === currentMonth).length;
+    limiteMensual = FREE_PLAN_MONTHLY_POST_LIMIT;
+  }
+
   return {
     empresa: safeEmpresa,
     jobs: jobsWithCounts,
@@ -302,6 +314,8 @@ function getEmpresaProfile_(token) {
     puedeSubirLogo: PLANS_PAID.includes(empresa.plan),
     vacantesActivas: jobs.length,
     limiteVacantes: limit === Infinity ? null : limit,
+    publicadasEsteMes,
+    limiteMensual,
   };
 }
 
@@ -410,10 +424,21 @@ function createJob_(p) {
   if (!empresa) return { error: 'Tu sesión no es válida. Vuelve a entrar a tu cuenta.' };
   if (empresa.activa === false) return { error: 'Tu cuenta está desactivada. Contacta a Sintropía Social.' };
 
-  const existing = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id) && j.activa !== false);
+  const allJobsFromEmpresa = sheetToObjects_(getSheet_(SHEET_JOBS)).filter((j) => String(j.empresaId) === String(empresa.id));
+  const active = allJobsFromEmpresa.filter((j) => j.activa !== false);
   const limit = PLAN_JOB_LIMITS[empresa.plan] ?? 1;
-  if (existing.length >= limit) {
+  if (active.length >= limit) {
     return { error: `Tu plan (${empresa.plan}) permite hasta ${limit} vacante(s) activa(s). Mejora tu plan desde tu cuenta para publicar más.` };
+  }
+
+  // El plan Gratis, además del límite de activas, solo permite publicar
+  // 2 vacantes nuevas por mes calendario (cuenten como activas o no).
+  if (empresa.plan === PLAN_FREE) {
+    const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+    const publicadasEsteMes = allJobsFromEmpresa.filter((j) => (j.fecha || '').slice(0, 7) === currentMonth).length;
+    if (publicadasEsteMes >= FREE_PLAN_MONTHLY_POST_LIMIT) {
+      return { error: `El plan Gratis permite publicar hasta ${FREE_PLAN_MONTHLY_POST_LIMIT} vacantes por mes. Mejora tu plan desde tu cuenta para publicar más este mes.` };
+    }
   }
 
   const sheet = getSheet_(SHEET_JOBS);
@@ -485,7 +510,7 @@ TEXTO DE LA VACANTE:
 ${p.rawText}`;
 
   const res = UrlFetchApp.fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',
     {
       method: 'post',
       contentType: 'application/json',
