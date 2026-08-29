@@ -163,6 +163,21 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .mini-hero p{color:rgba(255,255,255,.86);max-width:52ch;margin-bottom:0;}
 .content-lift{position:relative;z-index:2;}
 
+/* ---------- Bloque editorial "Detrás de JobMatch Pro" ---------- */
+.sintropia-block{
+  display:grid;grid-template-columns:1fr 1.3fr;gap:48px;align-items:center;
+  max-width:980px;margin:0 auto;
+}
+.sintropia-block-img{
+  width:100%;max-width:300px;justify-self:center;
+  filter:drop-shadow(0 12px 24px rgba(30,10,71,.12));
+}
+@media (max-width:800px){
+  .sintropia-block{grid-template-columns:1fr;text-align:center;}
+  .sintropia-block-img{max-width:200px;}
+  .sintropia-block .eyebrow{justify-content:center;}
+}
+
 /* Dos caminos (hero) ---------- */
 .dos-caminos{
   display:grid;grid-template-columns:1fr 1fr;gap:20px;

@@ -226,8 +226,8 @@
     list.innerHTML = items.map((c) => `
       <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${c.activa === false ? 'opacity:.55' : ''}">
         <div>
-          <h3 style="font-size:1rem">${c.razonSocial} ${c.verificada === true ? '✅' : '<span style="color:var(--warn);font-size:.8rem">RFC sin verificar</span>'} ${c.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Desactivada</span>' : ''}</h3>
-          <div class="meta"><span>RFC: ${c.rfc}</span><span>${c.emailContacto}</span><span>Plan actual: <strong>${c.plan}</strong></span></div>
+          <h3 style="font-size:1rem">${escapeHtml(c.razonSocial)} ${c.verificada === true ? '✅' : '<span style="color:var(--warn);font-size:.8rem">RFC sin verificar</span>'} ${c.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Desactivada</span>' : ''}</h3>
+          <div class="meta"><span>RFC: ${escapeHtml(c.rfc)}</span><span>${escapeHtml(c.emailContacto)}</span><span>Plan actual: <strong>${escapeHtml(c.plan)}</strong></span></div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select class="plan-select" style="border:1.5px solid var(--line);border-radius:10px;padding:8px 10px">
@@ -293,9 +293,9 @@
       list.innerHTML = data.items.map((j) => `
         <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${j.activa === false ? 'opacity:.55' : ''}">
           <div>
-            <h3 style="font-size:1rem">${j.titulo}</h3>
+            <h3 style="font-size:1rem">${escapeHtml(j.titulo)}</h3>
             <div class="meta">
-              <span>${j.empresaNombre}</span>
+              <span>${escapeHtml(j.empresaNombre)}</span>
               <span>${j.fuente === 'admin' ? 'Vacante externa' : 'De empresa'}</span>
               ${j.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Pausada</span>' : ''}
             </div>
@@ -347,8 +347,8 @@
       list.innerHTML = data.items.map((c) => `
         <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div>
-            <h3 style="font-size:1rem">${c.nombre || '(sin nombre)'}</h3>
-            <div class="meta"><span>${c.email}</span><span>${c.numPostulaciones} postulación(es)</span>${c.cvLink ? '<span>✅ Tiene CV</span>' : ''}</div>
+            <h3 style="font-size:1rem">${escapeHtml(c.nombre) || '(sin nombre)'}</h3>
+            <div class="meta"><span>${escapeHtml(c.email)}</span><span>${c.numPostulaciones} postulación(es)</span>${c.cvLink ? '<span>✅ Tiene CV</span>' : ''}</div>
           </div>
           <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteCandidate('${c.id}', this)">Eliminar</button>
         </div>`).join('');

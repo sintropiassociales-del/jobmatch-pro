@@ -502,7 +502,7 @@ function adminExtractJobFromText_(p) {
 
 Instrucciones:
 - "modalidad" debe ser exactamente una de: Remoto, Híbrido, Presencial, o "" si no se puede inferir.
-- "descripcion" es un resumen breve (3-5 líneas) de responsabilidades/requisitos, en español, parafraseado con tus propias palabras (no copies literalmente si el texto es muy largo).
+- "descripcion": redacta 2-4 líneas basadas ÚNICAMENTE en lo que el texto realmente dice sobre el puesto (responsabilidades, requisitos, experiencia pedida, beneficios). Extrae y aprovecha cualquier detalle presente, por mínimo que sea — NUNCA escribas comentarios sobre la fuente o sobre información faltante (evita frases como "vacante publicada sin descripción detallada" o "se requiere consultar el enlace externo"). Si el texto es muy corto, simplemente resume lo poco que haya en tono directo, sin explicar que es poco.
 - "linkExterno" solo si el texto trae una URL explícita; si no hay ninguna, deja "".
 - Los sueldos van en pesos mexicanos si no se especifica otra moneda; si no hay sueldo, usa null.
 
@@ -540,6 +540,7 @@ ${p.rawText}`;
 function adminCreateExternalJob_(p) {
   if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
   if (!p.linkExterno) return { error: 'Falta el link de la vacante original' };
+  const linkExterno = /^https?:\/\//i.test(p.linkExterno) ? p.linkExterno : `https://${p.linkExterno}`;
 
   const sheet = getSheet_(SHEET_JOBS);
   const id = newId_();
@@ -557,7 +558,7 @@ function adminCreateExternalJob_(p) {
     new Date().toISOString(),
     false,
     true,
-    p.linkExterno,
+    linkExterno,
     p.notaAdmin || 'Sin relación directa con la vacante — solo referencia informativa.',
   ]);
 
