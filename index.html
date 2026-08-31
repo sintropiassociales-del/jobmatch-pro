@@ -103,6 +103,16 @@
   </div>
 </section>
 
+<section class="section-alt" id="featured-section" style="display:none;padding:56px 0">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow" style="color:var(--orange-600)">Destacadas</div>
+      <h2>Vacantes que estas empresas quisieron resaltar</h2>
+    </div>
+    <div class="grid-jobs" id="featured-jobs"></div>
+  </div>
+</section>
+
 <section class="section">
   <div class="container">
     <div class="section-head">
@@ -170,6 +180,18 @@
     if (e.key === 'Enter') document.getElementById('hero-search').click();
   });
 
+  async function loadFeatured() {
+    try {
+      const jobs = await JobMatchAPI.listJobs({ soloDestacadas: 'true', limit: 3, orden: 'reciente' });
+      if (jobs.items && jobs.items.length > 0) {
+        document.getElementById('featured-jobs').innerHTML = jobs.items.map(jobCardHTML).join('');
+        document.getElementById('featured-section').style.display = 'block';
+      }
+    } catch (e) {
+      // Si falla, simplemente no se muestra la sección.
+    }
+  }
+
   async function loadLatest() {
     const el = document.getElementById('latest-jobs');
     el.innerHTML = skeletonCards(3);
@@ -185,6 +207,7 @@
       el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>Configura APPS_SCRIPT_URL en assets/js/app.js para conectar las vacantes reales.</p></div>`;
     }
   }
+  loadFeatured();
   loadLatest();
 </script>
 </body>
