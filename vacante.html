@@ -88,6 +88,10 @@
             <span class="match-label" id="match-percent">—</span>
           </div>
           <p id="match-reasoning" style="font-size:.85rem;margin-top:8px"></p>
+          <div id="match-recomendaciones" style="display:none;background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px">
+            <p style="font-size:.78rem;font-weight:600;color:var(--purple-700);margin-bottom:4px">Qué podrías reforzar para este puesto</p>
+            <p style="font-size:.84rem;margin-bottom:0" id="match-recomendaciones-text"></p>
+          </div>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Calcular afinidad y postularme</button>
@@ -186,6 +190,13 @@
       document.getElementById('match-fill-bar').style.width = `${match.score}%`;
       document.getElementById('match-percent').textContent = `${match.score}% afinidad`;
       document.getElementById('match-reasoning').textContent = match.reasoning || '';
+
+      // Las recomendaciones de desarrollo son una función de planes de pago (Starter en adelante)
+      const planesConRecomendaciones = ['Starter', 'Pro', 'Business', 'A la medida'];
+      if (match.recomendaciones && planesConRecomendaciones.includes(currentJob?.plan)) {
+        document.getElementById('match-recomendaciones-text').textContent = match.recomendaciones;
+        document.getElementById('match-recomendaciones').style.display = 'block';
+      }
 
       btn.textContent = 'Enviando postulación...';
       const autoriza = document.getElementById('autoriza-socio')?.checked || false;

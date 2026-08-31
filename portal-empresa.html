@@ -320,20 +320,41 @@
       list.innerHTML = `<div class="empty-state"><p>Todavía no tienes vacantes publicadas.</p></div>`;
       return;
     }
+    if (data.puedeDestacar) {
+      const restantes = data.limiteDestacadas === null ? '∞' : Math.max(0, data.limiteDestacadas - data.destacadasEsteMes);
+      list.insertAdjacentHTML('beforebegin', `<p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Te quedan <strong>${restantes}</strong> vacante(s) por destacar este mes.</p>`);
+    }
     list.innerHTML = data.jobs.map((job) => `
       <div class="job-card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div>
-            <h3 style="font-size:1.05rem">${escapeHtml(job.titulo)}</h3>
+            <h3 style="font-size:1.05rem">${escapeHtml(job.titulo)} ${job.destacada ? '<span class="tag tag-orange">Destacada</span>' : ''}</h3>
             <div class="meta"><span>📍 ${escapeHtml(job.ubicacion) || 'Remoto'}</span><span>${job.numPostulaciones} postulación(es)</span></div>
           </div>
           <a class="badge-pill" href="vacante.html?id=${job.id}" target="_blank">Ver pública →</a>
         </div>
-        ${data.puedeEditar
-          ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleEdit('${job.id}', this)">✏️ Editar</button>
-             <div class="edit-box" style="display:none;margin-top:14px"></div>`
-          : `<div class="locked-feature">🔒 Editar vacantes es una función de planes de pago.</div>`}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          ${data.puedeEditar
+            ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleEdit('${job.id}', this)">✏️ Editar</button>`
+            : `<div class="locked-feature">🔒 Editar vacantes es una función de planes de pago.</div>`}
+          ${data.puedeDestacar
+            ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleFeatured('${job.id}', ${!job.destacada}, this)">${job.destacada ? 'Quitar de destacadas' : '⭐ Destacar'}</button>`
+            : ''}
+        </div>
+        <div class="edit-box" style="display:none;margin-top:14px"></div>
       </div>`).join('');
+  }
+
+  async function toggleFeatured(jobId, activar, btn) {
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.setJobFeatured(token, jobId, activar);
+      loadEmpresa(token);
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
   }
 
   function toggleEdit(jobId, btn) {
