@@ -37,6 +37,7 @@ const SHEET_APPLICATIONS = 'Postulaciones';
 const SHEET_CANDIDATES = 'Candidatos';
 const SHEET_SOCIOECONOMIC = 'PerfilSocioeconomico';
 const SHEET_PAYMENTS = 'PagosEmpresas';
+const SHEET_CONTACT_REQUESTS = 'SolicitudesContacto';
 
 const PLAN_FREE = 'Gratis';
 const PLANS_PAID = ['Starter', 'Pro', 'Business', 'A la medida'];
@@ -53,6 +54,7 @@ const SHEET_HEADERS = {
   [SHEET_CANDIDATES]: ['id', 'nombre', 'email', 'candidateToken', 'cvLink', 'fecha', 'habilidades'],
   [SHEET_SOCIOECONOMIC]: ['candidatoId', 'ingresoFamiliar', 'dependientesEconomicos', 'tipoVivienda', 'escolaridad', 'situacionVulnerabilidad', 'notasAdicionales', 'fecha'],
   [SHEET_PAYMENTS]: ['fecha', 'plan', 'subscriptionId', 'payerName', 'payerEmail', 'razonSocial', 'rfc', 'direccionFiscal', 'usoCFDI', 'companyEmail'],
+  [SHEET_CONTACT_REQUESTS]: ['id', 'candidatoId', 'empresaId', 'companyToken', 'empresaNombre', 'estado', 'fecha'],
 };
 
 function getSheet_(name) {
@@ -176,11 +178,13 @@ function verifyGoogleToken_(idToken) {
 function doGet(e) {
   try {
     const action = e.parameter.action;
+    if (action === 'respondContactRequest') return respondContactRequestPage_(e.parameter);
     if (action === 'listJobs') return jsonOut_(listJobs_(e.parameter));
     if (action === 'getJob') return jsonOut_(getJob_(e.parameter.id));
     if (action === 'getEmpresaProfile') return jsonOut_(getEmpresaProfile_(e.parameter.token));
-    if (action === 'getCandidateProfile') return jsonOut_(getCandidateProfile_(e.parameter.token));
     if (action === 'listCandidatesDirectory') return jsonOut_(listCandidatesDirectory_(e.parameter));
+    if (action === 'getCandidateContactInfo') return jsonOut_(getCandidateContactInfo_(e.parameter));
+    if (action === 'getCandidateProfile') return jsonOut_(getCandidateProfile_(e.parameter.token));
     if (action === 'getSocioeconomico') return jsonOut_(getSocioeconomico_(e.parameter));
     if (action === 'adminListCompanies') return jsonOut_(adminListCompanies_(e.parameter.adminKey));
     if (action === 'adminListAllJobs') return jsonOut_(adminListAllJobs_(e.parameter.adminKey));
@@ -205,6 +209,8 @@ function doPost(e) {
     if (action === 'createJob') return jsonOut_(createJob_(e.parameter));
     if (action === 'updateJob') return jsonOut_(updateJob_(e.parameter));
     if (action === 'setJobFeatured') return jsonOut_(setJobFeatured_(e.parameter));
+    if (action === 'requestContact') return jsonOut_(requestContact_(e.parameter));
+    if (action === 'matchCandidatesToVacancy') return jsonOut_(matchCandidatesToVacancy_(e.parameter));
     if (action === 'uploadLogo') return jsonOut_(uploadLogo_(e.parameter));
     if (action === 'applyJob') return jsonOut_(applyJob_(e.parameter));
     if (action === 'registerCandidate') return jsonOut_(registerCandidate_(e.parameter));
@@ -280,6 +286,66 @@ function seedDemoAccounts() {
   Logger.log('Cuentas demo listas:');
   Logger.log('Empresa  → código: ' + DEMO_EMPRESA_TOKEN + ' (' + DEMO_EMPRESA_EMAIL + ', plan Pro)');
   Logger.log('Candidato → código: ' + DEMO_CANDIDATO_TOKEN + ' (' + DEMO_CANDIDATO_EMAIL + ')');
+}
+
+/* ---------- Candidatos de muestra para ver el directorio poblado ----------
+   Igual que seedDemoAccounts: NO se llama desde doGet/doPost — solo tú la
+   corres a mano desde el editor de Apps Script (menú de funciones → elige
+   "seedDemoCandidatesForDirectory" → ▶ Ejecutar).
+
+   Cómo los identificas después: todos usan correos que terminan en
+   "@jobmatch-demo.invalid" — ".invalid" es un dominio reservado que nunca
+   existe de verdad (no le va a llegar correo a nadie), así que puedes
+   buscarlos en el Sheet filtrando por ese texto y borrarlos cuando quieras,
+   sin confundirlos jamás con un candidato real. En el directorio público se
+   ven igual de anónimos que cualquier otro ("Candidato #XXXX") — nadie más
+   que tú, viendo el Sheet, puede saber que son de prueba. */
+function seedDemoCandidatesForDirectory() {
+  const sheet = getSheet_(SHEET_CANDIDATES);
+  const existentes = sheetToObjects_(sheet);
+  const yaExisten = existentes.some((c) => (c.email || '').endsWith('@jobmatch-demo.invalid'));
+  if (yaExisten) {
+    Logger.log('Ya hay candidatos de muestra — no se volvieron a crear. Bórralos a mano en el Sheet si quieres regenerarlos.');
+    return;
+  }
+
+  const perfiles = [
+    'Atención a clientes, ventas, manejo de caja, resolución de conflictos, trabajo en equipo',
+    'Excel avanzado, análisis de datos, Power BI, reportes financieros, contabilidad básica',
+    'Reclutamiento y selección, entrevistas, onboarding, nómina, clima laboral',
+    'JavaScript, React, Node.js, bases de datos SQL, control de versiones Git',
+    'Diseño gráfico, Photoshop, Illustrator, identidad de marca, redes sociales',
+    'Logística, manejo de inventarios, cadena de suministro, Excel, negociación con proveedores',
+    'Redacción, edición de contenido, SEO, marketing digital, redes sociales',
+    'Python, análisis de datos, machine learning básico, SQL, visualización de datos',
+    'Atención comunitaria, trabajo social, gestión de proyectos sociales, facilitación de talleres',
+    'Contabilidad, impuestos, conciliaciones bancarias, Excel avanzado, SAT',
+    'Gestión de proyectos, metodologías ágiles, Scrum, liderazgo de equipos, Jira',
+    'Ventas B2B, prospección, CRM, negociación, cierre de ventas',
+    'Traducción inglés-español, redacción técnica, interpretación, revisión de textos',
+    'Soporte técnico, redes, hardware, resolución de incidencias, atención a usuarios',
+    'Docencia, diseño curricular, evaluación educativa, facilitación de grupos',
+    'Enfermería, atención a pacientes, primeros auxilios, administración de medicamentos',
+    'Marketing digital, Google Ads, Meta Ads, analítica web, email marketing',
+    'Asistencia legal, redacción de contratos, investigación jurídica, atención a clientes',
+    'Ingeniería civil, AutoCAD, supervisión de obra, lectura de planos, presupuestos',
+    'Recursos humanos, capacitación, desarrollo organizacional, evaluación de desempeño',
+  ];
+
+  perfiles.forEach((habilidades, i) => {
+    const n = String(i + 1).padStart(2, '0');
+    appendRowByHeader_(sheet, {
+      id: newId_(),
+      nombre: 'Candidato de Muestra ' + n,
+      email: 'demo-candidato-' + n + '@jobmatch-demo.invalid',
+      candidateToken: Utilities.getUuid(),
+      cvLink: '',
+      fecha: new Date().toISOString(),
+      habilidades,
+    });
+  });
+
+  Logger.log('20 candidatos de muestra creados. Búscalos en el Sheet filtrando "@jobmatch-demo.invalid" para borrarlos cuando quieras.');
 }
 
 function registerEmpresaGoogle_(p) {
@@ -738,6 +804,10 @@ function listCandidatesDirectory_(p) {
   const empresa = getEmpresaByToken_(p.companyToken);
   if (!empresa) return { error: 'No autorizado' };
 
+  const misSolicitudes = sheetToObjects_(getSheet_(SHEET_CONTACT_REQUESTS)).filter((r) => r.companyToken === p.companyToken);
+  const solicitudPorCandidato = {};
+  misSolicitudes.forEach((r) => (solicitudPorCandidato[String(r.candidatoId)] = r.estado));
+
   const candidatos = sheetToObjects_(getSheet_(SHEET_CANDIDATES));
   let items = candidatos
     .filter((c) => (c.habilidades || '').trim() !== '') // sin habilidades no hay nada que mostrar/comparar
@@ -745,6 +815,7 @@ function listCandidatesDirectory_(p) {
       candidatoId: c.id,
       apodo: 'Candidato #' + String(c.id).slice(-4).toUpperCase(),
       habilidades: c.habilidades,
+      estadoSolicitud: solicitudPorCandidato[String(c.id)] || null,
     }));
 
   if (p.q) {
@@ -753,6 +824,180 @@ function listCandidatesDirectory_(p) {
   }
 
   return { items, puedeSolicitarContacto: PLANS_WITH_SOCIOECONOMIC_ACCESS.includes(empresa.plan) };
+}
+
+/* ---------- Comparar candidatos contra una vacante (Fase 3) ---------- */
+
+// Cuenta traslapes de palabras entre dos listas de habilidades separadas
+// por coma — sin llamar a la IA por candidato, para que sea rápido y barato
+// sin importar cuántos candidatos haya, y para que el criterio sea objetivo
+// y auditable (no una "caja negra").
+function skillOverlapScore_(candidateSkills, vacancySkills) {
+  const norm = (s) => (s || '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean);
+  const cSet = norm(candidateSkills);
+  const vSet = norm(vacancySkills);
+  if (cSet.length === 0 || vSet.length === 0) return 0;
+  let matches = 0;
+  cSet.forEach((c) => {
+    if (vSet.some((v) => v.includes(c) || c.includes(v))) matches++;
+  });
+  return Math.min(100, Math.round((matches / vSet.length) * 100));
+}
+
+// Extrae, con UNA sola llamada a Gemini, las habilidades/competencias que
+// pide un texto de vacante — y con eso compara (sin IA) contra cada
+// candidato del directorio.
+function matchCandidatesToVacancy_(p) {
+  const empresa = getEmpresaByToken_(p.companyToken);
+  if (!empresa) return { error: 'No autorizado' };
+
+  let textoVacante = p.texto || '';
+  if (p.jobId) {
+    const job = getJobRaw_(p.jobId);
+    if (job) textoVacante = `${job.titulo}\n${job.descripcion}`;
+  }
+  if (!textoVacante.trim()) return { error: 'Falta el texto o la vacante a comparar' };
+
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) return { error: 'Falta configurar GEMINI_API_KEY en Apps Script (Propiedades del script)' };
+
+  const prompt = `Lee esta descripción de vacante y extrae SOLO las habilidades y competencias clave que pide, como una lista separada por comas (sin numeración, sin explicación adicional). Responde ÚNICAMENTE con un JSON: {"habilidades": "habilidad1, habilidad2, habilidad3"}
+
+TEXTO DE LA VACANTE:
+${textoVacante}`;
+
+  const res = UrlFetchApp.fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',
+    {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-goog-api-key': apiKey },
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
+      }),
+      muteHttpExceptions: true,
+    }
+  );
+  if (res.getResponseCode() !== 200) return { error: 'Error de Gemini: ' + res.getContentText() };
+
+  const data = JSON.parse(res.getContentText());
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  let extracted;
+  try {
+    extracted = JSON.parse(content);
+  } catch (e) {
+    return { error: 'La IA no pudo leer esa vacante. Intenta con un texto más claro.' };
+  }
+  const habilidadesVacante = extracted.habilidades || '';
+
+  const directorio = listCandidatesDirectory_(p);
+  if (directorio.error) return directorio;
+
+  const items = directorio.items
+    .map((c) => ({ ...c, score: skillOverlapScore_(c.habilidades, habilidadesVacante) }))
+    .filter((c) => c.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return { items, habilidadesVacante, puedeSolicitarContacto: directorio.puedeSolicitarContacto };
+}
+
+/* ---------- Solicitud de contacto (Fase 4) ---------- */
+
+// Solo empresas Business/A la medida pueden pedirle a un candidato ver sus
+// datos. Se manda un correo con dos links (sí/no) — el candidato decide.
+function requestContact_(p) {
+  const empresa = getEmpresaByToken_(p.companyToken);
+  if (!empresa) return { error: 'No autorizado' };
+  if (!PLANS_WITH_SOCIOECONOMIC_ACCESS.includes(empresa.plan)) {
+    return { error: 'Solicitar contacto es una función de los planes Business y A la medida.' };
+  }
+
+  const candidatos = sheetToObjects_(getSheet_(SHEET_CANDIDATES));
+  const candidato = candidatos.find((c) => String(c.id) === String(p.candidatoId));
+  if (!candidato) return { error: 'Candidato no encontrado' };
+
+  const sheet = getSheet_(SHEET_CONTACT_REQUESTS);
+  const existentes = sheetToObjects_(sheet);
+  const yaExiste = existentes.find((r) => String(r.candidatoId) === String(p.candidatoId) && r.companyToken === p.companyToken);
+  if (yaExiste) return { error: 'Ya le mandaste una solicitud a este candidato antes.', estado: yaExiste.estado };
+
+  const requestId = newId_() + newId_(); // más largo, porque este ID hace de "contraseña" en el link de correo
+  appendRowByHeader_(sheet, {
+    id: requestId, candidatoId: p.candidatoId, empresaId: empresa.id, companyToken: p.companyToken,
+    empresaNombre: empresa.razonSocial, estado: 'pendiente', fecha: new Date().toISOString(),
+  });
+
+  const baseUrl = ScriptApp.getService().getUrl();
+  const linkSi = `${baseUrl}?action=respondContactRequest&requestId=${requestId}&respuesta=si`;
+  const linkNo = `${baseUrl}?action=respondContactRequest&requestId=${requestId}&respuesta=no`;
+
+  try {
+    MailApp.sendEmail({
+      to: candidato.email,
+      subject: `${empresa.razonSocial} quiere ver tu información en JobMatch Pro`,
+      body:
+        `Hola,\n\nLa empresa "${empresa.razonSocial}" encontró tu perfil en el directorio de habilidades de ` +
+        `JobMatch Pro y quiere ver tu información de contacto (nombre, correo, CV) para posiblemente invitarte a una entrevista.\n\n` +
+        `Tú decides — no compartimos nada sin tu autorización:\n\n` +
+        `Sí, autorizo: ${linkSi}\n\n` +
+        `No, gracias: ${linkNo}\n\n` +
+        `Si no reconoces esta empresa o prefieres no compartir tu información, simplemente ignora este correo o da clic en "No".\n\n` +
+        `— JobMatch Pro, un proyecto de Sintropía Social`,
+    });
+  } catch (mailErr) {
+    return { error: 'No se pudo enviar el correo al candidato. Intenta de nuevo.' };
+  }
+
+  return { ok: true };
+}
+
+// Página pública que ve el candidato al darle clic al link de su correo.
+// No requiere ADMIN_KEY ni companyToken — el propio requestId (un UUID
+// largo, imposible de adivinar) es lo que autentica esta acción.
+function respondContactRequestPage_(p) {
+  const sheet = getSheet_(SHEET_CONTACT_REQUESTS);
+  const solicitudes = sheetToObjects_(sheet);
+  const rowIndex = solicitudes.findIndex((r) => String(r.id) === String(p.requestId));
+
+  let mensaje;
+  if (rowIndex < 0) {
+    mensaje = 'Este link ya no es válido o ya fue usado.';
+  } else {
+    const nuevoEstado = p.respuesta === 'si' ? 'autorizado' : 'rechazado';
+    sheet.getRange(rowIndex + 2, colIndex_(sheet, 'estado')).setValue(nuevoEstado);
+    mensaje = nuevoEstado === 'autorizado'
+      ? 'Listo — autorizaste que esa empresa vea tu información de contacto. Puede que te escriban pronto.'
+      : 'Entendido — no vamos a compartir tu información con esa empresa.';
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobMatch Pro</title>
+    <style>body{font-family:sans-serif;background:#FAF9F7;color:#1A1523;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}
+    .box{background:#fff;border-radius:20px;padding:36px;max-width:420px;box-shadow:0 12px 32px rgba(30,10,71,.12)}
+    h1{color:#6B21F5;font-size:1.3rem}</style></head>
+    <body><div class="box"><h1>JobMatch Pro</h1><p>${mensaje}</p></div></body></html>`;
+  return HtmlService.createHtmlOutput(html);
+}
+
+// Solo revela nombre/correo/teléfono/CV si existe una solicitud 'autorizada'
+// de esta empresa específica para este candidato específico.
+function getCandidateContactInfo_(p) {
+  const empresa = getEmpresaByToken_(p.companyToken);
+  if (!empresa) return { error: 'No autorizado' };
+
+  const solicitudes = sheetToObjects_(getSheet_(SHEET_CONTACT_REQUESTS));
+  const solicitud = solicitudes.find((r) => String(r.candidatoId) === String(p.candidatoId) && r.companyToken === p.companyToken);
+  if (!solicitud || solicitud.estado !== 'autorizado') {
+    return { error: 'Este candidato no ha autorizado compartir su contacto contigo.' };
+  }
+
+  const candidatos = sheetToObjects_(getSheet_(SHEET_CANDIDATES));
+  const candidato = candidatos.find((c) => String(c.id) === String(p.candidatoId));
+  if (!candidato) return { error: 'Candidato no encontrado' };
+
+  return { nombre: candidato.nombre, email: candidato.email, cvLink: candidato.cvLink || '' };
 }
 
 function getCandidateProfile_(token) {

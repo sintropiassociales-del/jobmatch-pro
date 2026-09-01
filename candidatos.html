@@ -65,8 +65,21 @@
       </div>
 
       <div class="form-card" style="margin-bottom:24px">
+        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Comparar contra una vacante</p>
+        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante (la tuya o cualquier otra) y vemos qué candidatos del directorio tienen más habilidades en común.</p>
+        <div class="field">
+          <textarea id="vacancy-text" placeholder="Pega aquí el texto completo de la vacante..." style="min-height:100px"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-match-vacancy">Comparar candidatos</button>
+          <button class="btn btn-ghost" id="btn-clear-match" style="display:none">Ver directorio completo</button>
+        </div>
+        <div class="status-msg" id="match-status"></div>
+      </div>
+
+      <div class="form-card" style="margin-bottom:24px">
         <div class="field" style="margin-bottom:0">
-          <label for="skill-search">Buscar por habilidad</label>
+          <label for="skill-search">O busca por habilidad directamente</label>
           <input type="text" id="skill-search" placeholder="Ej. Excel, atención a clientes, Python...">
         </div>
       </div>
@@ -140,26 +153,101 @@
     }
   }
 
-  function renderDirectory(items) {
-    document.getElementById('directory-count').textContent = `${items.length} candidato(s) con habilidades registradas`;
+  function renderDirectory(items, { showScore = false } = {}) {
+    document.getElementById('directory-count').textContent = showScore
+      ? `${items.length} candidato(s) con habilidades en común`
+      : `${items.length} candidato(s) con habilidades registradas`;
     const list = document.getElementById('directory-list');
     if (items.length === 0) {
-      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Todavía no hay candidatos con habilidades registradas.</p></div>`;
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${showScore ? 'Ningún candidato tiene habilidades en común con esta vacante todavía.' : 'Todavía no hay candidatos con habilidades registradas.'}</p></div>`;
       return;
     }
     list.innerHTML = items.map((c) => `
       <div class="job-card">
-        <div class="tag-row"><span class="tag">${escapeHtml(c.apodo)}</span></div>
+        <div class="tag-row" style="justify-content:space-between">
+          <span class="tag">${escapeHtml(c.apodo)}</span>
+          ${showScore ? `<span class="tag tag-orange">${c.score}% en común</span>` : ''}
+        </div>
         <div class="tag-row" style="margin-top:6px">
           ${c.habilidades.split(',').map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h.trim())}</span>`).join('')}
         </div>
-        <div class="foot" style="margin-top:auto">
-          ${currentPuedeSolicitar
-            ? `<button class="btn btn-ghost-orange" style="padding:9px 16px;font-size:.82rem;width:100%" disabled title="Próximamente">Solicitar contacto (próximamente)</button>`
-            : `<span class="badge-pill" style="opacity:.6">Contacto directo: plan Business+</span>`}
+        <div class="foot" style="margin-top:auto" data-candidato-id="${c.candidatoId}">
+          ${contactButtonHTML(c)}
         </div>
       </div>`).join('');
   }
+
+  function contactButtonHTML(c) {
+    if (!currentPuedeSolicitar) {
+      return `<span class="badge-pill" style="opacity:.6">Contacto directo: plan Business+</span>`;
+    }
+    if (c.estadoSolicitud === 'autorizado') {
+      return `<button class="btn btn-primary" style="padding:9px 16px;font-size:.82rem;width:100%" onclick="verContacto('${c.candidatoId}', this)">✅ Ver contacto autorizado</button>`;
+    }
+    if (c.estadoSolicitud === 'pendiente') {
+      return `<span class="badge-pill">⏳ Esperando respuesta del candidato</span>`;
+    }
+    if (c.estadoSolicitud === 'rechazado') {
+      return `<span class="badge-pill" style="opacity:.6">El candidato no autorizó</span>`;
+    }
+    return `<button class="btn btn-ghost-orange" style="padding:9px 16px;font-size:.82rem;width:100%" onclick="solicitarContacto('${c.candidatoId}', this)">Solicitar contacto</button>`;
+  }
+
+  async function solicitarContacto(candidatoId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    try {
+      const data = await JobMatchAPI.requestContact(currentEmpresaToken, candidatoId);
+      if (data.error) throw new Error(data.error);
+      btn.outerHTML = `<span class="badge-pill">⏳ Esperando respuesta del candidato</span>`;
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Solicitar contacto';
+    }
+  }
+
+  async function verContacto(candidatoId, btn) {
+    btn.disabled = true;
+    try {
+      const data = await JobMatchAPI.getCandidateContactInfo(currentEmpresaToken, candidatoId);
+      if (data.error) throw new Error(data.error);
+      btn.outerHTML = `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;font-size:.85rem;width:100%">
+        <strong>${escapeHtml(data.nombre)}</strong><br>${escapeHtml(data.email)}
+        ${data.cvLink ? `<br><a href="${escapeHtml(data.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a>` : ''}
+      </div>`;
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('btn-match-vacancy').addEventListener('click', async () => {
+    const texto = document.getElementById('vacancy-text').value.trim();
+    const status = document.getElementById('match-status');
+    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
+    status.className = 'status-msg show pending';
+    status.textContent = 'Leyendo la vacante y comparando candidatos...';
+    try {
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
+      if (data.error) throw new Error(data.error);
+      status.className = 'status-msg show ok';
+      status.textContent = `Habilidades detectadas en la vacante: ${data.habilidadesVacante}`;
+      document.getElementById('btn-clear-match').style.display = 'inline-flex';
+      renderDirectory(data.items, { showScore: true });
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('btn-clear-match').addEventListener('click', async () => {
+    document.getElementById('match-status').className = 'status-msg';
+    document.getElementById('vacancy-text').value = '';
+    document.getElementById('btn-clear-match').style.display = 'none';
+    const data = await JobMatchAPI.listCandidatesDirectory(currentEmpresaToken);
+    renderDirectory(data.items || []);
+  });
 
   let searchTimeout;
   document.getElementById('skill-search').addEventListener('input', (e) => {

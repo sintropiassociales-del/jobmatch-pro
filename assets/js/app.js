@@ -75,6 +75,9 @@ const JobMatchAPI = {
   uploadCV: (fileBase64, fileName) => asPost('uploadCV', { fileBase64, fileName }),
   getCandidateProfile: (candidateToken) => asGet('getCandidateProfile', { token: candidateToken }),
   listCandidatesDirectory: (companyToken, q) => asGet('listCandidatesDirectory', { companyToken, q: q || '' }),
+  matchCandidatesToVacancy: (companyToken, texto, jobId) => asPost('matchCandidatesToVacancy', { companyToken, texto: texto || '', jobId: jobId || '' }),
+  requestContact: (companyToken, candidatoId) => asPost('requestContact', { companyToken, candidatoId }),
+  getCandidateContactInfo: (companyToken, candidatoId) => asGet('getCandidateContactInfo', { companyToken, candidatoId }),
 
   // Postulaciones
   applyToJob: (application) => asPost('applyJob', application),
