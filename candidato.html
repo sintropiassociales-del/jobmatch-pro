@@ -83,6 +83,22 @@
         <div class="status-msg" id="cv-status"></div>
       </div>
 
+      <!-- Habilidades y competencias -->
+      <div class="form-card" style="margin-top:24px">
+        <h3 style="font-size:1.05rem">Habilidades y competencias</h3>
+        <p style="font-size:.85rem">
+          Esto es lo que las empresas comparan contra lo que piden en cada vacante — entre
+          más específico, mejor calidad de match. No usamos tu nombre ni tus datos personales
+          para esto: las empresas ven tus habilidades antes de saber quién eres.
+        </p>
+        <div class="field">
+          <label for="habilidades">Habilidades (sepáralas con comas)</label>
+          <input type="text" id="habilidades" placeholder="Ej. Excel avanzado, gestión de proyectos, atención a clientes, Python">
+        </div>
+        <button class="btn btn-ghost btn-block" id="btn-save-habilidades">Guardar habilidades</button>
+        <div class="status-msg" id="habilidades-status"></div>
+      </div>
+
       <!-- Perfil socioeconómico -->
       <div class="form-card" style="margin-top:24px">
         <h3 style="font-size:1.05rem">Perfil socioeconómico (opcional)</h3>
@@ -174,6 +190,7 @@
       document.getElementById('cv-current').textContent = data.candidate.cvLink
         ? '✅ Ya tienes un CV subido. Puedes reemplazarlo subiendo uno nuevo.'
         : 'Todavía no has subido tu CV.';
+      document.getElementById('habilidades').value = data.candidate.habilidades || '';
 
       if (data.socioeconomico) {
         document.getElementById('ingreso').value = data.socioeconomico.ingresoFamiliar || '';
@@ -260,6 +277,26 @@
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = 'No se pudo subir el CV: ' + err.message;
+    }
+  });
+
+  document.getElementById('btn-save-habilidades').addEventListener('click', async () => {
+    const status = document.getElementById('habilidades-status');
+    const token = localStorage.getItem(STORAGE_KEY);
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      const profile = await JobMatchAPI.getCandidateProfile(token);
+      await JobMatchAPI.registerCandidate({
+        email: profile.candidate.email,
+        nombre: profile.candidate.nombre,
+        habilidades: document.getElementById('habilidades').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = 'Guardado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
     }
   });
 
