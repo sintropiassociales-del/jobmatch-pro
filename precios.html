@@ -66,6 +66,7 @@
           <li>Subir tu logo</li>
           <li>Soporte por correo</li>
         </ul>
+        <div class="paypal-slot" data-plan="Starter" data-plan-id="P-85J178568B772993JNJN5PGI"></div>
       </div>
 
       <div class="plan-card featured">
@@ -81,6 +82,7 @@
           <li>Editar vacantes + logo</li>
           <li>Soporte prioritario</li>
         </ul>
+        <div class="paypal-slot" data-plan="Pro" data-plan-id="P-3LD64246BP613823WNJN5WGI"></div>
       </div>
 
       <div class="plan-card">
@@ -93,6 +95,7 @@
           <li>5 vacantes destacadas al mes</li>
           <li>Acceso a datos socioeconómicos y reporte de hasta 3 candidatos por vacante (con autorización del candidato)</li>
         </ul>
+        <div class="paypal-slot" data-plan="Business" data-plan-id="P-2DN85278YV0277106NJN5X3Q"></div>
       </div>
 
       <div class="plan-card">
@@ -111,12 +114,45 @@
     </div>
 
     <p style="text-align:center;margin-top:32px;font-size:.86rem;color:var(--ink-soft)">
-      Los pagos se hacen de forma segura con PayPal, desde la pestaña
-      <strong>"Mi plan"</strong> dentro de tu cuenta de empresa — así no compartes
-      ningún dato antes de tener tu perfil creado.
+      Los pagos se hacen de forma segura con PayPal. <strong>Puedes cancelar cuando quieras</strong> —
+      si pagas un mes y decides no continuar, el siguiente simplemente no se cobra, sin penalización
+      ni pasos adicionales.
     </p>
   </div>
 </section>
+
+<!-- ============ Modal de datos de facturación (aparece tras pagar) ============ -->
+<div id="billing-modal" style="display:none;position:fixed;inset:0;background:rgba(30,10,71,.55);z-index:300;align-items:center;justify-content:center;padding:20px">
+  <div class="form-card" style="max-width:520px;width:100%;max-height:90vh;overflow:auto">
+    <div class="eyebrow">¡Pago recibido! 🎉</div>
+    <h2 style="font-size:1.4rem">Últimos datos para tu factura</h2>
+    <p style="font-size:.88rem">Tu plan <strong id="billing-plan-name"></strong> ya se activó automáticamente. Solo nos faltan tus datos para tu factura.</p>
+    <form id="billing-form">
+      <div class="field">
+        <label for="b-razon-social">Razón social</label>
+        <input type="text" id="b-razon-social" required>
+      </div>
+      <div class="field">
+        <label for="b-rfc">RFC</label>
+        <input type="text" id="b-rfc" required>
+      </div>
+      <div class="field">
+        <label for="b-direccion">Dirección fiscal</label>
+        <textarea id="b-direccion" required></textarea>
+      </div>
+      <div class="field">
+        <label for="b-cfdi">Uso de CFDI</label>
+        <select id="b-cfdi">
+          <option>G03 - Gastos en general</option>
+          <option>P01 - Por definir</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Enviar y confirmar</button>
+      <div class="status-msg" id="billing-status"></div>
+    </form>
+  </div>
+</div>
 
 <footer class="site-footer">
   <div class="container">
@@ -128,5 +164,76 @@
 </footer>
 
 <script src="assets/js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  let pendingSubscription = null;
+
+  window.addEventListener('load', () => {
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    const slots = document.querySelectorAll('.paypal-slot');
+
+    if (!token) {
+      // Sin sesión de empresa no hay companyToken que mandarle a PayPal
+      // (es lo que permite activar el plan solo) — pedimos login primero
+      // en vez de mostrar un botón que rompería esa automatización.
+      slots.forEach((slot) => {
+        slot.innerHTML = `<a href="portal-empresa.html" class="btn btn-ghost btn-block">Inicia sesión para contratar</a>`;
+      });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription';
+    script.onload = () => {
+      slots.forEach((slot) => {
+        const plan = slot.dataset.plan;
+        const planId = slot.dataset.planId;
+        paypal.Buttons({
+          style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
+          createSubscription: (d, actions) => actions.subscription.create({ plan_id: planId, custom_id: token }),
+          onApprove: async (d, actions) => {
+            pendingSubscription = { subscriptionId: d.subscriptionID, plan };
+            try {
+              const details = await actions.subscription.get();
+              pendingSubscription.payerName = details?.subscriber?.name ? `${details.subscriber.name.given_name || ''} ${details.subscriber.name.surname || ''}`.trim() : '';
+              pendingSubscription.payerEmail = details?.subscriber?.email_address || '';
+            } catch (e) {}
+            document.getElementById('billing-plan-name').textContent = plan;
+            document.getElementById('billing-modal').style.display = 'flex';
+          },
+        }).render(slot);
+      });
+    };
+    document.body.appendChild(script);
+  });
+
+  document.getElementById('billing-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const status = document.getElementById('billing-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Enviando...';
+    try {
+      const empresaToken = localStorage.getItem(COMPANY_TOKEN_KEY);
+      const empresaData = await JobMatchAPI.getEmpresaProfile(empresaToken);
+      await JobMatchAPI.billingReceipt({
+        plan: pendingSubscription.plan,
+        subscriptionId: pendingSubscription.subscriptionId,
+        payerName: pendingSubscription.payerName || '',
+        payerEmail: pendingSubscription.payerEmail || '',
+        companyEmail: empresaData.empresa?.emailContacto || '',
+        razonSocial: document.getElementById('b-razon-social').value,
+        rfc: document.getElementById('b-rfc').value,
+        direccionFiscal: document.getElementById('b-direccion').value,
+        usoCFDI: document.getElementById('b-cfdi').value,
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Listo! Te mandamos tu comprobante.';
+      setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 2000);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = 'El pago sí se procesó, pero no pudimos enviar el comprobante. Escríbenos con tu ID de suscripción: ' + pendingSubscription.subscriptionId;
+    }
+  });
+</script>
 </body>
 </html>
