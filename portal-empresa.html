@@ -403,12 +403,12 @@
         list.innerHTML = `<div class="empty-state"><p>Todavía no tienes postulaciones.</p></div>`;
         return;
       }
-      const sorted = [...data.items].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      const sorted = [...data.items].sort((a, b) => (b.enTriada === true) - (a.enTriada === true) || (b.matchScore || 0) - (a.matchScore || 0));
       list.innerHTML = sorted.map((app) => `
-        <div class="job-card" style="margin-bottom:14px">
+        <div class="job-card" style="margin-bottom:14px${app.enTriada === true ? ';border-color:var(--orange-500)' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
             <div>
-              <h3 style="font-size:1.05rem">${escapeHtml(app.nombre)}</h3>
+              <h3 style="font-size:1.05rem">${escapeHtml(app.nombre)} ${app.enTriada === true ? '<span class="tag tag-orange">⭐ Elegido por Sintropía</span>' : ''}</h3>
               <div class="meta"><span>✉️ ${escapeHtml(app.email)}</span>${app.telefono ? `<span>📱 ${escapeHtml(app.telefono)}</span>` : ''}</div>
             </div>
             <span class="badge-pill">${escapeHtml(app.jobTitulo) || 'Vacante'}</span>
@@ -418,6 +418,10 @@
             <span class="match-label">${app.matchScore || 0}% afinidad</span>
           </div>
           <p class="desc">${escapeHtml(app.perfil)}</p>
+          ${app.reporteAdmin ? `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;margin-top:6px">
+            <p style="font-size:.78rem;font-weight:600;color:var(--purple-700);margin-bottom:4px">Reporte de Sintropía Social</p>
+            <p style="font-size:.84rem;margin-bottom:0;white-space:pre-line">${escapeHtml(app.reporteAdmin)}</p>
+          </div>` : ''}
           ${app.socioeconomicoDisponible
             ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="verSocioeconomico('${app.jobId}','${app.candidatoId}', this)">🔒 Ver perfil socioeconómico (autorizado)</button>
                <div class="socio-box" style="display:none;margin-top:12px;background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;font-size:.85rem"></div>`

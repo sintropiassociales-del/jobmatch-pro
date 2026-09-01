@@ -54,6 +54,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="empresas">Empresas y planes</button>
         <button class="tab-btn" data-tab="vacantes-admin">Vacantes</button>
+        <button class="tab-btn" data-tab="curaduria">Curaduría (triada)</button>
         <button class="tab-btn" data-tab="candidatos-admin">Candidatos</button>
         <button class="tab-btn" data-tab="externas">Publicar vacante externa</button>
       </div>
@@ -68,6 +69,19 @@
       <div class="tab-panel" id="tab-vacantes-admin">
         <p style="font-size:.85rem">Todas las vacantes de la plataforma, publicadas por empresas o agregadas por ti. Pausar las oculta del sitio público sin borrar sus datos ni postulaciones; eliminar sí es permanente.</p>
         <div id="admin-jobs-list" style="margin-top:16px"></div>
+      </div>
+
+      <!-- TAB: Curaduría -->
+      <div class="tab-panel" id="tab-curaduria">
+        <p style="font-size:.85rem">Para vacantes de empresas con plan Pro o superior: elige a la vacante, marca hasta 3 candidatos como la triada, y escríbeles su reporte (entrevista inicial, competencias). La empresa lo ve resaltado en su panel.</p>
+        <div class="form-card" style="margin-top:16px;max-width:520px">
+          <div class="field">
+            <label for="curaduria-job-select">Vacante</label>
+            <select id="curaduria-job-select"><option value="">Selecciona una vacante...</option></select>
+          </div>
+          <button class="btn btn-primary" id="btn-load-curaduria">Ver postulaciones</button>
+        </div>
+        <div id="curaduria-list" style="margin-top:20px"></div>
       </div>
 
       <!-- TAB: Candidatos -->
@@ -306,6 +320,11 @@
             <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteJob('${j.id}', this)">Eliminar</button>
           </div>
         </div>`).join('');
+
+      const curaduriaSelect = document.getElementById('curaduria-job-select');
+      const empresaJobs = data.items.filter((j) => j.fuente === 'empresa');
+      curaduriaSelect.innerHTML = '<option value="">Selecciona una vacante...</option>' +
+        empresaJobs.map((j) => `<option value="${j.id}">${escapeHtml(j.titulo)} — ${escapeHtml(j.empresaNombre)}</option>`).join('');
     } catch (err) {
       list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
     }
@@ -330,6 +349,77 @@
       loadAdminJobs();
     } catch (err) {
       alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('btn-load-curaduria').addEventListener('click', loadCuraduria);
+
+  async function loadCuraduria() {
+    const jobId = document.getElementById('curaduria-job-select').value;
+    const list = document.getElementById('curaduria-list');
+    if (!jobId) { list.innerHTML = ''; return; }
+    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
+    try {
+      const data = await JobMatchAPI.adminListApplicationsForJob(adminKey, jobId);
+      if (data.error) throw new Error(data.error);
+      if (data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Esta vacante todavía no tiene postulaciones.</p></div>`;
+        return;
+      }
+      const sorted = [...data.items].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+      list.innerHTML = sorted.map((app) => `
+        <div class="job-card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div>
+              <h3 style="font-size:1rem">${escapeHtml(app.nombre)}</h3>
+              <div class="meta"><span>${escapeHtml(app.email)}</span><span>${app.matchScore || 0}% afinidad</span></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;white-space:nowrap">
+              <input type="checkbox" class="triada-check" ${app.enTriada === true ? 'checked' : ''} onchange="setTriada('${app.id}', this.checked, this)">
+              En la triada
+            </label>
+          </div>
+          <p class="desc">${escapeHtml(app.perfil)}</p>
+          <div class="field" style="margin-top:8px">
+            <label>Reporte para la empresa (entrevista inicial, competencias, etc.)</label>
+            <textarea class="reporte-text" placeholder="Opcional — solo lo ve la empresa si marcaste 'En la triada' o de todos modos si escribes algo aquí">${escapeHtml(app.reporteAdmin) || ''}</textarea>
+          </div>
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="saveReporte('${app.id}', this)">Guardar reporte</button>
+          <span class="status-msg reporte-status" style="margin-top:8px"></span>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
+    }
+  }
+
+  async function setTriada(applicationId, checked, checkbox) {
+    checkbox.disabled = true;
+    try {
+      await JobMatchAPI.adminSetTriada(adminKey, applicationId, checked);
+    } catch (err) {
+      alert(err.message);
+      checkbox.checked = !checked;
+    } finally {
+      checkbox.disabled = false;
+    }
+  }
+
+  async function saveReporte(applicationId, btn) {
+    const card = btn.closest('.job-card');
+    const reporte = card.querySelector('.reporte-text').value;
+    const status = card.querySelector('.reporte-status');
+    btn.disabled = true;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      await JobMatchAPI.adminSetReporte(adminKey, applicationId, reporte);
+      status.className = 'status-msg show ok';
+      status.textContent = 'Guardado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    } finally {
       btn.disabled = false;
     }
   }
