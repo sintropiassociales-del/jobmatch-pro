@@ -37,7 +37,7 @@ export default {
       }
 
       const prompt = `Eres un evaluador de afinidad laboral objetivo y estricto. Compara el perfil de un candidato contra la descripción de una vacante y responde ÚNICAMENTE con un JSON válido, sin texto adicional, con este formato exacto:
-{"score": <número entero 0-100>, "reasoning": "<explicación breve en español, máximo 2 frases, mencionando fortalezas y brechas concretas>"}
+{"score": <número entero 0-100>, "reasoning": "<explicación breve en español, máximo 2 frases, mencionando fortalezas y brechas concretas>", "recomendaciones": "<1-2 frases en español dirigidas al candidato: qué habilidad, conocimiento o experiencia concreta le ayudaría a acercarse más a este puesto específico. Sé constructivo y específico, no genérico. Si el candidato ya encaja muy bien (score alto), puedes decir que no hay brechas relevantes.>"}
 
 PERFIL DEL CANDIDATO:
 ${cvText}
@@ -73,6 +73,7 @@ ${jobDescription}`;
       return jsonResponse({
         score: Math.max(0, Math.min(100, parseInt(parsed.score, 10) || 0)),
         reasoning: parsed.reasoning || '',
+        recomendaciones: parsed.recomendaciones || '',
       });
     } catch (err) {
       return jsonResponse({ error: err.message }, 500);

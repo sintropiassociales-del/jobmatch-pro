@@ -16,6 +16,7 @@
     </div>
     <nav class="nav-links">
       <a href="vacantes.html">Buscar vacantes</a>
+      <a href="candidatos.html">Candidatos</a>
       <a href="registro-empresa.html">Publicar vacante</a>
       <a href="precios.html">Precios</a>
       <a href="candidato.html">Mi perfil</a>
@@ -177,7 +178,7 @@
       // (es lo que permite activar el plan solo) — pedimos login primero
       // en vez de mostrar un botón que rompería esa automatización.
       slots.forEach((slot) => {
-        slot.innerHTML = `<a href="portal-empresa.html" class="btn btn-ghost btn-block">Inicia sesión para contratar</a>`;
+        slot.innerHTML = `<a href="portal-empresa.html" class="btn btn-ghost-orange btn-block">Inicia sesión para contratar</a>`;
       });
       return;
     }

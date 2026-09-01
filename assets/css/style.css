@@ -119,6 +119,8 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .btn-primary{background:var(--orange-500);color:#fff;box-shadow:0 8px 20px rgba(255,107,26,.3);}
 .btn-primary:hover{background:var(--orange-600);transform:translateY(-1px);}
 .btn-ghost{background:transparent;color:var(--purple-900);border:1.5px solid var(--purple-900);}
+.btn-ghost-orange{background:var(--orange-500,#FF6B1A);color:#fff;border:1.5px solid var(--orange-500,#FF6B1A);}
+.btn-ghost-orange:hover{background:var(--orange-600,#E85A0C);border-color:var(--orange-600,#E85A0C);}
 .btn-ghost:hover{background:var(--purple-900);color:#fff;}
 .btn-white{background:#fff;color:var(--purple-700);}
 .btn-white:hover{background:var(--purple-050);}

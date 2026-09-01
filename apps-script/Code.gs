@@ -42,14 +42,15 @@ const PLAN_FREE = 'Gratis';
 const PLANS_PAID = ['Starter', 'Pro', 'Business', 'A la medida'];
 const PLANS_WITH_SOCIOECONOMIC_ACCESS = ['Business', 'A la medida'];
 const PLAN_JOB_LIMITS = { 'Gratis': 1, 'Starter': 2, 'Pro': 8, 'Business': Infinity, 'A la medida': Infinity };
+const PLAN_FEATURED_MONTHLY_LIMIT = { 'Pro': 2, 'Business': 5, 'A la medida': Infinity }; // vacantes que se pueden destacar por mes; planes sin entrada aquí no pueden destacar
 const FREE_PLAN_MONTHLY_POST_LIMIT = 2; // además del límite de activas, el plan Gratis solo publica 2 vacantes nuevas por mes
 const BILLING_EMAIL = 'direccion@sintropiasocial.com';
 
 const SHEET_HEADERS = {
   [SHEET_COMPANIES]: ['id', 'razonSocial', 'rfc', 'verificada', 'activa', 'emailContacto', 'companyToken', 'plan', 'logoUrl', 'fecha'],
-  [SHEET_JOBS]: ['id', 'empresaId', 'fuente', 'empresaNombre', 'titulo', 'modalidad', 'ubicacion', 'salarioMin', 'salarioMax', 'descripcion', 'fecha', 'destacada', 'activa', 'linkExterno', 'notaAdmin'],
-  [SHEET_APPLICATIONS]: ['id', 'jobId', 'candidatoId', 'nombre', 'email', 'telefono', 'perfil', 'matchScore', 'autorizoSocioeconomico', 'fecha'],
-  [SHEET_CANDIDATES]: ['id', 'nombre', 'email', 'candidateToken', 'cvLink', 'fecha'],
+  [SHEET_JOBS]: ['id', 'empresaId', 'fuente', 'empresaNombre', 'titulo', 'modalidad', 'ubicacion', 'salarioMin', 'salarioMax', 'descripcion', 'fecha', 'destacada', 'destacadaEn', 'activa', 'linkExterno', 'notaAdmin'],
+  [SHEET_APPLICATIONS]: ['id', 'jobId', 'candidatoId', 'nombre', 'email', 'telefono', 'perfil', 'matchScore', 'autorizoSocioeconomico', 'fecha', 'enTriada', 'reporteAdmin'],
+  [SHEET_CANDIDATES]: ['id', 'nombre', 'email', 'candidateToken', 'cvLink', 'fecha', 'habilidades'],
   [SHEET_SOCIOECONOMIC]: ['candidatoId', 'ingresoFamiliar', 'dependientesEconomicos', 'tipoVivienda', 'escolaridad', 'situacionVulnerabilidad', 'notasAdicionales', 'fecha'],
   [SHEET_PAYMENTS]: ['fecha', 'plan', 'subscriptionId', 'payerName', 'payerEmail', 'razonSocial', 'rfc', 'direccionFiscal', 'usoCFDI', 'companyEmail'],
 };
@@ -60,8 +61,30 @@ function getSheet_(name) {
   if (!sheet) {
     sheet = ss.insertSheet(name);
     sheet.appendRow(SHEET_HEADERS[name]);
+    return sheet;
+  }
+  // Auto-migración de esquema: si el código conoce un campo que la hoja
+  // todavía no tiene en su fila de encabezados, se agrega solo al final.
+  // Esto evita tener que editar el Sheet a mano cada vez que agregamos un
+  // campo nuevo (nos pasó 3 veces antes de este arreglo).
+  const lastCol = sheet.getLastColumn();
+  const currentHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  const canonical = SHEET_HEADERS[name] || [];
+  const missing = canonical.filter((h) => currentHeaders.indexOf(h) === -1);
+  if (missing.length > 0) {
+    sheet.getRange(1, currentHeaders.length + 1, 1, missing.length).setValues([missing]);
   }
   return sheet;
+}
+
+// Escribe una fila nueva usando los NOMBRES de columna, no su posición —
+// así el orden real de columnas en tu Sheet ya no importa, siempre y cuando
+// el nombre exista en la fila de encabezados (que getSheet_ ya garantiza).
+function appendRowByHeader_(sheet, data) {
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const row = headers.map((h) => (data[h] !== undefined ? data[h] : ''));
+  sheet.appendRow(row);
 }
 
 function sheetToObjects_(sheet) {
@@ -84,9 +107,47 @@ function jsonOut_(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// Protección contra fuerza bruta: si fallan 8 intentos seguidos en 15 minutos,
+// bloquea nuevos intentos por 15 minutos — sin esto, alguien podría probar
+// miles de claves seguidas hasta acertar.
 function checkAdmin_(key) {
+  const cache = CacheService.getScriptCache();
+  if (cache.get('admin_lockout')) return false;
+
   const real = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
-  return !!real && key === real;
+  const ok = !!real && key === real;
+
+  if (ok) {
+    cache.remove('admin_fail_count');
+    return true;
+  }
+
+  const fails = parseInt(cache.get('admin_fail_count') || '0', 10) + 1;
+  cache.put('admin_fail_count', String(fails), 900);
+  if (fails >= 8) cache.put('admin_lockout', 'true', 900);
+  return false;
+}
+
+function adminLockoutActive_() {
+  return !!CacheService.getScriptCache().get('admin_lockout');
+}
+
+// Fricción básica contra spam: evita que la misma acción se repita en ráfaga
+// desde el mismo correo. No sustituye un CAPTCHA, pero frena scripts simples.
+function tooSoon_(key, seconds) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'cooldown_' + key;
+  if (cache.get(cacheKey)) return true;
+  cache.put(cacheKey, 'true', seconds);
+  return false;
+}
+
+// Busca en qué columna está un campo leyendo el encabezado REAL de la hoja,
+// nunca asumiendo el orden canónico.
+function colIndex_(sheet, fieldName) {
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  return headers.indexOf(fieldName) + 1;
 }
 
 function isValidRFC_(rfc) {
@@ -119,9 +180,11 @@ function doGet(e) {
     if (action === 'getJob') return jsonOut_(getJob_(e.parameter.id));
     if (action === 'getEmpresaProfile') return jsonOut_(getEmpresaProfile_(e.parameter.token));
     if (action === 'getCandidateProfile') return jsonOut_(getCandidateProfile_(e.parameter.token));
+    if (action === 'listCandidatesDirectory') return jsonOut_(listCandidatesDirectory_(e.parameter));
     if (action === 'getSocioeconomico') return jsonOut_(getSocioeconomico_(e.parameter));
     if (action === 'adminListCompanies') return jsonOut_(adminListCompanies_(e.parameter.adminKey));
     if (action === 'adminListAllJobs') return jsonOut_(adminListAllJobs_(e.parameter.adminKey));
+    if (action === 'adminListApplicationsForJob') return jsonOut_(adminListApplicationsForJob_(e.parameter));
     if (action === 'adminListCandidates') return jsonOut_(adminListCandidates_(e.parameter.adminKey));
     return jsonOut_({ error: 'Acción no reconocida: ' + action });
   } catch (err) {
@@ -141,6 +204,7 @@ function doPost(e) {
     if (action === 'adminLoginGoogle') return jsonOut_(adminLoginGoogle_(e.parameter));
     if (action === 'createJob') return jsonOut_(createJob_(e.parameter));
     if (action === 'updateJob') return jsonOut_(updateJob_(e.parameter));
+    if (action === 'setJobFeatured') return jsonOut_(setJobFeatured_(e.parameter));
     if (action === 'uploadLogo') return jsonOut_(uploadLogo_(e.parameter));
     if (action === 'applyJob') return jsonOut_(applyJob_(e.parameter));
     if (action === 'registerCandidate') return jsonOut_(registerCandidate_(e.parameter));
@@ -153,6 +217,8 @@ function doPost(e) {
     if (action === 'adminDeleteJob') return jsonOut_(adminDeleteJob_(e.parameter));
     if (action === 'adminDeleteCandidate') return jsonOut_(adminDeleteCandidate_(e.parameter));
     if (action === 'adminCreateExternalJob') return jsonOut_(adminCreateExternalJob_(e.parameter));
+    if (action === 'adminSetTriada') return jsonOut_(adminSetTriada_(e.parameter));
+    if (action === 'adminSetReporte') return jsonOut_(adminSetReporte_(e.parameter));
     if (action === 'adminExtractJobFromText') return jsonOut_(adminExtractJobFromText_(e.parameter));
     if (action === 'billingReceipt') return jsonOut_(billingReceipt_(e.parameter));
     return jsonOut_({ error: 'Acción no reconocida: ' + action });
@@ -188,7 +254,11 @@ function seedDemoAccounts() {
     empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('verificada') + 1).setValue(true);
     empresaSheet.getRange(rowIndex, empresaHeaders.indexOf('activa') + 1).setValue(true);
   } else {
-    empresaSheet.appendRow([newId_(), 'Empresa Demo — Sintropía Social', 'DEMO010101AB1', true, true, DEMO_EMPRESA_EMAIL, DEMO_EMPRESA_TOKEN, 'Pro', '', new Date().toISOString()]);
+    appendRowByHeader_(empresaSheet, {
+      id: newId_(), razonSocial: 'Empresa Demo — Sintropía Social', rfc: 'DEMO010101AB1',
+      verificada: true, activa: true, emailContacto: DEMO_EMPRESA_EMAIL,
+      companyToken: DEMO_EMPRESA_TOKEN, plan: 'Pro', logoUrl: '', fecha: new Date().toISOString(),
+    });
   }
 
   // --- Candidato demo ---
@@ -201,7 +271,10 @@ function seedDemoAccounts() {
     const rowIndex = candidatos.indexOf(candExistente) + 2;
     candSheet.getRange(rowIndex, candHeaders.indexOf('candidateToken') + 1).setValue(DEMO_CANDIDATO_TOKEN);
   } else {
-    candSheet.appendRow([newId_(), 'David Salgado (Demo)', DEMO_CANDIDATO_EMAIL, DEMO_CANDIDATO_TOKEN, '', new Date().toISOString()]);
+    appendRowByHeader_(candSheet, {
+      id: newId_(), nombre: 'David Salgado (Demo)', email: DEMO_CANDIDATO_EMAIL,
+      candidateToken: DEMO_CANDIDATO_TOKEN, cvLink: '', fecha: new Date().toISOString(),
+    });
   }
 
   Logger.log('Cuentas demo listas:');
@@ -257,6 +330,9 @@ function getEmpresaByToken_(token) {
 function registerEmpresa_(p) {
   if (!p.razonSocial || !p.emailContacto) return { error: 'Falta razón social o correo' };
   if (!isValidRFC_(p.rfc)) return { error: 'El RFC no tiene un formato válido. Revísalo e intenta de nuevo.' };
+  if (tooSoon_('reg_empresa_' + p.emailContacto.toLowerCase(), 20)) {
+    return { error: 'Ya recibimos tu solicitud hace un momento — espera unos segundos antes de intentar de nuevo.' };
+  }
 
   const sheet = getSheet_(SHEET_COMPANIES);
   const empresas = sheetToObjects_(sheet);
@@ -265,7 +341,10 @@ function registerEmpresa_(p) {
 
   const id = newId_();
   const companyToken = Utilities.getUuid();
-  sheet.appendRow([id, p.razonSocial, p.rfc.toUpperCase(), false, true, p.emailContacto, companyToken, PLAN_FREE, '', new Date().toISOString()]);
+  appendRowByHeader_(sheet, {
+    id, razonSocial: p.razonSocial, rfc: p.rfc.toUpperCase(), verificada: false, activa: true,
+    emailContacto: p.emailContacto, companyToken, plan: PLAN_FREE, logoUrl: '', fecha: new Date().toISOString(),
+  });
 
   try {
     MailApp.sendEmail({
@@ -307,6 +386,14 @@ function getEmpresaProfile_(token) {
     limiteMensual = FREE_PLAN_MONTHLY_POST_LIMIT;
   }
 
+  const limiteDestacadas = PLAN_FEATURED_MONTHLY_LIMIT[empresa.plan] || null;
+  let destacadasEsteMes = null;
+  if (limiteDestacadas) {
+    const currentMonthF = new Date().toISOString().slice(0, 7);
+    destacadasEsteMes = sheetToObjects_(getSheet_(SHEET_JOBS))
+      .filter((j) => String(j.empresaId) === String(empresa.id) && (j.destacadaEn || '').slice(0, 7) === currentMonthF).length;
+  }
+
   return {
     empresa: safeEmpresa,
     jobs: jobsWithCounts,
@@ -316,6 +403,9 @@ function getEmpresaProfile_(token) {
     limiteVacantes: limit === Infinity ? null : limit,
     publicadasEsteMes,
     limiteMensual,
+    limiteDestacadas: limiteDestacadas === Infinity ? null : limiteDestacadas,
+    puedeDestacar: !!limiteDestacadas,
+    destacadasEsteMes,
   };
 }
 
@@ -335,7 +425,7 @@ function uploadLogo_(p) {
   const sheet = getSheet_(SHEET_COMPANIES);
   const empresas = sheetToObjects_(sheet);
   const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
-  const logoColIndex = SHEET_HEADERS[SHEET_COMPANIES].indexOf('logoUrl') + 1;
+  const logoColIndex = colIndex_(sheet, 'logoUrl');
   sheet.getRange(rowIndex + 2, logoColIndex).setValue(logoUrl);
 
   return { logoUrl };
@@ -364,6 +454,9 @@ function listJobs_(params) {
     }
     return true;
   });
+  if (params.soloDestacadas === 'true') {
+    filtered = filtered.filter((j) => j.destacada === true);
+  }
   if (params.q) {
     const q = params.q.toLowerCase();
     filtered = filtered.filter((j) =>
@@ -443,23 +536,12 @@ function createJob_(p) {
 
   const sheet = getSheet_(SHEET_JOBS);
   const id = newId_();
-  sheet.appendRow([
-    id,
-    empresa.id,
-    'empresa',
-    empresa.razonSocial,
-    p.titulo || '',
-    p.modalidad || '',
-    p.ubicacion || '',
-    p.salarioMin || '',
-    p.salarioMax || '',
-    p.descripcion || '',
-    new Date().toISOString(),
-    false,
-    true,
-    '',
-    '',
-  ]);
+  appendRowByHeader_(sheet, {
+    id, empresaId: empresa.id, fuente: 'empresa', empresaNombre: empresa.razonSocial,
+    titulo: p.titulo || '', modalidad: p.modalidad || '', ubicacion: p.ubicacion || '',
+    salarioMin: p.salarioMin || '', salarioMax: p.salarioMax || '', descripcion: p.descripcion || '',
+    fecha: new Date().toISOString(), destacada: false, activa: true, linkExterno: '', notaAdmin: '',
+  });
 
   return { id };
 }
@@ -474,13 +556,39 @@ function updateJob_(p) {
   const rowIndex = jobs.findIndex((j) => String(j.id) === String(p.jobId) && String(j.empresaId) === String(empresa.id));
   if (rowIndex < 0) return { error: 'Vacante no encontrada' };
 
-  const headers = SHEET_HEADERS[SHEET_JOBS];
   const editableFields = ['titulo', 'modalidad', 'ubicacion', 'salarioMin', 'salarioMax', 'descripcion'];
   editableFields.forEach((field) => {
     if (p[field] !== undefined) {
-      sheet.getRange(rowIndex + 2, headers.indexOf(field) + 1).setValue(p[field]);
+      sheet.getRange(rowIndex + 2, colIndex_(sheet, field)).setValue(p[field]);
     }
   });
+
+  return { ok: true };
+}
+
+// Destacar/quitar destacada. Cada plan tiene un tope de cuántas vacantes
+// puede destacar POR MES (no cuántas puede tener destacadas a la vez).
+function setJobFeatured_(p) {
+  const empresa = getEmpresaByToken_(p.companyToken);
+  if (!empresa) return { error: 'No autorizado' };
+  const limiteMensual = PLAN_FEATURED_MONTHLY_LIMIT[empresa.plan];
+  if (!limiteMensual) return { error: 'Destacar vacantes no está incluido en tu plan actual. Mejora tu plan desde tu cuenta.' };
+
+  const sheet = getSheet_(SHEET_JOBS);
+  const jobs = sheetToObjects_(sheet);
+  const rowIndex = jobs.findIndex((j) => String(j.id) === String(p.jobId) && String(j.empresaId) === String(empresa.id));
+  if (rowIndex < 0) return { error: 'Vacante no encontrada' };
+
+  const activar = p.destacada === 'true';
+  if (activar) {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const usadasEsteMes = jobs.filter((j) => String(j.empresaId) === String(empresa.id) && (j.destacadaEn || '').slice(0, 7) === currentMonth).length;
+    if (usadasEsteMes >= limiteMensual) {
+      return { error: `Tu plan (${empresa.plan}) permite destacar hasta ${limiteMensual} vacante(s) por mes, y ya usaste ese límite este mes.` };
+    }
+    sheet.getRange(rowIndex + 2, colIndex_(sheet, 'destacadaEn')).setValue(new Date().toISOString());
+  }
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'destacada')).setValue(activar);
 
   return { ok: true };
 }
@@ -544,23 +652,13 @@ function adminCreateExternalJob_(p) {
 
   const sheet = getSheet_(SHEET_JOBS);
   const id = newId_();
-  sheet.appendRow([
-    id,
-    '',
-    'admin',
-    p.empresaNombre || 'Vacante externa',
-    p.titulo || '',
-    p.modalidad || '',
-    p.ubicacion || '',
-    p.salarioMin || '',
-    p.salarioMax || '',
-    p.descripcion || '',
-    new Date().toISOString(),
-    false,
-    true,
-    linkExterno,
-    p.notaAdmin || 'Sin relación directa con la vacante — solo referencia informativa.',
-  ]);
+  appendRowByHeader_(sheet, {
+    id, empresaId: '', fuente: 'admin', empresaNombre: p.empresaNombre || 'Vacante externa',
+    titulo: p.titulo || '', modalidad: p.modalidad || '', ubicacion: p.ubicacion || '',
+    salarioMin: p.salarioMin || '', salarioMax: p.salarioMax || '', descripcion: p.descripcion || '',
+    fecha: new Date().toISOString(), destacada: false, activa: true, linkExterno,
+    notaAdmin: p.notaAdmin || 'Sin relación directa con la vacante — solo referencia informativa.',
+  });
 
   return { id };
 }
@@ -580,12 +678,17 @@ function registerCandidate_(p) {
   } else {
     candidateId = newId_();
     candidateToken = Utilities.getUuid();
-    sheet.appendRow([candidateId, p.nombre || '', p.email || '', candidateToken, p.cvLink || '', new Date().toISOString()]);
+    appendRowByHeader_(sheet, {
+      id: candidateId, nombre: p.nombre || '', email: p.email || '',
+      candidateToken, cvLink: p.cvLink || '', fecha: new Date().toISOString(),
+      habilidades: p.habilidades || '',
+    });
   }
 
   if (candidate && rowIndex) {
-    if (p.nombre) sheet.getRange(rowIndex, 2).setValue(p.nombre);
-    if (p.cvLink) sheet.getRange(rowIndex, 5).setValue(p.cvLink);
+    if (p.nombre) sheet.getRange(rowIndex, colIndex_(sheet, 'nombre')).setValue(p.nombre);
+    if (p.cvLink) sheet.getRange(rowIndex, colIndex_(sheet, 'cvLink')).setValue(p.cvLink);
+    if (p.habilidades !== undefined) sheet.getRange(rowIndex, colIndex_(sheet, 'habilidades')).setValue(p.habilidades);
   }
 
   if (p.ingresoFamiliar || p.dependientesEconomicos || p.tipoVivienda || p.escolaridad || p.situacionVulnerabilidad || p.notasAdicionales) {
@@ -624,6 +727,32 @@ function upsertSocioeconomico_(candidateId, p) {
   } else {
     sheet.appendRow(rowData);
   }
+}
+
+// Directorio anónimo de candidatos — cualquier empresa con sesión activa
+// puede navegarlo, sin importar su plan. Deliberadamente NUNCA incluye
+// nombre, email, teléfono, cvLink, ni nada del perfil socioeconómico —
+// eso solo se revela candidato por candidato, si él autoriza una solicitud
+// de contacto (ver requestContact_).
+function listCandidatesDirectory_(p) {
+  const empresa = getEmpresaByToken_(p.companyToken);
+  if (!empresa) return { error: 'No autorizado' };
+
+  const candidatos = sheetToObjects_(getSheet_(SHEET_CANDIDATES));
+  let items = candidatos
+    .filter((c) => (c.habilidades || '').trim() !== '') // sin habilidades no hay nada que mostrar/comparar
+    .map((c) => ({
+      candidatoId: c.id,
+      apodo: 'Candidato #' + String(c.id).slice(-4).toUpperCase(),
+      habilidades: c.habilidades,
+    }));
+
+  if (p.q) {
+    const q = p.q.toLowerCase();
+    items = items.filter((c) => c.habilidades.toLowerCase().includes(q));
+  }
+
+  return { items, puedeSolicitarContacto: PLANS_WITH_SOCIOECONOMIC_ACCESS.includes(empresa.plan) };
 }
 
 function getCandidateProfile_(token) {
@@ -668,23 +797,20 @@ function applyJob_(p) {
   const job = getJobRaw_(p.jobId);
   if (!job) return { error: 'Vacante no encontrada' };
   if (job.fuente === 'admin') return { error: 'Esta es una vacante externa: postúlate directamente en el sitio original.' };
+  if (tooSoon_('apply_' + (p.email || '').toLowerCase() + '_' + p.jobId, 15)) {
+    return { error: 'Ya recibimos tu postulación a esta vacante hace un momento.' };
+  }
 
   const candidateResult = registerCandidate_({ nombre: p.nombre, email: p.email, cvLink: p.cvLink });
 
   const sheet = getSheet_(SHEET_APPLICATIONS);
   const id = newId_();
-  sheet.appendRow([
-    id,
-    p.jobId || '',
-    candidateResult.id,
-    p.nombre || '',
-    p.email || '',
-    p.telefono || '',
-    p.perfil || '',
-    p.matchScore || '',
-    p.autorizoSocioeconomico === 'true',
-    new Date().toISOString(),
-  ]);
+  appendRowByHeader_(sheet, {
+    id, jobId: p.jobId || '', candidatoId: candidateResult.id, nombre: p.nombre || '',
+    email: p.email || '', telefono: p.telefono || '', perfil: p.perfil || '',
+    matchScore: p.matchScore || '', autorizoSocioeconomico: p.autorizoSocioeconomico === 'true',
+    fecha: new Date().toISOString(),
+  });
 
   try {
     const empresa = sheetToObjects_(getSheet_(SHEET_COMPANIES)).find((c) => String(c.id) === String(job.empresaId));
@@ -751,6 +877,7 @@ function getSocioeconomico_(params) {
 /* ---------- Administración de la plataforma (Sintropía Social) ---------- */
 
 function adminListCompanies_(adminKey) {
+  if (adminLockoutActive_()) return { error: 'Demasiados intentos fallidos. Espera 15 minutos antes de volver a intentar.' };
   if (!checkAdmin_(adminKey)) return { error: 'No autorizado' };
   return { items: sheetToObjects_(getSheet_(SHEET_COMPANIES)) };
 }
@@ -761,7 +888,7 @@ function adminSetPlan_(p) {
   const empresas = sheetToObjects_(sheet);
   const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
   if (rowIndex < 0) return { error: 'Empresa no encontrada' };
-  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('plan') + 1).setValue(p.plan);
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'plan')).setValue(p.plan);
   return { ok: true };
 }
 
@@ -780,7 +907,7 @@ function paypalWebhookConfirmed_(p) {
   if (rowIndex < 0) return { error: 'Empresa no encontrada para ese companyToken' };
 
   const empresa = empresas[rowIndex];
-  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('plan') + 1).setValue(p.plan);
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'plan')).setValue(p.plan);
 
   try {
     MailApp.sendEmail({
@@ -813,7 +940,7 @@ function adminSetVerificada_(p) {
   const empresas = sheetToObjects_(sheet);
   const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
   if (rowIndex < 0) return { error: 'Empresa no encontrada' };
-  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('verificada') + 1).setValue(p.verificada === 'true');
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'verificada')).setValue(p.verificada === 'true');
   return { ok: true };
 }
 
@@ -826,11 +953,48 @@ function adminSetEmpresaActive_(p) {
   const empresas = sheetToObjects_(sheet);
   const rowIndex = empresas.findIndex((c) => c.companyToken === p.companyToken);
   if (rowIndex < 0) return { error: 'Empresa no encontrada' };
-  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_COMPANIES].indexOf('activa') + 1).setValue(p.activa === 'true');
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'activa')).setValue(p.activa === 'true');
   return { ok: true };
 }
 
 /* ---------- Administración de vacantes (todas, sin importar la fuente) ---------- */
+
+/* ---------- Curaduría (triada de candidatos, planes Pro en adelante) ---------- */
+
+// Devuelve las postulaciones de una vacante específica, con el correo/nombre
+// del candidato — para que el admin (Sintropía) pueda elegir la triada.
+function adminListApplicationsForJob_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const applications = sheetToObjects_(getSheet_(SHEET_APPLICATIONS));
+  const items = applications.filter((a) => String(a.jobId) === String(p.jobId));
+  return { items };
+}
+
+// Marca/desmarca a un candidato como parte de la triada de una vacante.
+// No pone un límite duro de 3 aquí — el admin es de confianza y el límite
+// real (2 vs 5 vs ilimitado) se cobra y se acuerda fuera de la plataforma;
+// esto es una herramienta de registro, no un candado de negocio.
+function adminSetTriada_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const sheet = getSheet_(SHEET_APPLICATIONS);
+  const applications = sheetToObjects_(sheet);
+  const rowIndex = applications.findIndex((a) => String(a.id) === String(p.applicationId));
+  if (rowIndex < 0) return { error: 'Postulación no encontrada' };
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'enTriada')).setValue(p.enTriada === 'true');
+  return { ok: true };
+}
+
+// Guarda/edita el texto del reporte (entrevista inicial, competencias, etc.)
+// de un candidato específico.
+function adminSetReporte_(p) {
+  if (!checkAdmin_(p.adminKey)) return { error: 'No autorizado' };
+  const sheet = getSheet_(SHEET_APPLICATIONS);
+  const applications = sheetToObjects_(sheet);
+  const rowIndex = applications.findIndex((a) => String(a.id) === String(p.applicationId));
+  if (rowIndex < 0) return { error: 'Postulación no encontrada' };
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'reporteAdmin')).setValue(p.reporte || '');
+  return { ok: true };
+}
 
 function adminListAllJobs_(adminKey) {
   if (!checkAdmin_(adminKey)) return { error: 'No autorizado' };
@@ -846,7 +1010,7 @@ function adminSetJobActive_(p) {
   const jobs = sheetToObjects_(sheet);
   const rowIndex = jobs.findIndex((j) => String(j.id) === String(p.jobId));
   if (rowIndex < 0) return { error: 'Vacante no encontrada' };
-  sheet.getRange(rowIndex + 2, SHEET_HEADERS[SHEET_JOBS].indexOf('activa') + 1).setValue(p.activa === 'true');
+  sheet.getRange(rowIndex + 2, colIndex_(sheet, 'activa')).setValue(p.activa === 'true');
   return { ok: true };
 }
 
@@ -915,18 +1079,12 @@ function adminDeleteCandidate_(p) {
 
 function billingReceipt_(p) {
   const sheet = getSheet_(SHEET_PAYMENTS);
-  sheet.appendRow([
-    new Date().toISOString(),
-    p.plan || '',
-    p.subscriptionId || '',
-    p.payerName || '',
-    p.payerEmail || '',
-    p.razonSocial || '',
-    p.rfc || '',
-    p.direccionFiscal || '',
-    p.usoCFDI || '',
-    p.companyEmail || '',
-  ]);
+  appendRowByHeader_(sheet, {
+    fecha: new Date().toISOString(), plan: p.plan || '', subscriptionId: p.subscriptionId || '',
+    payerName: p.payerName || '', payerEmail: p.payerEmail || '', razonSocial: p.razonSocial || '',
+    rfc: p.rfc || '', direccionFiscal: p.direccionFiscal || '', usoCFDI: p.usoCFDI || '',
+    companyEmail: p.companyEmail || '',
+  });
 
   const bodyInterno =
     `Nueva suscripción a JobMatch Pro.\n\n` +

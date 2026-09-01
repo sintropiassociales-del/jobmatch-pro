@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candidatos — JobMatch Pro</title>
+<meta name="description" content="Directorio anónimo de candidatos organizado por habilidades — el match se basa en competencias, no en quién es la persona.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
+    </div>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="candidatos.html">Candidatos</a>
+      <a href="registro-empresa.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="portal-empresa.html">Acceso empresas</a>
+      <a href="registro-empresa.html" class="nav-cta">Publicar gratis</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="mini-hero">
+  <div class="container" style="max-width:760px">
+    <div class="eyebrow">Para empresas</div>
+    <h1>Candidatos por habilidades, no por quién es</h1>
+    <p>Aquí comparamos lo que la vacante necesita contra lo que la persona sabe hacer — antes de saber su nombre, dónde vive o cómo contactarla. Es la misma lógica en la que creemos: el mejor match, no el más visible.</p>
+  </div>
+</section>
+
+<section class="section content-lift" style="padding-top:0">
+  <div class="container" style="max-width:1000px">
+
+    <!-- ============ ACCESO ============ -->
+    <div id="access-view">
+      <div class="form-card" style="max-width:480px;margin-bottom:16px">
+        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Entrar con Google</p>
+        <div id="google-btn"></div>
+        <div class="status-msg" id="google-login-status"></div>
+      </div>
+      <div style="max-width:480px;text-align:center;color:var(--ink-soft);font-size:.82rem;margin-bottom:16px">— o —</div>
+      <div class="form-card" style="max-width:480px">
+        <div class="field">
+          <label for="login-token">Código de acceso de tu empresa</label>
+          <input type="text" id="login-token" placeholder="El mismo que usas en tu panel de empresa">
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+        <div class="status-msg" id="login-status"></div>
+        <p style="text-align:center;margin-top:16px;font-size:.85rem">¿No tienes cuenta? <a href="registro-empresa.html" style="color:var(--purple-700);font-weight:600">Créala gratis →</a></p>
+      </div>
+    </div>
+
+    <!-- ============ DIRECTORIO (oculto hasta entrar) ============ -->
+    <div id="directory-view" style="display:none">
+      <div id="plan-locked-note" style="display:none;background:var(--purple-100);color:var(--purple-700);padding:14px 16px;border-radius:var(--radius-sm);font-size:.85rem;margin-bottom:20px">
+        🔒 Con tu plan puedes navegar el directorio, pero solicitar contacto directo con un candidato es una función de los planes Business y A la medida.
+      </div>
+
+      <div class="form-card" style="margin-bottom:24px">
+        <div class="field" style="margin-bottom:0">
+          <label for="skill-search">Buscar por habilidad</label>
+          <input type="text" id="skill-search" placeholder="Ej. Excel, atención a clientes, Python...">
+        </div>
+      </div>
+
+      <div id="directory-count" style="font-size:.88rem;color:var(--ink-soft);margin-bottom:16px"></div>
+      <div class="grid-jobs" id="directory-list"></div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <span><a href="index.html">Volver al inicio</a> · <a href="admin-plataforma.html" style="opacity:.6">Panel interno</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  let currentEmpresaToken = null;
+  let currentPuedeSolicitar = false;
+
+  window.addEventListener('load', () => {
+    if (typeof google === 'undefined' || !google.accounts) return;
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
+    google.accounts.id.renderButton(document.getElementById('google-btn'), {
+      theme: 'outline', size: 'large', text: 'signin_with', width: 320,
+    });
+  });
+
+  async function handleGoogleLogin(response) {
+    const status = document.getElementById('google-login-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Verificando...';
+    try {
+      const data = await JobMatchAPI.loginEmpresaGoogle(response.credential);
+      if (data.error) throw new Error(data.error);
+      unlock(data.companyToken);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  }
+
+  document.getElementById('btn-login').addEventListener('click', () => {
+    const token = document.getElementById('login-token').value.trim();
+    if (token) unlock(token);
+  });
+
+  async function unlock(token) {
+    const status = document.getElementById('login-status');
+    status.className = 'status-msg show pending';
+    status.textContent = 'Verificando...';
+    try {
+      const data = await JobMatchAPI.listCandidatesDirectory(token);
+      if (data.error) throw new Error(data.error);
+      localStorage.setItem(COMPANY_TOKEN_KEY, token);
+      currentEmpresaToken = token;
+      currentPuedeSolicitar = data.puedeSolicitarContacto;
+      document.getElementById('access-view').style.display = 'none';
+      document.getElementById('directory-view').style.display = 'block';
+      document.getElementById('plan-locked-note').style.display = currentPuedeSolicitar ? 'none' : 'block';
+      renderDirectory(data.items);
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  }
+
+  function renderDirectory(items) {
+    document.getElementById('directory-count').textContent = `${items.length} candidato(s) con habilidades registradas`;
+    const list = document.getElementById('directory-list');
+    if (items.length === 0) {
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Todavía no hay candidatos con habilidades registradas.</p></div>`;
+      return;
+    }
+    list.innerHTML = items.map((c) => `
+      <div class="job-card">
+        <div class="tag-row"><span class="tag">${escapeHtml(c.apodo)}</span></div>
+        <div class="tag-row" style="margin-top:6px">
+          ${c.habilidades.split(',').map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h.trim())}</span>`).join('')}
+        </div>
+        <div class="foot" style="margin-top:auto">
+          ${currentPuedeSolicitar
+            ? `<button class="btn btn-ghost-orange" style="padding:9px 16px;font-size:.82rem;width:100%" disabled title="Próximamente">Solicitar contacto (próximamente)</button>`
+            : `<span class="badge-pill" style="opacity:.6">Contacto directo: plan Business+</span>`}
+        </div>
+      </div>`).join('');
+  }
+
+  let searchTimeout;
+  document.getElementById('skill-search').addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      const data = await JobMatchAPI.listCandidatesDirectory(currentEmpresaToken, e.target.value);
+      renderDirectory(data.items || []);
+    }, 300);
+  });
+
+  const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
+  if (saved) unlock(saved);
+</script>
+</body>
+</html>
