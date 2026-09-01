@@ -61,8 +61,21 @@
     <!-- ============ DIRECTORIO (oculto hasta entrar) ============ -->
     <div id="directory-view" style="display:none">
       <div id="plan-locked-note" style="display:none;background:var(--purple-100);color:var(--purple-700);padding:14px 16px;border-radius:var(--radius-sm);font-size:.85rem;margin-bottom:20px">
-        🔒 Con tu plan puedes navegar el directorio, pero solicitar contacto directo con un candidato es una función de los planes Business y A la medida.
+        🔒 Cualquier plan puede navegar el directorio. Comparar candidatos contra una vacante específica y solicitar contacto son funciones de los planes Business y A la medida.
       </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button class="btn btn-primary" id="btn-view-list" style="padding:9px 18px;font-size:.85rem">📋 Vista de lista</button>
+        <button class="btn btn-ghost" id="btn-view-map" style="padding:9px 18px;font-size:.85rem">🕸️ Vista de mapa</button>
+      </div>
+
+      <!-- Mapa estilo Obsidian: habilidades como nodos centrales, candidatos conectados a ellas -->
+      <div id="map-view" style="display:none;margin-bottom:24px">
+        <div id="graph-container" style="background:var(--purple-900);border-radius:var(--radius-lg);height:560px;position:relative;overflow:hidden"></div>
+        <div id="graph-panel" style="display:none;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lift);padding:20px;margin-top:16px"></div>
+      </div>
+
+      <div id="list-view">
 
       <div class="form-card" style="margin-bottom:24px">
         <p style="font-size:.88rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Comparar contra una vacante</p>
@@ -86,6 +99,7 @@
 
       <div id="directory-count" style="font-size:.88rem;color:var(--ink-soft);margin-bottom:16px"></div>
       <div class="grid-jobs" id="directory-list"></div>
+      </div>
     </div>
 
   </div>
@@ -102,9 +116,12 @@
 
 <script src="assets/js/app.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
   let currentEmpresaToken = null;
   let currentPuedeSolicitar = false;
+  let currentView = 'list';
+  let currentShowScore = false;
 
   window.addEventListener('load', () => {
     if (typeof google === 'undefined' || !google.accounts) return;
@@ -133,6 +150,8 @@
     if (token) unlock(token);
   });
 
+  let currentItems = [];
+
   async function unlock(token) {
     const status = document.getElementById('login-status');
     status.className = 'status-msg show pending';
@@ -145,7 +164,8 @@
       currentPuedeSolicitar = data.puedeSolicitarContacto;
       document.getElementById('access-view').style.display = 'none';
       document.getElementById('directory-view').style.display = 'block';
-      document.getElementById('plan-locked-note').style.display = currentPuedeSolicitar ? 'none' : 'block';
+      document.getElementById('plan-locked-note').style.display = 'block';
+      currentItems = data.items;
       renderDirectory(data.items);
     } catch (err) {
       status.className = 'status-msg show err';
@@ -154,6 +174,9 @@
   }
 
   function renderDirectory(items, { showScore = false } = {}) {
+    currentItems = items;
+    currentShowScore = showScore;
+    if (currentView === 'map') renderGraph(items, showScore);
     document.getElementById('directory-count').textContent = showScore
       ? `${items.length} candidato(s) con habilidades en común`
       : `${items.length} candidato(s) con habilidades registradas`;
@@ -260,6 +283,114 @@
 
   const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
   if (saved) unlock(saved);
+
+  // ---------- Toggle Vista de lista / Vista de mapa ----------
+  document.getElementById('btn-view-list').addEventListener('click', () => {
+    currentView = 'list';
+    document.getElementById('list-view').style.display = 'block';
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('btn-view-list').className = 'btn btn-primary';
+    document.getElementById('btn-view-map').className = 'btn btn-ghost';
+  });
+
+  document.getElementById('btn-view-map').addEventListener('click', () => {
+    currentView = 'map';
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('map-view').style.display = 'block';
+    document.getElementById('btn-view-map').className = 'btn btn-primary';
+    document.getElementById('btn-view-list').className = 'btn btn-ghost';
+    renderGraph(currentItems, currentShowScore);
+  });
+
+  // ---------- Mapa estilo Obsidian: habilidades como nodos centrales,
+  // candidatos conectados a ellas. Colores de la marca: morado = candidatos,
+  // naranja = habilidades (mismo código conceptual que el resto del sitio).
+  let simulation = null;
+
+  function renderGraph(items, showScore) {
+    const container = document.getElementById('graph-container');
+    container.innerHTML = '';
+    if (!items || items.length === 0) {
+      container.innerHTML = `<p style="color:#fff;opacity:.7;text-align:center;padding-top:240px">No hay candidatos que mostrar en el mapa todavía.</p>`;
+      return;
+    }
+
+    const width = container.clientWidth || 900;
+    const height = 560;
+
+    // Construir nodos: uno por candidato + uno por cada habilidad única
+    const skillNodes = new Map();
+    const nodes = [];
+    const links = [];
+
+    items.forEach((c) => {
+      nodes.push({ id: 'cand-' + c.candidatoId, tipo: 'candidato', label: c.apodo, data: c });
+      c.habilidades.split(',').map((h) => h.trim()).filter(Boolean).forEach((h) => {
+        const key = h.toLowerCase();
+        if (!skillNodes.has(key)) {
+          skillNodes.set(key, { id: 'skill-' + key, tipo: 'habilidad', label: h });
+          nodes.push(skillNodes.get(key));
+        }
+        links.push({ source: 'cand-' + c.candidatoId, target: 'skill-' + key });
+      });
+    });
+
+    const svg = d3.select(container).append('svg')
+      .attr('width', width).attr('height', height)
+      .attr('viewBox', [0, 0, width, height]);
+
+    const g = svg.append('g');
+
+    // Zoom + pan, como en Obsidian
+    svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', (event) => g.attr('transform', event.transform)));
+
+    const link = g.append('g').attr('stroke', 'rgba(255,255,255,.15)')
+      .selectAll('line').data(links).join('line').attr('stroke-width', 1);
+
+    const node = g.append('g').selectAll('circle').data(nodes).join('circle')
+      .attr('r', (d) => d.tipo === 'habilidad' ? 10 : 7)
+      .attr('fill', (d) => d.tipo === 'habilidad' ? 'var(--orange-500, #FF6B1A)' : 'var(--purple-500, #8B4CF7)')
+      .attr('stroke', '#fff').attr('stroke-width', 1.2)
+      .style('cursor', 'pointer')
+      .call(d3.drag()
+        .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+        .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+        .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+      .on('click', (event, d) => { if (d.tipo === 'candidato') showGraphPanel(d.data, showScore); });
+
+    const label = g.append('g').selectAll('text').data(nodes).join('text')
+      .text((d) => d.label)
+      .attr('font-size', (d) => d.tipo === 'habilidad' ? '11px' : '10px')
+      .attr('fill', '#fff').attr('opacity', .85)
+      .attr('dx', 12).attr('dy', 4)
+      .style('pointer-events', 'none').style('font-family', 'var(--font-body)');
+
+    simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
+      .force('charge', d3.forceManyBody().strength(-140))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collide', d3.forceCollide().radius(24))
+      .on('tick', () => {
+        link.attr('x1', (d) => d.source.x).attr('y1', (d) => d.source.y)
+          .attr('x2', (d) => d.target.x).attr('y2', (d) => d.target.y);
+        node.attr('cx', (d) => d.x).attr('cy', (d) => d.y);
+        label.attr('x', (d) => d.x).attr('y', (d) => d.y);
+      });
+  }
+
+  function showGraphPanel(c, showScore) {
+    const panel = document.getElementById('graph-panel');
+    panel.style.display = 'block';
+    panel.innerHTML = `
+      <div class="tag-row" style="justify-content:space-between">
+        <span class="tag">${escapeHtml(c.apodo)}</span>
+        ${showScore ? `<span class="tag tag-orange">${c.score}% en común</span>` : ''}
+      </div>
+      <div class="tag-row" style="margin-top:10px">
+        ${c.habilidades.split(',').map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h.trim())}</span>`).join('')}
+      </div>
+      <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>`;
+  }
 </script>
 </body>
 </html>

@@ -52,6 +52,9 @@
     </div>
 
     <div id="admin-panel" style="display:none;margin-top:32px">
+      <div style="text-align:right;margin-bottom:12px">
+        <button class="btn btn-ghost" id="btn-admin-logout" style="padding:8px 16px;font-size:.82rem">Salir</button>
+      </div>
       <div class="tabs">
         <button class="tab-btn active" data-tab="empresas">Empresas y planes</button>
         <button class="tab-btn" data-tab="vacantes-admin">Vacantes</button>
@@ -176,6 +179,7 @@
 <script>
   const PLAN_OPTIONS = ['Gratis', 'Starter', 'Pro', 'Business', 'A la medida'];
   let adminKey = '';
+  const ADMIN_KEY_STORAGE = 'jobmatch_admin_session';
 
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -213,6 +217,13 @@
     if (key) unlockAdmin(key);
   });
 
+  document.getElementById('btn-admin-logout').addEventListener('click', () => {
+    localStorage.removeItem(ADMIN_KEY_STORAGE);
+    adminKey = '';
+    document.getElementById('access-view').style.display = 'block';
+    document.getElementById('admin-panel').style.display = 'none';
+  });
+
   async function unlockAdmin(key) {
     const status = document.getElementById('unlock-status');
     status.className = 'status-msg show pending';
@@ -221,6 +232,7 @@
       const data = await JobMatchAPI.adminListCompanies(key);
       if (data.error) throw new Error(data.error);
       adminKey = key;
+      localStorage.setItem(ADMIN_KEY_STORAGE, key);
       document.getElementById('access-view').style.display = 'none';
       document.getElementById('admin-panel').style.display = 'block';
       renderCompanies(data.items);
@@ -229,8 +241,12 @@
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
+      localStorage.removeItem(ADMIN_KEY_STORAGE);
     }
   }
+
+  const savedAdminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
+  if (savedAdminKey) unlockAdmin(savedAdminKey);
 
   function renderCompanies(items) {
     const list = document.getElementById('companies-list');
