@@ -188,29 +188,39 @@
       if (jobs.items && jobs.items.length > 0) {
         document.getElementById('featured-jobs').innerHTML = jobs.items.map(featuredJobCardHTML).join('');
         document.getElementById('featured-section').style.display = 'block';
+        return jobs.items.map((j) => String(j.id));
       }
+      return [];
     } catch (e) {
       // Si falla, simplemente no se muestra la sección.
+      return [];
     }
   }
 
-  async function loadLatest() {
+  // "Recién publicadas" no debe repetir las vacantes que ya se ven arriba en
+  // "Destacadas" — antes las mostraba dos veces (ahí sí contaba como 5
+  // tarjetas en pantalla aunque solo hubiera 4 vacantes reales, que es lo
+  // que decía correctamente el contador "Vacantes activas"). featuredIds
+  // son los ids ya mostrados en el carrusel de destacadas, para excluirlos aquí.
+  async function loadLatest(featuredIds) {
     const el = document.getElementById('latest-jobs');
     el.innerHTML = skeletonCards(3);
     try {
-      const jobs = await JobMatchAPI.listJobs({ limit: 3, orden: 'reciente' });
+      // Pedimos algunas de más (destacadas + 3) para poder quitar las
+      // repetidas y aun así completar 3 tarjetas en "recién publicadas".
+      const jobs = await JobMatchAPI.listJobs({ limit: featuredIds.length + 3, orden: 'reciente' });
       document.getElementById('stat-jobs').textContent = jobs.total ?? jobs.items?.length ?? '—';
-      if (!jobs.items || jobs.items.length === 0) {
+      const items = (jobs.items || []).filter((j) => !featuredIds.includes(String(j.id))).slice(0, 3);
+      if (items.length === 0) {
         el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Todavía no hay vacantes publicadas. ¡Sé la primera empresa!</p></div>`;
         return;
       }
-      el.innerHTML = jobs.items.map(jobCardHTML).join('');
+      el.innerHTML = items.map(jobCardHTML).join('');
     } catch (e) {
       el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>Configura APPS_SCRIPT_URL en assets/js/app.js para conectar las vacantes reales.</p></div>`;
     }
   }
-  loadFeatured();
-  loadLatest();
+  loadFeatured().then((featuredIds) => loadLatest(featuredIds));
 </script>
 </body>
 </html>
