@@ -186,7 +186,7 @@
     try {
       const jobs = await JobMatchAPI.listJobs({ soloDestacadas: 'true', limit: 3, orden: 'reciente' });
       if (jobs.items && jobs.items.length > 0) {
-        document.getElementById('featured-jobs').innerHTML = jobs.items.map(jobCardHTML).join('');
+        document.getElementById('featured-jobs').innerHTML = jobs.items.map(featuredJobCardHTML).join('');
         document.getElementById('featured-section').style.display = 'block';
       }
     } catch (e) {
