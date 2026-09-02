@@ -6,7 +6,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbB
 const CF_WORKER_URL = "jobmatch-ai-matching.coordinador1-ce.workers.dev";
 const GOOGLE_CLIENT_ID = "1048097062338-9dj7eluj20ie8721vt5rfdgi1djk7ihj.apps.googleusercontent.com";
 const LINKEDIN_CLIENT_ID = "78058rf4ovum4p"; // opcional — solo si activaste "Entrar con LinkedIn"
-const CF_LINKEDIN_WORKER_URL = "jobmatch-linkedin-auth.coordinador1-ce.workers.dev"; // opcional, ver docs/SETUP-GUIDE.md
+const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.workers.dev"; // opcional, ver docs/SETUP-GUIDE.md
 
 const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
 const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
