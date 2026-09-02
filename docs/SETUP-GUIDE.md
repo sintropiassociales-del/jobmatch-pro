@@ -311,6 +311,78 @@ rápido dónde vive cada cosa.
   Ejecutar) — crea 20 candidatos de prueba, identificables porque su correo
   termina en `@jobmatch-demo.invalid`.
 
+## 9. (Opcional) "Entrar con LinkedIn" para candidatos
+
+Esto es aparte y opcional — el sitio funciona perfecto sin esto (los
+candidatos ya pueden entrar con su código de acceso). Solo lo necesitas si
+quieres darles también la opción de entrar con un clic desde LinkedIn.
+
+**Importante antes de empezar**: esto solo confirma la identidad del
+candidato (nombre y correo) — LinkedIn no permite importar automáticamente
+experiencia, habilidades ni el CV de nadie por esta vía (esas APIs están
+cerradas desde hace años, solo las tienen socios con convenio directo). El
+candidato sigue teniendo que escribir sus habilidades a mano en su perfil.
+
+### 9.1 Crea la app en LinkedIn
+
+1. Ve a [www.linkedin.com/developers/apps](https://www.linkedin.com/developers/apps)
+   → **Create app**.
+2. Llena el formulario (nombre, tu página de empresa de LinkedIn — si no
+   tienes una, créala rápido, es obligatoria para este paso, logo, etc.).
+3. Ya dentro de tu app → pestaña **Products** → busca **"Sign In with
+   LinkedIn using OpenID Connect"** → **Request access** (normalmente se
+   aprueba solo, sin revisión manual).
+4. Pestaña **Auth** → copia el **Client ID** y el **Client Secret** (vas a
+   necesitar los dos).
+5. En la misma pestaña, sección **Authorized redirect URLs** → agrega la URL
+   exacta de tu página de candidato, ej.
+   `https://tu-usuario.github.io/jobmatch-pro/candidato.html` — tiene que
+   coincidir letra por letra con la que uses más abajo, o LinkedIn rechaza
+   el login.
+
+### 9.2 Instala el Worker de LinkedIn
+
+1. En Cloudflare → **Workers & Pages → Create → Create Worker**, nómbralo
+   `jobmatch-linkedin-auth`.
+2. Pega el contenido de `cloudflare-worker/linkedin-auth-worker.js` de este
+   proyecto → **Deploy**.
+3. **Settings → Variables and Secrets** → agrega:
+   - `LINKEDIN_CLIENT_ID` (Secret) — el que copiaste en 9.1.
+   - `LINKEDIN_CLIENT_SECRET` (Secret) — el que copiaste en 9.1.
+   - `LINKEDIN_REDIRECT_URI` (texto plano) — la misma URL exacta del paso
+     9.1.5.
+   - `APPS_SCRIPT_URL` (texto plano) — la misma que ya usas en los otros
+     Workers.
+   - `LINKEDIN_SHARED_SECRET` (Secret) — invéntate una cadena larga
+     cualquiera, como hiciste con `WEBHOOK_SHARED_SECRET` de PayPal.
+4. Copia la URL de este Worker (algo como
+   `https://jobmatch-linkedin-auth.tu-usuario.workers.dev`).
+
+### 9.3 Configura la misma clave en Apps Script
+
+1. En Apps Script → ⚙️ **Configuración del proyecto → Propiedades del
+   script → Añadir propiedad**.
+2. Nombre: `LINKEDIN_SHARED_SECRET`. Valor: **exactamente** el mismo texto
+   que pusiste en el Worker en el paso anterior.
+
+### 9.4 Conecta las URLs en el sitio
+
+Abre `assets/js/app.js` y reemplaza:
+
+```js
+const LINKEDIN_CLIENT_ID = "PEGA_AQUI_TU_LINKEDIN_CLIENT_ID";
+const CF_LINKEDIN_WORKER_URL = "PEGA_AQUI_LA_URL_DEL_WORKER_DE_LINKEDIN";
+```
+
+### 9.5 Probar que funciona
+
+1. Ve a `candidato.html` → botón **"Entrar con LinkedIn"**.
+2. Te manda a LinkedIn, autorizas, y regresas a `candidato.html` — debería
+   entrarte directo a tu perfil (o crear uno nuevo si es la primera vez).
+3. Si ves un error, revisa primero que la URL de redirección sea **idéntica**
+   en los tres lugares (tu app de LinkedIn, la variable del Worker, y desde
+   dónde estás probando) — es el error más común en este tipo de login.
+
 ---
 
 > **Nota de seguridad**: los códigos de acceso (empresa y candidato) funcionan
