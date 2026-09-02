@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Candidatos — JobMatch Pro</title>
-<meta name="description" content="Directorio anónimo de candidatos organizado por habilidades — el match se basa en competencias, no en quién es la persona.">
+<meta name="description" content="Directorio anónimo y público de candidatos organizado por habilidades — el match se basa en competencias, no en quién es la persona.">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -30,56 +30,44 @@
 
 <section class="mini-hero">
   <div class="container" style="max-width:760px">
-    <div class="eyebrow">Para empresas</div>
+    <div class="eyebrow">Directorio público</div>
     <h1>Candidatos por habilidades, no por quién es</h1>
-    <p>Aquí comparamos lo que la vacante necesita contra lo que la persona sabe hacer — antes de saber su nombre, dónde vive o cómo contactarla. Es la misma lógica en la que creemos: el mejor match, no el más visible.</p>
+    <p>Cualquiera puede navegar este directorio — nunca vas a ver nombre, correo ni ubicación de nadie aquí, solo lo que saben hacer. Comparar contra una vacante y solicitar contacto directo es exclusivo de los planes Business y A la medida.</p>
   </div>
 </section>
 
 <section class="section content-lift" style="padding-top:0">
-  <div class="container" style="max-width:1000px">
+  <div class="container" style="max-width:1100px">
 
-    <!-- ============ ACCESO ============ -->
-    <div id="access-view">
-      <div class="form-card" style="max-width:480px;margin-bottom:16px">
-        <p style="font-size:.88rem;font-weight:600;color:var(--purple-900)">Entrar con Google</p>
+    <!-- Sesión de empresa opcional: solo desbloquea comparar/contactar -->
+    <div id="empresa-session-card" class="form-card" style="max-width:520px;margin-bottom:20px">
+      <div id="session-logged-out">
+        <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">¿Tienes cuenta de empresa? Entra para comparar candidatos y solicitar contacto</p>
         <div id="google-btn"></div>
-        <div class="status-msg" id="google-login-status"></div>
-      </div>
-      <div style="max-width:480px;text-align:center;color:var(--ink-soft);font-size:.82rem;margin-bottom:16px">— o —</div>
-      <div class="form-card" style="max-width:480px">
-        <div class="field">
-          <label for="login-token">Código de acceso de tu empresa</label>
-          <input type="text" id="login-token" placeholder="El mismo que usas en tu panel de empresa">
+        <div style="text-align:center;color:var(--ink-soft);font-size:.8rem;margin:10px 0">— o —</div>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="login-token" placeholder="Código de acceso de tu empresa" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
+          <button class="btn btn-primary" id="btn-login">Entrar</button>
         </div>
-        <button class="btn btn-primary btn-block" id="btn-login">Entrar</button>
         <div class="status-msg" id="login-status"></div>
-        <p style="text-align:center;margin-top:16px;font-size:.85rem">¿No tienes cuenta? <a href="registro-empresa.html" style="color:var(--purple-700);font-weight:600">Créala gratis →</a></p>
+      </div>
+      <div id="session-logged-in" style="display:none">
+        <p style="font-size:.85rem">✅ Sesión de empresa activa — <span id="session-plan-label"></span></p>
+        <button class="btn btn-ghost" id="btn-session-logout" style="padding:8px 16px;font-size:.82rem;margin-top:8px">Salir</button>
       </div>
     </div>
 
-    <!-- ============ DIRECTORIO (oculto hasta entrar) ============ -->
-    <div id="directory-view" style="display:none">
-      <div id="plan-locked-note" style="display:none;background:var(--purple-100);color:var(--purple-700);padding:14px 16px;border-radius:var(--radius-sm);font-size:.85rem;margin-bottom:20px">
-        🔒 Cualquier plan puede navegar el directorio. Comparar candidatos contra una vacante específica y solicitar contacto son funciones de los planes Business y A la medida.
-      </div>
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <button class="btn btn-primary" id="btn-view-list">Vista de lista</button>
+      <button class="btn btn-ghost" id="btn-view-map">Vista de mapa</button>
+    </div>
 
-      <div style="display:flex;gap:10px;margin-bottom:20px">
-        <button class="btn btn-primary" id="btn-view-list" style="padding:9px 18px;font-size:.85rem">📋 Vista de lista</button>
-        <button class="btn btn-ghost" id="btn-view-map" style="padding:9px 18px;font-size:.85rem">🕸️ Vista de mapa</button>
-      </div>
-
-      <!-- Mapa estilo Obsidian: habilidades como nodos centrales, candidatos conectados a ellas -->
-      <div id="map-view" style="display:none;margin-bottom:24px">
-        <div id="graph-container" style="background:var(--purple-900);border-radius:var(--radius-lg);height:560px;position:relative;overflow:hidden"></div>
-        <div id="graph-panel" style="display:none;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lift);padding:20px;margin-top:16px"></div>
-      </div>
-
-      <div id="list-view">
+    <!-- ============ VISTA DE LISTA ============ -->
+    <div id="list-view">
 
       <div class="form-card" style="margin-bottom:24px">
         <p style="font-size:.88rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Comparar contra una vacante</p>
-        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante (la tuya o cualquier otra) y vemos qué candidatos del directorio tienen más habilidades en común.</p>
+        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante y vemos qué candidatos del directorio tienen más habilidades en común. Requiere plan Business o A la medida.</p>
         <div class="field">
           <textarea id="vacancy-text" placeholder="Pega aquí el texto completo de la vacante..." style="min-height:100px"></textarea>
         </div>
@@ -99,7 +87,12 @@
 
       <div id="directory-count" style="font-size:.88rem;color:var(--ink-soft);margin-bottom:16px"></div>
       <div class="grid-jobs" id="directory-list"></div>
-      </div>
+    </div>
+
+    <!-- ============ VISTA DE MAPA (estilo Obsidian, en colores del sitio) ============ -->
+    <div id="map-view" style="display:none">
+      <div id="graph-container" style="height:600px;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"></div>
+      <div id="graph-panel" style="display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px;margin-top:20px"></div>
     </div>
 
   </div>
@@ -122,23 +115,32 @@
   let currentPuedeSolicitar = false;
   let currentView = 'list';
   let currentShowScore = false;
+  let currentItems = [];
+  let simulation = null;
 
+  // ---------- Sesión de empresa (opcional, no bloquea el directorio) ----------
   window.addEventListener('load', () => {
-    if (typeof google === 'undefined' || !google.accounts) return;
-    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
-    google.accounts.id.renderButton(document.getElementById('google-btn'), {
-      theme: 'outline', size: 'large', text: 'signin_with', width: 320,
-    });
+    loadDirectory(); // el directorio se carga siempre, con o sin sesión
+
+    const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
+    if (saved) {
+      checkSession(saved);
+    } else if (typeof google !== 'undefined' && google.accounts) {
+      google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
+      google.accounts.id.renderButton(document.getElementById('google-btn'), {
+        theme: 'outline', size: 'large', text: 'signin_with', width: 300,
+      });
+    }
   });
 
   async function handleGoogleLogin(response) {
-    const status = document.getElementById('google-login-status');
+    const status = document.getElementById('login-status');
     status.className = 'status-msg show pending';
     status.textContent = 'Verificando...';
     try {
       const data = await JobMatchAPI.loginEmpresaGoogle(response.credential);
       if (data.error) throw new Error(data.error);
-      unlock(data.companyToken);
+      checkSession(data.companyToken);
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
@@ -147,36 +149,64 @@
 
   document.getElementById('btn-login').addEventListener('click', () => {
     const token = document.getElementById('login-token').value.trim();
-    if (token) unlock(token);
+    if (token) checkSession(token);
   });
 
-  let currentItems = [];
+  document.getElementById('btn-session-logout').addEventListener('click', () => {
+    localStorage.removeItem(COMPANY_TOKEN_KEY);
+    currentEmpresaToken = null;
+    currentPuedeSolicitar = false;
+    document.getElementById('session-logged-in').style.display = 'none';
+    document.getElementById('session-logged-out').style.display = 'block';
+    loadDirectory();
+  });
 
-  async function unlock(token) {
-    const status = document.getElementById('login-status');
-    status.className = 'status-msg show pending';
-    status.textContent = 'Verificando...';
-    try {
-      const data = await JobMatchAPI.listCandidatesDirectory(token);
-      if (data.error) throw new Error(data.error);
-      localStorage.setItem(COMPANY_TOKEN_KEY, token);
-      currentEmpresaToken = token;
-      currentPuedeSolicitar = data.puedeSolicitarContacto;
-      document.getElementById('access-view').style.display = 'none';
-      document.getElementById('directory-view').style.display = 'block';
-      document.getElementById('plan-locked-note').style.display = 'block';
-      currentItems = data.items;
-      renderDirectory(data.items);
-    } catch (err) {
-      status.className = 'status-msg show err';
-      status.textContent = err.message;
+  async function checkSession(token) {
+    const data = await JobMatchAPI.listCandidatesDirectory(token);
+    if (data.error || !data.sesionActiva) {
+      localStorage.removeItem(COMPANY_TOKEN_KEY);
+      return;
     }
+    localStorage.setItem(COMPANY_TOKEN_KEY, token);
+    currentEmpresaToken = token;
+    currentPuedeSolicitar = data.puedeSolicitarContacto;
+    document.getElementById('session-logged-out').style.display = 'none';
+    document.getElementById('session-logged-in').style.display = 'block';
+    document.getElementById('session-plan-label').textContent = currentPuedeSolicitar
+      ? 'puedes comparar y solicitar contacto.'
+      : 'tu plan actual no incluye comparar/contactar — mejóralo desde tu panel.';
+    renderDirectory(data.items);
   }
 
+  async function loadDirectory() {
+    const data = await JobMatchAPI.listCandidatesDirectory(currentEmpresaToken);
+    renderDirectory(data.items || []);
+  }
+
+  // ---------- Toggle Vista de lista / Vista de mapa ----------
+  document.getElementById('btn-view-list').addEventListener('click', () => {
+    currentView = 'list';
+    document.getElementById('list-view').style.display = 'block';
+    document.getElementById('map-view').style.display = 'none';
+    document.getElementById('btn-view-list').className = 'btn btn-primary';
+    document.getElementById('btn-view-map').className = 'btn btn-ghost';
+  });
+
+  document.getElementById('btn-view-map').addEventListener('click', () => {
+    currentView = 'map';
+    document.getElementById('list-view').style.display = 'none';
+    document.getElementById('map-view').style.display = 'block';
+    document.getElementById('btn-view-map').className = 'btn btn-primary';
+    document.getElementById('btn-view-list').className = 'btn btn-ghost';
+    renderGraph(currentItems, currentShowScore);
+  });
+
+  // ---------- Vista de lista ----------
   function renderDirectory(items, { showScore = false } = {}) {
     currentItems = items;
     currentShowScore = showScore;
     if (currentView === 'map') renderGraph(items, showScore);
+
     document.getElementById('directory-count').textContent = showScore
       ? `${items.length} candidato(s) con habilidades en común`
       : `${items.length} candidato(s) con habilidades registradas`;
@@ -201,6 +231,9 @@
   }
 
   function contactButtonHTML(c) {
+    if (!currentEmpresaToken) {
+      return `<span class="badge-pill" style="opacity:.6">Inicia sesión (Business+) para contactar</span>`;
+    }
     if (!currentPuedeSolicitar) {
       return `<span class="badge-pill" style="opacity:.6">Contacto directo: plan Business+</span>`;
     }
@@ -245,9 +278,12 @@
     }
   }
 
-  document.getElementById('btn-match-vacancy').addEventListener('click', async () => {
-    const texto = document.getElementById('vacancy-text').value.trim();
+  document.getElementById('btn-match-vacancy').addEventListener('click', () => runMatch());
+
+  async function runMatch(textoOverride) {
+    const texto = textoOverride || document.getElementById('vacancy-text').value.trim();
     const status = document.getElementById('match-status');
+    if (!currentEmpresaToken) { status.className = 'status-msg show err'; status.textContent = 'Inicia sesión con una cuenta de empresa Business o A la medida primero.'; return; }
     if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
     status.className = 'status-msg show pending';
     status.textContent = 'Leyendo la vacante y comparando candidatos...';
@@ -255,21 +291,21 @@
       const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
       if (data.error) throw new Error(data.error);
       status.className = 'status-msg show ok';
-      status.textContent = `Habilidades detectadas en la vacante: ${data.habilidadesVacante}`;
+      status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}`;
       document.getElementById('btn-clear-match').style.display = 'inline-flex';
       renderDirectory(data.items, { showScore: true });
+      return data;
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
-  });
+  }
 
   document.getElementById('btn-clear-match').addEventListener('click', async () => {
     document.getElementById('match-status').className = 'status-msg';
     document.getElementById('vacancy-text').value = '';
     document.getElementById('btn-clear-match').style.display = 'none';
-    const data = await JobMatchAPI.listCandidatesDirectory(currentEmpresaToken);
-    renderDirectory(data.items || []);
+    loadDirectory();
   });
 
   let searchTimeout;
@@ -281,44 +317,19 @@
     }, 300);
   });
 
-  const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
-  if (saved) unlock(saved);
-
-  // ---------- Toggle Vista de lista / Vista de mapa ----------
-  document.getElementById('btn-view-list').addEventListener('click', () => {
-    currentView = 'list';
-    document.getElementById('list-view').style.display = 'block';
-    document.getElementById('map-view').style.display = 'none';
-    document.getElementById('btn-view-list').className = 'btn btn-primary';
-    document.getElementById('btn-view-map').className = 'btn btn-ghost';
-  });
-
-  document.getElementById('btn-view-map').addEventListener('click', () => {
-    currentView = 'map';
-    document.getElementById('list-view').style.display = 'none';
-    document.getElementById('map-view').style.display = 'block';
-    document.getElementById('btn-view-map').className = 'btn btn-primary';
-    document.getElementById('btn-view-list').className = 'btn btn-ghost';
-    renderGraph(currentItems, currentShowScore);
-  });
-
-  // ---------- Mapa estilo Obsidian: habilidades como nodos centrales,
-  // candidatos conectados a ellas. Colores de la marca: morado = candidatos,
-  // naranja = habilidades (mismo código conceptual que el resto del sitio).
-  let simulation = null;
-
+  // ---------- Vista de mapa: habilidades y candidatos como nodos, en los
+  // colores del propio sitio (nada de fondo negro), integrado a la página. ----------
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
     if (!items || items.length === 0) {
-      container.innerHTML = `<p style="color:#fff;opacity:.7;text-align:center;padding-top:240px">No hay candidatos que mostrar en el mapa todavía.</p>`;
+      container.innerHTML = `<p style="color:var(--ink-soft);text-align:center;padding-top:260px">No hay candidatos que mostrar en el mapa todavía.</p>`;
       return;
     }
 
     const width = container.clientWidth || 900;
-    const height = 560;
+    const height = 600;
 
-    // Construir nodos: uno por candidato + uno por cada habilidad única
     const skillNodes = new Map();
     const nodes = [];
     const links = [];
@@ -338,19 +349,16 @@
     const svg = d3.select(container).append('svg')
       .attr('width', width).attr('height', height)
       .attr('viewBox', [0, 0, width, height]);
-
     const g = svg.append('g');
-
-    // Zoom + pan, como en Obsidian
     svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', (event) => g.attr('transform', event.transform)));
 
-    const link = g.append('g').attr('stroke', 'rgba(255,255,255,.15)')
+    const link = g.append('g').attr('stroke', '#D8CFF2')
       .selectAll('line').data(links).join('line').attr('stroke-width', 1);
 
     const node = g.append('g').selectAll('circle').data(nodes).join('circle')
-      .attr('r', (d) => d.tipo === 'habilidad' ? 10 : 7)
-      .attr('fill', (d) => d.tipo === 'habilidad' ? 'var(--orange-500, #FF6B1A)' : 'var(--purple-500, #8B4CF7)')
-      .attr('stroke', '#fff').attr('stroke-width', 1.2)
+      .attr('r', (d) => d.tipo === 'habilidad' ? 9 : 7)
+      .attr('fill', (d) => d.tipo === 'habilidad' ? '#FF6B1A' : '#6B21F5')
+      .attr('stroke', '#fff').attr('stroke-width', 1.5)
       .style('cursor', 'pointer')
       .call(d3.drag()
         .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
@@ -360,8 +368,9 @@
 
     const label = g.append('g').selectAll('text').data(nodes).join('text')
       .text((d) => d.label)
-      .attr('font-size', (d) => d.tipo === 'habilidad' ? '11px' : '10px')
-      .attr('fill', '#fff').attr('opacity', .85)
+      .attr('font-size', '11px')
+      .attr('font-weight', (d) => d.tipo === 'candidato' ? '600' : '400')
+      .attr('fill', '#1A1523').attr('opacity', .85)
       .attr('dx', 12).attr('dy', 4)
       .style('pointer-events', 'none').style('font-family', 'var(--font-body)');
 
@@ -369,7 +378,7 @@
       .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
       .force('charge', d3.forceManyBody().strength(-140))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collide', d3.forceCollide().radius(24))
+      .force('collide', d3.forceCollide().radius(26))
       .on('tick', () => {
         link.attr('x1', (d) => d.source.x).attr('y1', (d) => d.source.y)
           .attr('x2', (d) => d.target.x).attr('y2', (d) => d.target.y);
@@ -381,6 +390,8 @@
   function showGraphPanel(c, showScore) {
     const panel = document.getElementById('graph-panel');
     panel.style.display = 'block';
+
+    const puedeComparar = currentEmpresaToken && currentPuedeSolicitar;
     panel.innerHTML = `
       <div class="tag-row" style="justify-content:space-between">
         <span class="tag">${escapeHtml(c.apodo)}</span>
@@ -389,7 +400,35 @@
       <div class="tag-row" style="margin-top:10px">
         ${c.habilidades.split(',').map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h.trim())}</span>`).join('')}
       </div>
-      <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>`;
+      <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>
+      ${puedeComparar ? `
+      <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">
+        <label style="font-size:.82rem;font-weight:600;color:var(--purple-900)">Calcular match con una vacante</label>
+        <textarea id="panel-vacancy-text" placeholder="Pega el texto de la vacante..." style="min-height:70px;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
+        <button class="btn btn-ghost" style="margin-top:8px;padding:9px 16px;font-size:.82rem" onclick="matchOneInPanel('${c.candidatoId}', this)">Calcular match</button>
+        <div class="status-msg" id="panel-match-status"></div>
+      </div>` : ''}`;
+  }
+
+  async function matchOneInPanel(candidatoId, btn) {
+    const texto = document.getElementById('panel-vacancy-text').value.trim();
+    const status = document.getElementById('panel-match-status');
+    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
+    btn.disabled = true;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Calculando...';
+    try {
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
+      if (data.error) throw new Error(data.error);
+      const match = data.items.find((i) => String(i.candidatoId) === String(candidatoId));
+      status.className = 'status-msg show ok';
+      status.textContent = match ? `${match.score}% de habilidades en común con esta vacante.` : 'Este candidato no tiene habilidades en común con esta vacante.';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
   }
 </script>
 </body>

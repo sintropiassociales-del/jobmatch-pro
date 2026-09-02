@@ -152,6 +152,18 @@
               <label for="ex-link">Link donde está la vacante original</label>
               <input type="url" id="ex-link" required placeholder="https://...">
             </div>
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="ex-expiracion">Quitarla sola de la página el (opcional)</label>
+                <input type="date" id="ex-expiracion">
+                <div class="hint">Pasada esta fecha deja de mostrarse en todo el sitio, sin que tengas que borrarla a mano.</div>
+              </div>
+              <div class="field">
+                <label style="display:flex;align-items:center;gap:8px;margin-top:28px">
+                  <input type="checkbox" id="ex-destacada"> Marcarla como destacada desde ya
+                </label>
+              </div>
+            </div>
             <div class="field">
               <label for="ex-nota">Nota que verá el candidato</label>
               <input type="text" id="ex-nota" value="Sin relación directa con la vacante — solo referencia informativa.">
@@ -322,19 +334,28 @@
         return;
       }
       list.innerHTML = data.items.map((j) => `
-        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${j.activa === false ? 'opacity:.55' : ''}">
-          <div>
-            <h3 style="font-size:1rem">${escapeHtml(j.titulo)}</h3>
-            <div class="meta">
-              <span>${escapeHtml(j.empresaNombre)}</span>
-              <span>${j.fuente === 'admin' ? 'Vacante externa' : 'De empresa'}</span>
-              ${j.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Pausada</span>' : ''}
+        <div class="job-card" style="margin-bottom:12px;${j.activa === false ? 'opacity:.55' : ''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3 style="font-size:1rem">${escapeHtml(j.titulo)} ${j.destacada === true ? '<span class="tag tag-orange">Destacada</span>' : ''}</h3>
+              <div class="meta">
+                <span>${escapeHtml(j.empresaNombre)}</span>
+                <span>${j.fuente === 'admin' ? 'Vacante externa' : 'De empresa'}</span>
+                ${j.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Pausada</span>' : ''}
+                ${j.fechaExpiracion ? `<span>Se quita el ${escapeHtml(j.fechaExpiracion)}</span>` : ''}
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
+              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setJobActive('${j.id}', ${j.activa === false}, this)">${j.activa === false ? 'Reactivar' : 'Pausar'}</button>
+              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="adminToggleFeatured('${j.id}', ${j.destacada !== true}, this)">${j.destacada === true ? 'Quitar destacada' : '⭐ Destacar'}</button>
+              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteJob('${j.id}', this)">Eliminar</button>
             </div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
-            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setJobActive('${j.id}', ${j.activa === false}, this)">${j.activa === false ? 'Reactivar' : 'Pausar'}</button>
-            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteJob('${j.id}', this)">Eliminar</button>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <label style="font-size:.8rem;color:var(--ink-soft)">Quitarla sola el:</label>
+            <input type="date" class="exp-input" value="${j.fechaExpiracion || ''}" style="border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem">
+            <button class="btn btn-ghost" style="padding:7px 14px;font-size:.78rem" onclick="adminSaveExpiration('${j.id}', this)">Guardar fecha</button>
           </div>
         </div>`).join('');
 
@@ -355,6 +376,32 @@
     } catch (err) {
       alert(err.message);
       btn.disabled = false;
+    }
+  }
+
+  async function adminToggleFeatured(jobId, value, btn) {
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminSetJobFeatured(adminKey, jobId, value);
+      loadAdminJobs();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function adminSaveExpiration(jobId, btn) {
+    const input = btn.closest('.job-card').querySelector('.exp-input');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    try {
+      await JobMatchAPI.adminSetJobExpiration(adminKey, jobId, input.value);
+      btn.textContent = '✓ Guardado';
+      loadAdminJobs();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+      btn.textContent = 'Guardar fecha';
     }
   }
 
@@ -452,12 +499,15 @@
         return;
       }
       list.innerHTML = data.items.map((c) => `
-        <div class="job-card" style="margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <h3 style="font-size:1rem">${escapeHtml(c.nombre) || '(sin nombre)'}</h3>
-            <div class="meta"><span>${escapeHtml(c.email)}</span><span>${c.numPostulaciones} postulación(es)</span>${c.cvLink ? '<span>✅ Tiene CV</span>' : ''}</div>
+        <div class="job-card" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <h3 style="font-size:1rem">${escapeHtml(c.nombre) || '(sin nombre)'}</h3>
+              <div class="meta"><span>${escapeHtml(c.email)}</span><span>${c.numPostulaciones} postulación(es)</span>${c.cvLink ? `<span><a href="${escapeHtml(c.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a></span>` : ''}</div>
+            </div>
+            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteCandidate('${c.id}', this)">Eliminar</button>
           </div>
-          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteCandidate('${c.id}', this)">Eliminar</button>
+          ${c.habilidades ? `<div class="tag-row" style="margin-top:10px">${c.habilidades.split(',').map((h) => `<span class="tag">${escapeHtml(h.trim())}</span>`).join('')}</div>` : '<p style="font-size:.8rem;color:var(--ink-soft);margin-top:8px">Sin habilidades registradas todavía.</p>'}
         </div>`).join('');
     } catch (err) {
       list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
@@ -521,6 +571,8 @@
         salarioMax: document.getElementById('ex-max').value,
         descripcion: document.getElementById('ex-descripcion').value,
         linkExterno: document.getElementById('ex-link').value,
+        fechaExpiracion: document.getElementById('ex-expiracion').value,
+        destacada: document.getElementById('ex-destacada').checked,
         notaAdmin: document.getElementById('ex-nota').value,
       });
       status.className = 'status-msg show ok';
