@@ -419,10 +419,6 @@
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
-    const watermark = document.createElement('img');
-    watermark.src = 'assets/img/avatar-toro.webp';
-    watermark.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;opacity:.05;pointer-events:none;z-index:0';
-    container.appendChild(watermark);
     if (!items || items.length === 0) {
       container.insertAdjacentHTML('beforeend', `<p style="color:var(--ink-soft);text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
       return;
