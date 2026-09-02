@@ -74,9 +74,7 @@ const JobMatchAPI = {
   registerCandidate: (candidate) => asPost('registerCandidate', candidate),
   uploadCV: (fileBase64, fileName) => asPost('uploadCV', { fileBase64, fileName }),
   getCandidateProfile: (candidateToken) => asGet('getCandidateProfile', { token: candidateToken }),
-  listCandidatesDirectory: (companyToken, q) => asGet('listCandidatesDirectory', { companyToken: companyToken || '', q: q || '' }),
-  adminSetJobExpiration: (adminKey, jobId, fechaExpiracion) => asPost('adminSetJobExpiration', { adminKey, jobId, fechaExpiracion: fechaExpiracion || '' }),
-  adminSetJobFeatured: (adminKey, jobId, destacada) => asPost('adminSetJobFeatured', { adminKey, jobId, destacada }),
+  listCandidatesDirectory: (companyToken, q) => asGet('listCandidatesDirectory', { companyToken, q: q || '' }),
   matchCandidatesToVacancy: (companyToken, texto, jobId) => asPost('matchCandidatesToVacancy', { companyToken, texto: texto || '', jobId: jobId || '' }),
   requestContact: (companyToken, candidatoId) => asPost('requestContact', { companyToken, candidatoId }),
   getCandidateContactInfo: (companyToken, candidatoId) => asGet('getCandidateContactInfo', { companyToken, candidatoId }),
@@ -161,20 +159,6 @@ function timeAgo(dateStr) {
   return `Hace ${Math.floor(days / 30)} meses`;
 }
 
-function shareButtonsHTML(job) {
-  const url = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}vacante.html?id=${encodeURIComponent(job.id)}`;
-  const texto = encodeURIComponent(`${job.titulo} — ${job.empresaNombre} | JobMatch Pro`);
-  const urlEnc = encodeURIComponent(url);
-  const abrir = (href) => `event.preventDefault();event.stopPropagation();window.open('${href}','_blank','noopener,width=600,height=500')`;
-  return `
-    <div class="share-row" style="display:flex;gap:6px;margin-top:10px" onclick="event.preventDefault();event.stopPropagation()">
-      <button class="share-btn" title="Compartir en Facebook" onclick="${abrir(`https://www.facebook.com/sharer/sharer.php?u=${urlEnc}`)}">f</button>
-      <button class="share-btn" title="Compartir en LinkedIn" onclick="${abrir(`https://www.linkedin.com/sharing/share-offsite/?url=${urlEnc}`)}">in</button>
-      <button class="share-btn" title="Compartir en X" onclick="${abrir(`https://twitter.com/intent/tweet?url=${urlEnc}&text=${texto}`)}">X</button>
-      <button class="share-btn" title="Copiar link para Instagram u otros" onclick="event.preventDefault();event.stopPropagation();navigator.clipboard.writeText('${url}');this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)">📋</button>
-    </div>`;
-}
-
 function jobCardHTML(job) {
   const isExternal = job.fuente === 'admin';
   const empresaNombre = escapeHtml(job.empresaNombre);
@@ -201,7 +185,6 @@ function jobCardHTML(job) {
       <span>🕒 ${timeAgo(job.fecha)}</span>
     </div>
     <p class="desc">${escapeHtml(descSnippet)}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
-    ${shareButtonsHTML(job)}
     <div class="foot">
       <span class="salary">${formatSalary(job.salarioMin, job.salarioMax)}</span>
       <span class="badge-pill">${isExternal ? 'Ver original →' : 'Ver vacante →'}</span>
