@@ -11,6 +11,63 @@ const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.w
 const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
 const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
 
+/* ---------- Mapa de habilidades y competencias ----------
+   Fuente única de verdad para todo el sitio: candidato.html lo usa para
+   ofrecer opciones prellenadas al armar el perfil (más rápido que escribir
+   todo a mano) y candidatos.html lo usa para colorear/agrupar el directorio
+   y la vista de mapa. Si agregas o cambias una categoría aquí, se refleja
+   en ambos lugares automáticamente.
+   "rx" clasifica automáticamente una habilidad de texto libre (aunque no
+   esté en la lista de sugeridas) para que el directorio también le ponga
+   color a lo que los candidatos escriban por su cuenta. */
+const SKILL_MAP = [
+  {
+    nombre: 'Finanzas y contabilidad', color: '#2E9E5B',
+    rx: /excel|contabilidad|finan|\bsat\b|impuest|n[oó]mina|conciliaci|presupuest|reportes financ|factura|cfdi/i,
+    skills: ['Excel avanzado', 'Contabilidad general', 'Conciliaciones bancarias', 'Elaboración de presupuestos', 'Nómina', 'Facturación y CFDI', 'Análisis financiero', 'Declaraciones fiscales (SAT)'],
+  },
+  {
+    nombre: 'Tecnología', color: '#2B6FE0',
+    rx: /javascript|python|\bsql\b|react|node|programa|desarroll|software|base(s)? de datos|machine learning|\bgit\b|visualizaci[oó]n de datos|soporte t[eé]cnico|ciberseguridad/i,
+    skills: ['Python', 'JavaScript', 'SQL y bases de datos', 'Desarrollo web', 'Soporte técnico', 'Ciberseguridad básica', 'Análisis de datos', 'Automatización de procesos'],
+  },
+  {
+    nombre: 'Marketing y ventas', color: '#D6336C',
+    rx: /marketing|ventas|\bseo\b|redes sociales|publicidad|contenido|\bads\b|\bcrm\b|copywriting|negociaci/i,
+    skills: ['Marketing digital', 'Redes sociales', 'SEO', 'Ventas y negociación', 'Atención a clientes', 'Publicidad en redes (Ads)', 'Gestión de CRM', 'Copywriting'],
+  },
+  {
+    nombre: 'Recursos humanos', color: '#D4A017',
+    rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas|prestaciones/i,
+    skills: ['Reclutamiento y selección', 'Capacitación', 'Clima laboral', 'Nómina y prestaciones', 'Onboarding', 'Evaluación de desempeño', 'Entrevistas laborales'],
+  },
+  {
+    nombre: 'Logística y operaciones', color: '#B85C00',
+    rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n|compras/i,
+    skills: ['Gestión de inventarios', 'Cadena de suministro', 'Logística y distribución', 'Manejo de almacén', 'Control de calidad', 'Compras y proveedores'],
+  },
+  {
+    nombre: 'Legal y administrativo', color: '#546E7A',
+    rx: /legal|contrato|jur[ií]dic|administrativ|normativ|cumplimiento/i,
+    skills: ['Redacción de contratos', 'Derecho laboral', 'Trámites administrativos', 'Cumplimiento normativo', 'Atención a proveedores'],
+  },
+  {
+    nombre: 'Salud', color: '#0F9B8E',
+    rx: /salud|enfermer[ií]a|m[eé]dic|paciente|primeros auxilios/i,
+    skills: ['Atención a pacientes', 'Primeros auxilios', 'Enfermería general', 'Trabajo en consultorio', 'Farmacovigilancia básica'],
+  },
+];
+const SKILL_CATEGORIA_GENERAL = {
+  nombre: 'Habilidades generales', color: '#FF6B1A',
+  skills: ['Trabajo en equipo', 'Comunicación efectiva', 'Resolución de problemas', 'Liderazgo', 'Organización y gestión del tiempo', 'Manejo de Office', 'Inglés'],
+};
+// Clasifica una habilidad de texto libre en una categoría del mapa (o en
+// "Habilidades generales" si no coincide con ninguna) — se usa para
+// colorear el directorio de candidatos.
+function categorizarHabilidad(skill) {
+  return SKILL_MAP.find((cat) => cat.rx.test(skill)) || SKILL_CATEGORIA_GENERAL;
+}
+
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
