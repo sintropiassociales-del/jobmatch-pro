@@ -63,10 +63,10 @@
         </div>
       </div>
 
-      <p style="max-width:520px;margin-bottom:20px">
+      <p style="max-width:520px;margin-bottom:12px">
         <a href="#" id="toggle-admin-login" style="font-size:.8rem;color:var(--ink-soft)">Acceso admin (Sintropía Social) →</a>
       </p>
-      <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:20px;display:none">
+      <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:12px;display:none">
         <div class="field" style="margin-bottom:10px">
           <label for="admin-key-input">Clave de administrador</label>
           <input type="password" id="admin-key-input" placeholder="La misma de admin-plataforma.html">
@@ -76,7 +76,7 @@
       </div>
     </div>
 
-    <div class="view-switch" style="margin-bottom:24px">
+    <div class="view-switch" style="margin-bottom:16px">
       <button class="view-switch-btn active" id="btn-view-list">Vista de lista</button>
       <button class="view-switch-btn" id="btn-view-map">Vista de mapa</button>
     </div>
@@ -419,8 +419,12 @@
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
+    const watermark = document.createElement('img');
+    watermark.src = 'assets/img/avatar-toro.webp';
+    watermark.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;opacity:.05;pointer-events:none;z-index:0';
+    container.appendChild(watermark);
     if (!items || items.length === 0) {
-      container.innerHTML = `<p style="color:var(--ink-soft);text-align:center;padding-top:260px">No hay candidatos que mostrar en el mapa todavía.</p>`;
+      container.insertAdjacentHTML('beforeend', `<p style="color:var(--ink-soft);text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
       return;
     }
 
@@ -428,6 +432,7 @@
     const height = 600;
 
     const skillNodes = new Map();
+    const skillCandidatos = new Map(); // qué candidatos (apodo) tiene cada habilidad
     const nodes = [];
     const links = [];
 
@@ -438,20 +443,27 @@
         if (!skillNodes.has(key)) {
           skillNodes.set(key, { id: 'skill-' + key, tipo: 'habilidad', label: h, categoria: categorizar(h) });
           nodes.push(skillNodes.get(key));
+          skillCandidatos.set(key, []);
         }
+        skillCandidatos.get(key).push(c.apodo);
         links.push({ source: 'cand-' + c.candidatoId, target: 'skill-' + key });
       });
     });
 
     const svg = d3.select(container).append('svg')
       .attr('width', width).attr('height', height)
-      .attr('viewBox', [0, 0, width, height]);
+      .attr('viewBox', [0, 0, width, height])
+      .style('position', 'relative').style('z-index', 1);
     const g = svg.append('g');
     svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', (event) => g.attr('transform', event.transform)));
 
     const link = g.append('g').attr('stroke', '#D8CFF2')
       .selectAll('line').data(links).join('line').attr('stroke-width', 1);
 
+    // Detección de clic propia (más confiable que el evento "click" nativo,
+    // que a veces se traga el arrastre de D3 si hay el más mínimo movimiento
+    // del mouse) — comparamos dónde empezó y dónde terminó el toque.
+    let downPos = null;
     const node = g.append('g').selectAll('circle').data(nodes).join('circle')
       .attr('r', (d) => d.tipo === 'habilidad' ? 9 : 7)
       .attr('fill', (d) => d.tipo === 'habilidad' ? d.categoria.color : '#6B21F5')
@@ -462,8 +474,18 @@
         .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
         .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
         .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
-      .on('click', (event, d) => {
-        if (d.tipo === 'candidato') { showGraphPanel(d.data, showScore); showFloatingTooltip(event, d.data); }
+      .on('pointerdown', (event) => { downPos = [event.clientX, event.clientY]; })
+      .on('pointerup', (event, d) => {
+        if (!downPos) return;
+        const moved = Math.hypot(event.clientX - downPos[0], event.clientY - downPos[1]);
+        downPos = null;
+        if (moved > 6) return; // eso fue un arrastre, no un clic
+        if (d.tipo === 'candidato') {
+          showGraphPanel(d.data, showScore);
+          showFloatingTooltip(event, { tipo: 'candidato', data: d.data });
+        } else {
+          showFloatingTooltip(event, { tipo: 'habilidad', label: d.label, candidatos: skillCandidatos.get(d.id.replace('skill-', '')) || [] });
+        }
       });
 
     const label = g.append('g').selectAll('text').data(nodes).join('text')
@@ -478,7 +500,7 @@
     const categoriasUsadas = [...new Set(nodes.filter((n) => n.tipo === 'habilidad').map((n) => n.categoria.nombre))]
       .map((nombre) => SKILL_CATEGORIES.find((c) => c.nombre === nombre) || CATEGORIA_GENERAL);
     const legend = document.createElement('div');
-    legend.style.cssText = 'position:absolute;bottom:14px;left:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:14px;flex-wrap:wrap;max-width:90%;font-size:.76rem';
+    legend.style.cssText = 'position:absolute;bottom:14px;left:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:14px;flex-wrap:wrap;max-width:90%;font-size:.76rem;z-index:2';
     legend.innerHTML = categoriasUsadas.map((c) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:${c.color};display:inline-block"></span>${escapeHtml(c.nombre)}</span>`).join('');
     container.appendChild(legend);
 
@@ -505,24 +527,33 @@
       });
   }
 
-  function showFloatingTooltip(event, c) {
+  function showFloatingTooltip(event, info) {
     const container = document.getElementById('graph-container');
     let tip = document.getElementById('graph-tooltip');
     if (!tip) {
       tip = document.createElement('div');
       tip.id = 'graph-tooltip';
-      tip.style.cssText = 'position:absolute;background:#1A1523;color:#fff;border-radius:10px;padding:10px 14px;font-size:.78rem;max-width:240px;pointer-events:none;z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.2)';
+      tip.style.cssText = 'position:absolute;background:#1A1523;color:#fff;border-radius:10px;padding:10px 14px;font-size:.78rem;max-width:260px;pointer-events:none;z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.2)';
       container.appendChild(tip);
     }
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    tip.style.left = Math.min(x + 14, rect.width - 250) + 'px';
+    tip.style.left = Math.min(x + 14, rect.width - 270) + 'px';
     tip.style.top = Math.max(y - 10, 0) + 'px';
-    tip.innerHTML = `<strong>${escapeHtml(c.apodo)}</strong><br>${escapeHtml(c.habilidades.split(',').slice(0, 4).map((h) => h.trim()).join(' · '))}`;
+
+    if (info.tipo === 'candidato') {
+      const c = info.data;
+      tip.innerHTML = `<strong>${escapeHtml(c.apodo)}</strong><br>${escapeHtml(c.habilidades.split(',').slice(0, 4).map((h) => h.trim()).join(' · '))}`;
+    } else {
+      const lista = info.candidatos.length
+        ? info.candidatos.slice(0, 6).join(' · ') + (info.candidatos.length > 6 ? ` +${info.candidatos.length - 6} más` : '')
+        : 'Ningún candidato con esta habilidad todavía.';
+      tip.innerHTML = `<strong>#${escapeHtml(info.label)}</strong><br>${escapeHtml(lista)}`;
+    }
     tip.style.display = 'block';
     clearTimeout(tip._hideTimer);
-    tip._hideTimer = setTimeout(() => { tip.style.display = 'none'; }, 4000);
+    tip._hideTimer = setTimeout(() => { tip.style.display = 'none'; }, 4500);
   }
 
   function showGraphPanel(c, showScore) {
@@ -531,14 +562,22 @@
     panel.style.transition = 'none';
     panel.style.borderColor = 'var(--orange-500)';
 
+    const skills = c.habilidades.split(',').map((h) => h.trim()).filter(Boolean);
+    const [primera, ...resto] = skills;
+    const iniciales = c.apodo.replace('Candidato #', '').slice(0, 2);
     const puedeComparar = currentEmpresaToken && currentPuedeSolicitar;
+
     panel.innerHTML = `
-      <div class="tag-row" style="justify-content:space-between">
-        <span class="tag">${escapeHtml(c.apodo)}</span>
-        ${showScore ? `<span class="tag tag-orange">${c.score}% en común</span>` : ''}
+      <div class="candidate-card-top">
+        <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
+        <div>
+          <div class="candidate-apodo">${escapeHtml(c.apodo)}</div>
+          ${showScore ? `<div class="candidate-score">${c.score}% en común con esta vacante</div>` : ''}
+        </div>
       </div>
-      <div class="tag-row" style="margin-top:10px">
-        ${c.habilidades.split(',').map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h.trim())}</span>`).join('')}
+      <div class="tag-row" style="margin-top:14px">
+        ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
+        ${resto.map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
       </div>
       <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>
       ${puedeComparar ? `
