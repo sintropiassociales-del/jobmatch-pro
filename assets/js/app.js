@@ -214,6 +214,51 @@ function featuredJobCardHTML(job) {
   </a>`;
 }
 
+function expandableFeaturedCardHTML(job) {
+  const isExternal = job.fuente === 'admin';
+  const empresaNombre = escapeHtml(job.empresaNombre);
+  const logo = job.logoUrl
+    ? `<img src="${escapeHtml(job.logoUrl)}" alt="${empresaNombre}" style="width:52px;height:52px;border-radius:12px;object-fit:cover;border:1px solid var(--line)">`
+    : `<div style="width:52px;height:52px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;color:var(--orange-600);font-family:var(--font-display)">${escapeHtml((job.empresaNombre || '?').charAt(0))}</div>`;
+
+  return `
+  <div class="job-card featured-job-card">
+    <div class="featured-ribbon">Vacante destacada</div>
+    <div class="tag-row" style="justify-content:space-between;align-items:flex-start;margin-top:8px">
+      <div class="tag-row" style="margin:0">
+        <span class="tag" style="background:#fff">${escapeHtml(job.modalidad) || 'No especificado'}</span>
+        ${isExternal ? '<span class="tag" style="background:#fff">Vacante externa</span>' : ''}
+      </div>
+      ${logo}
+    </div>
+    <a href="vacante.html?id=${encodeURIComponent(job.id)}" style="text-decoration:none;color:inherit">
+      <h3 style="font-size:1.2rem;margin-top:10px">${escapeHtml(job.titulo)}</h3>
+    </a>
+    <div class="company" style="font-weight:600">${empresaNombre}</div>
+    <div class="meta">
+      <span>📍 ${escapeHtml(job.ubicacion) || 'Remoto'}</span>
+      <span>🕒 ${timeAgo(job.fecha)}</span>
+    </div>
+    <p class="desc">${escapeHtml((job.descripcion || '').slice(0, 110))}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
+    <button type="button" class="btn btn-ghost expand-toggle" style="align-self:flex-start;padding:8px 16px;font-size:.82rem" onclick="toggleFeaturedExpand(this)">Ver más detalles ▾</button>
+    <div class="expand-panel" style="display:none">
+      <p class="desc" style="-webkit-line-clamp:unset">${escapeHtml(job.descripcion || 'Sin descripción disponible.')}</p>
+      ${shareButtonsHTML(job)}
+    </div>
+    <div class="foot">
+      <span class="salary">${formatSalary(job.salarioMin, job.salarioMax)}</span>
+      <a href="vacante.html?id=${encodeURIComponent(job.id)}" class="badge-pill" style="background:var(--orange-500);color:#fff">Ver vacante completa →</a>
+    </div>
+  </div>`;
+}
+
+function toggleFeaturedExpand(btn) {
+  const panel = btn.nextElementSibling;
+  const abierto = panel.style.display === 'block';
+  panel.style.display = abierto ? 'none' : 'block';
+  btn.textContent = abierto ? 'Ver más detalles ▾' : 'Ocultar detalles ▴';
+}
+
 function jobCardHTML(job) {
   const isExternal = job.fuente === 'admin';
   const empresaNombre = escapeHtml(job.empresaNombre);
