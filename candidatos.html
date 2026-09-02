@@ -39,34 +39,41 @@
 <section class="section content-lift" style="padding-top:0">
   <div class="container" style="max-width:1100px">
 
-    <!-- Sesión de empresa opcional: solo desbloquea comparar/contactar -->
-    <div id="empresa-session-card" class="form-card" style="max-width:520px;margin-bottom:12px">
-      <div id="session-logged-out">
-        <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">¿Tienes cuenta de empresa? Entra para comparar candidatos y solicitar contacto</p>
-        <div id="google-btn"></div>
-        <div style="text-align:center;color:var(--ink-soft);font-size:.8rem;margin:10px 0">— o —</div>
-        <div style="display:flex;gap:10px">
-          <input type="text" id="login-token" placeholder="Código de acceso de tu empresa" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
-          <button class="btn btn-primary" id="btn-login">Entrar</button>
-        </div>
-        <div class="status-msg" id="login-status"></div>
-      </div>
-      <div id="session-logged-in" style="display:none">
-        <p style="font-size:.85rem">✅ <span id="session-plan-label"></span></p>
-        <button class="btn btn-ghost" id="btn-session-logout" style="padding:8px 16px;font-size:.82rem;margin-top:8px">Salir</button>
-      </div>
+    <div id="admin-mode-bar" style="display:none;background:var(--purple-900);color:#fff;border-radius:var(--radius-md);padding:14px 20px;margin-bottom:20px;display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <span>🛡️ Modo administrador activo — viendo información completa de todos los candidatos.</span>
+      <button class="btn btn-ghost" id="btn-admin-mode-exit" style="padding:8px 16px;font-size:.82rem;background:#fff">Salir del modo admin</button>
     </div>
 
-    <p style="max-width:520px;margin-bottom:20px">
-      <a href="#" id="toggle-admin-login" style="font-size:.8rem;color:var(--ink-soft)">Acceso admin (Sintropía Social) →</a>
-    </p>
-    <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:20px;display:none">
-      <div class="field" style="margin-bottom:10px">
-        <label for="admin-key-input">Clave de administrador</label>
-        <input type="password" id="admin-key-input" placeholder="La misma de admin-plataforma.html">
+    <div id="login-area">
+      <!-- Sesión de empresa opcional: solo desbloquea comparar/contactar -->
+      <div id="empresa-session-card" class="form-card" style="max-width:520px;margin-bottom:12px">
+        <div id="session-logged-out">
+          <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">¿Tienes cuenta de empresa? Entra para comparar candidatos y solicitar contacto</p>
+          <div id="google-btn"></div>
+          <div style="text-align:center;color:var(--ink-soft);font-size:.8rem;margin:10px 0">— o —</div>
+          <div style="display:flex;gap:10px">
+            <input type="text" id="login-token" placeholder="Código de acceso de tu empresa" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
+            <button class="btn btn-primary" id="btn-login">Entrar</button>
+          </div>
+          <div class="status-msg" id="login-status"></div>
+        </div>
+        <div id="session-logged-in" style="display:none">
+          <p style="font-size:.85rem">✅ <span id="session-plan-label"></span></p>
+          <button class="btn btn-ghost" id="btn-session-logout" style="padding:8px 16px;font-size:.82rem;margin-top:8px">Salir</button>
+        </div>
       </div>
-      <button class="btn btn-primary" id="btn-admin-login">Ver información completa</button>
-      <div class="status-msg" id="admin-login-status"></div>
+
+      <p style="max-width:520px;margin-bottom:20px">
+        <a href="#" id="toggle-admin-login" style="font-size:.8rem;color:var(--ink-soft)">Acceso admin (Sintropía Social) →</a>
+      </p>
+      <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:20px;display:none">
+        <div class="field" style="margin-bottom:10px">
+          <label for="admin-key-input">Clave de administrador</label>
+          <input type="password" id="admin-key-input" placeholder="La misma de admin-plataforma.html">
+        </div>
+        <button class="btn btn-primary" id="btn-admin-login">Ver información completa</button>
+        <div class="status-msg" id="admin-login-status"></div>
+      </div>
     </div>
 
     <div class="view-switch" style="margin-bottom:24px">
@@ -103,6 +110,9 @@
 
     <!-- ============ VISTA DE MAPA (estilo Obsidian, en colores del sitio) ============ -->
     <div id="map-view" style="display:none">
+      <div class="field" style="max-width:400px;margin-bottom:14px">
+        <input type="text" id="graph-search" placeholder="Buscar por hashtag/habilidad o candidato...">
+      </div>
       <div id="graph-container" style="height:600px;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"></div>
       <div id="graph-panel" style="display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px;margin-top:20px"></div>
     </div>
@@ -206,14 +216,22 @@
       const data = await JobMatchAPI.adminListCandidatesDirectory(key);
       if (data.error) throw new Error(data.error);
       isAdminView = true;
-      status.className = 'status-msg show ok';
-      status.textContent = `Modo admin activo — viendo información completa de ${data.items.length} candidato(s).`;
+      document.getElementById('login-area').style.display = 'none';
+      document.getElementById('admin-mode-bar').style.display = 'flex';
       const items = data.items.map((c) => ({ ...c, apodo: c.nombre }));
       renderDirectory(items);
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
+  });
+
+  document.getElementById('btn-admin-mode-exit').addEventListener('click', () => {
+    isAdminView = false;
+    document.getElementById('login-area').style.display = 'block';
+    document.getElementById('admin-mode-bar').style.display = 'none';
+    document.getElementById('admin-key-input').value = '';
+    loadDirectory();
   });
 
   async function loadDirectory() {
@@ -373,6 +391,22 @@
 
   // ---------- Vista de mapa: habilidades y candidatos como nodos, en los
   // colores del propio sitio (nada de fondo negro), integrado a la página. ----------
+  // Categorías aproximadas por palabra clave — no es un dato que capturemos,
+  // es una clasificación automática para poder darle más color al mapa.
+  const SKILL_CATEGORIES = [
+    { nombre: 'Finanzas y contabilidad', color: '#2E9E5B', rx: /excel|contabilidad|finan|\bsat\b|impuest|n[oó]mina|conciliaci|presupuest|reportes financ/i },
+    { nombre: 'Tecnología', color: '#2B6FE0', rx: /javascript|python|\bsql\b|react|node|programa|desarroll|software|base(s)? de datos|machine learning|\bgit\b|visualizaci[oó]n de datos/i },
+    { nombre: 'Marketing y ventas', color: '#D6336C', rx: /marketing|ventas|\bseo\b|redes sociales|publicidad|contenido|\bads\b|\bcrm\b/i },
+    { nombre: 'Recursos humanos', color: '#9C5FD6', rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas/i },
+    { nombre: 'Logística y operaciones', color: '#C77D19', rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n/i },
+    { nombre: 'Legal y administrativo', color: '#5C6BC0', rx: /legal|contrato|jur[ií]dic|administrativ/i },
+    { nombre: 'Salud', color: '#0F9B8E', rx: /salud|enfermer[ií]a|m[eé]dic|paciente/i },
+  ];
+  const CATEGORIA_GENERAL = { nombre: 'General', color: '#FF6B1A' };
+  function categorizar(skill) {
+    return SKILL_CATEGORIES.find((cat) => cat.rx.test(skill)) || CATEGORIA_GENERAL;
+  }
+
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
@@ -393,7 +427,7 @@
       c.habilidades.split(',').map((h) => h.trim()).filter(Boolean).forEach((h) => {
         const key = h.toLowerCase();
         if (!skillNodes.has(key)) {
-          skillNodes.set(key, { id: 'skill-' + key, tipo: 'habilidad', label: h });
+          skillNodes.set(key, { id: 'skill-' + key, tipo: 'habilidad', label: h, categoria: categorizar(h) });
           nodes.push(skillNodes.get(key));
         }
         links.push({ source: 'cand-' + c.candidatoId, target: 'skill-' + key });
@@ -411,7 +445,7 @@
 
     const node = g.append('g').selectAll('circle').data(nodes).join('circle')
       .attr('r', (d) => d.tipo === 'habilidad' ? 9 : 7)
-      .attr('fill', (d) => d.tipo === 'habilidad' ? '#FF6B1A' : '#6B21F5')
+      .attr('fill', (d) => d.tipo === 'habilidad' ? d.categoria.color : '#6B21F5')
       .attr('stroke', '#fff').attr('stroke-width', 1.5)
       .style('cursor', 'pointer')
       .call(d3.drag()
@@ -419,7 +453,9 @@
         .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
         .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
         .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
-      .on('click', (event, d) => { if (d.tipo === 'candidato') showGraphPanel(d.data, showScore); });
+      .on('click', (event, d) => {
+        if (d.tipo === 'candidato') { showGraphPanel(d.data, showScore); showFloatingTooltip(event, d.data); }
+      });
 
     const label = g.append('g').selectAll('text').data(nodes).join('text')
       .text((d) => d.label)
@@ -428,6 +464,24 @@
       .attr('fill', '#1A1523').attr('opacity', .85)
       .attr('dx', 12).attr('dy', 4)
       .style('pointer-events', 'none').style('font-family', 'var(--font-body)');
+
+    // Leyenda de categorías, para entender los colores del mapa
+    const categoriasUsadas = [...new Set(nodes.filter((n) => n.tipo === 'habilidad').map((n) => n.categoria.nombre))]
+      .map((nombre) => SKILL_CATEGORIES.find((c) => c.nombre === nombre) || CATEGORIA_GENERAL);
+    const legend = document.createElement('div');
+    legend.style.cssText = 'position:absolute;bottom:14px;left:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:14px;flex-wrap:wrap;max-width:90%;font-size:.76rem';
+    legend.innerHTML = categoriasUsadas.map((c) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:${c.color};display:inline-block"></span>${escapeHtml(c.nombre)}</span>`).join('');
+    container.appendChild(legend);
+
+    // Filtro en vivo: buscar por hashtag/habilidad o candidato (apodo) atenúa lo que no coincide
+    const searchInput = document.getElementById('graph-search');
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        node.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? 1 : .12);
+        label.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? .85 : .1);
+      };
+    }
 
     simulation = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
@@ -440,6 +494,26 @@
         node.attr('cx', (d) => d.x).attr('cy', (d) => d.y);
         label.attr('x', (d) => d.x).attr('y', (d) => d.y);
       });
+  }
+
+  function showFloatingTooltip(event, c) {
+    const container = document.getElementById('graph-container');
+    let tip = document.getElementById('graph-tooltip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'graph-tooltip';
+      tip.style.cssText = 'position:absolute;background:#1A1523;color:#fff;border-radius:10px;padding:10px 14px;font-size:.78rem;max-width:240px;pointer-events:none;z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.2)';
+      container.appendChild(tip);
+    }
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    tip.style.left = Math.min(x + 14, rect.width - 250) + 'px';
+    tip.style.top = Math.max(y - 10, 0) + 'px';
+    tip.innerHTML = `<strong>${escapeHtml(c.apodo)}</strong><br>${escapeHtml(c.habilidades.split(',').slice(0, 4).map((h) => h.trim()).join(' · '))}`;
+    tip.style.display = 'block';
+    clearTimeout(tip._hideTimer);
+    tip._hideTimer = setTimeout(() => { tip.style.display = 'none'; }, 4000);
   }
 
   function showGraphPanel(c, showScore) {

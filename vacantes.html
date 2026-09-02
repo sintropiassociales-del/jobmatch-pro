@@ -53,6 +53,10 @@
         <option value="sueldo">Mayor sueldo</option>
       </select>
     </div>
+    <div id="featured-block" style="display:none;margin-bottom:36px">
+      <div class="eyebrow" style="color:var(--orange-600)">Destacadas</div>
+      <div class="grid-jobs" id="jobs-featured" style="margin-top:12px"></div>
+    </div>
     <div class="grid-jobs" id="jobs-list"></div>
   </div>
 </section>
@@ -84,9 +88,21 @@
       const jobs = await JobMatchAPI.listJobs(filters);
       const items = jobs.items || [];
       document.getElementById('result-count').textContent = `${items.length} vacante${items.length === 1 ? '' : 's'} encontrada${items.length === 1 ? '' : 's'}`;
-      list.innerHTML = items.length
-        ? items.map(jobCardHTML).join('')
-        : `<div class="empty-state" style="grid-column:1/-1"><p>No encontramos vacantes con esos filtros. Prueba con otros términos, o <a href="mailto:comunicacion@sintropiasocial.com" style="color:var(--purple-700);font-weight:600">escríbele al equipo</a> y te ayudamos a buscar.</p></div>`;
+
+      const destacadas = items.filter((j) => j.destacada === true);
+      const regulares = items.filter((j) => j.destacada !== true);
+
+      const featuredBlock = document.getElementById('featured-block');
+      if (destacadas.length > 0) {
+        featuredBlock.style.display = 'block';
+        document.getElementById('jobs-featured').innerHTML = destacadas.map(expandableFeaturedCardHTML).join('');
+      } else {
+        featuredBlock.style.display = 'none';
+      }
+
+      list.innerHTML = regulares.length
+        ? regulares.map(jobCardHTML).join('')
+        : (destacadas.length === 0 ? `<div class="empty-state" style="grid-column:1/-1"><p>No encontramos vacantes con esos filtros. Prueba con otros términos, o <a href="mailto:comunicacion@sintropiasocial.com" style="color:var(--purple-700);font-weight:600">escríbele al equipo</a> y te ayudamos a buscar.</p></div>` : '');
     } catch (e) {
       list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>No se pudo conectar con la fuente de vacantes. Revisa APPS_SCRIPT_URL en assets/js/app.js.</p></div>`;
     }
