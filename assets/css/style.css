@@ -357,6 +357,17 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 }
 .view-switch-btn.active{background:#fff;color:var(--purple-700);box-shadow:var(--shadow-card);}
 
+/* ---------- Fondo tipo cuadrantes para el mapa de candidatos ---------- */
+.graph-quadrants{
+  background-color:#FAF9F7;
+  background-image:
+    linear-gradient(var(--line), var(--line)),
+    linear-gradient(var(--line), var(--line));
+  background-size:100% 1px, 1px 100%;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+}
+
 /* ---------- Tarjetas de candidato (directorio) ---------- */
 .candidate-card{
   background:#fff;border:1px solid var(--line);border-radius:var(--radius-md);
