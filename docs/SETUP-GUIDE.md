@@ -5,7 +5,13 @@
 1. Crea un Google Sheet nuevo, llámalo `JobMatch Pro - Base de Datos`.
 2. No necesitas crear las hojas a mano — `Code.gs` las crea solas la primera
    vez que se usan: `Empresas`, `Vacantes`, `Postulaciones`, `Candidatos`,
-   `PerfilSocioeconomico`, `PagosEmpresas`.
+   `PerfilSocioeconomico`, `PagosEmpresas`, `SolicitudesContacto`.
+3. **Auto-reparación de columnas**: si en el futuro actualizas `Code.gs` y
+   agrega un campo nuevo a alguna hoja, no hace falta que edites el Sheet a
+   mano — la primera vez que ese campo se use, el código agrega la columna
+   que falte solo, al final de la hoja. Esto fue un arreglo importante:
+   antes, cada campo nuevo que agregábamos requería ir al Sheet a insertar la
+   columna manualmente, y era fácil que se desalineara.
 
 ## 2. Instalar el backend (Apps Script)
 
@@ -242,8 +248,9 @@ git push -u origin main
    externa de prueba (con un link cualquiera) y confirma que aparece
    **después** de las de empresas en `vacantes.html`, con el botón "Ver
    vacante original" en vez de formulario de postulación.
-4. `candidato.html` → crea un perfil, sube un CV y llena el perfil
-   socioeconómico.
+4. `candidato.html` → crea un perfil, sube un CV, llena el perfil
+   socioeconómico, y escribe algunas habilidades en el nuevo campo de
+   "Habilidades y competencias" (sepáralas con comas).
 5. Postúlate a la vacante de prueba. Si quieres probar el flujo de datos
    socioeconómicos: en `admin-plataforma.html` sube el plan de la empresa de
    prueba a "Business", vuelve a postularte marcando el checkbox de
@@ -251,7 +258,58 @@ git push -u origin main
    "Postulaciones" que aparece el botón para verlos.
 6. En `portal-empresa.html` → pestaña "Mi plan", prueba el botón de PayPal en
    modo sandbox si quieres (dashboard.paypal.com/developer) sin cobrar de
-   verdad.
+   verdad. También puedes probar el mismo botón directo desde `precios.html`.
+7. `candidatos.html` → sin iniciar sesión, confirma que el candidato que
+   acabas de crear aparece en el directorio (lista y mapa), mostrando solo
+   sus habilidades — nunca su nombre, correo ni ubicación.
+8. Con la misma empresa de prueba en plan Business: entra en `candidatos.html`,
+   pega el texto de tu vacante en "Comparar contra una vacante" y confirma
+   que el candidato aparece con un % de coincidencia. Dale "Solicitar
+   contacto" — debe llegarle un correo al candidato con los links de
+   autorizar/rechazar. Al darle clic a "Sí, autorizo" en ese correo, vuelve
+   a `candidatos.html` y confirma que ahora puedes "Ver contacto autorizado".
+9. En `admin-plataforma.html` → pestaña "Curaduría (triada)", elige esa
+   vacante, marca al candidato como "En la triada" y escríbele un reporte —
+   confirma que se ve resaltado en `portal-empresa.html` → "Postulaciones".
+
+## 8. Funciones agregadas después del lanzamiento inicial
+
+Esto no son pasos de instalación — es un resumen de lo que se fue
+construyendo encima de la base, por si en algún momento necesitas ubicar
+rápido dónde vive cada cosa.
+
+- **Directorio público de candidatos** (`candidatos.html`): cualquiera puede
+  navegarlo sin iniciar sesión — solo se ven habilidades, nunca datos
+  identificables. Tiene vista de lista y un mapa visual (estilo grafo,
+  usando D3.js desde un CDN) organizado por categorías de habilidades con
+  colores. Solo empresas con plan **Business o A la medida** pueden comparar
+  candidatos contra una vacante o solicitar contacto directo.
+- **Solicitud de contacto**: cuando una empresa quiere el contacto de un
+  candidato, se le manda un correo con dos links (autorizar/rechazar) — el
+  candidato decide sin necesidad de iniciar sesión en ningún lado. Vive en
+  la hoja `SolicitudesContacto`.
+- **Vacantes destacadas de verdad**: las empresas Pro/Business/A la medida
+  pueden destacar hasta un número de vacantes al mes (ver tabla de planes),
+  y esas aparecen en una sección aparte y con un diseño distinto en
+  `index.html` y `vacantes.html` — ya no es solo una etiqueta. El admin
+  también puede destacar cualquier vacante (incluidas las externas) sin
+  límite, desde `admin-plataforma.html`.
+- **Expiración automática de vacantes**: desde `admin-plataforma.html`, se
+  le puede poner fecha a cualquier vacante para que deje de mostrarse sola
+  ese día, sin que tengas que entrar a pausarla a mano.
+- **Curaduría/triada** (`admin-plataforma.html` → pestaña "Curaduría"): para
+  vacantes de empresas Pro en adelante, ahí marcas qué candidatos forman la
+  "triada" que le mandas a la empresa, y les escribes un reporte — se ve
+  resaltado en el panel de esa empresa.
+- **Seguridad**: bloqueo temporal tras varios intentos fallidos de
+  `ADMIN_KEY`, enfriamiento anti-spam en registro de empresa y
+  postulaciones, y todo el texto que viene de usuarios se limpia antes de
+  mostrarse (protección contra XSS).
+- **Candidatos de muestra**: si quieres ver el directorio poblado sin
+  esperar candidatos reales, corre la función `seedDemoCandidatesForDirectory`
+  desde el editor de Apps Script (menú de funciones → elegirla → ▶
+  Ejecutar) — crea 20 candidatos de prueba, identificables porque su correo
+  termina en `@jobmatch-demo.invalid`.
 
 ---
 

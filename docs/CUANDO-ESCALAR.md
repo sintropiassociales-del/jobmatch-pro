@@ -80,3 +80,16 @@ migrar por completo, hay parches que estiran esta versión un poco más:
    una segunda hoja, para que las consultas del día a día lean menos filas.
 
 Ninguno de estos parches resuelve el límite de fondo — solo compran tiempo.
+
+## Nota sobre las funciones agregadas después (directorio de candidatos, mapa, matching)
+
+El directorio público de candidatos (`candidatos.html`) y el matching contra
+vacantes leen la hoja `Candidatos` completa en cada consulta, igual que
+`listJobs_`. Mientras tengas unos cuantos cientos de candidatos con
+habilidades registradas, no hay problema — pero si algún día ese número
+crece mucho, es otra señal (además de las de la tabla de arriba) de que
+vale la pena migrar. La comparación de habilidades contra una vacante no usa
+IA por candidato (es comparación de texto, no una llamada a Gemini por cada
+uno), así que no te va a generar un costo de IA que crezca con el número de
+candidatos — solo la extracción inicial de habilidades de la vacante hace
+una llamada a Gemini, una vez por búsqueda.
