@@ -253,7 +253,10 @@
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
-      localStorage.removeItem(ADMIN_KEY_STORAGE);
+      // Solo borramos si el backend confirmó que la clave ya no es válida —
+      // no ante un bloqueo temporal ni un error pasajero de red, que antes
+      // también la borraban y te obligaban a volver a iniciar sesión.
+      if (err.message === 'No autorizado') localStorage.removeItem(ADMIN_KEY_STORAGE);
     }
   }
 
@@ -345,14 +348,21 @@
                 ${j.fechaExpiracion ? `<span>Se quita el ${escapeHtml(j.fechaExpiracion)}</span>` : ''}
               </div>
             </div>
+            <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
+              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleAdminEdit('${j.id}', this)">✏️ Editar</button>
               <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setJobActive('${j.id}', ${j.activa === false}, this)">${j.activa === false ? 'Reactivar' : 'Pausar'}</button>
               <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="adminToggleFeatured('${j.id}', ${j.destacada !== true}, this)">${j.destacada === true ? 'Quitar destacada' : '⭐ Destacar'}</button>
-              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C" onclick="deleteJob('${j.id}', this)">Eliminar</button>
             </div>
+            <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C;border-color:#F3C6BB" onclick="deleteJob('${j.id}', this)">Eliminar</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+
+          <div class="admin-edit-box" data-job="${escapeHtml(JSON.stringify(j))}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)"></div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap">
             <label style="font-size:.8rem;color:var(--ink-soft)">Quitarla sola el:</label>
             <input type="date" class="exp-input" value="${j.fechaExpiracion || ''}" style="border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem">
             <button class="btn btn-ghost" style="padding:7px 14px;font-size:.78rem" onclick="adminSaveExpiration('${j.id}', this)">Guardar fecha</button>
@@ -375,6 +385,74 @@
       loadAdminJobs();
     } catch (err) {
       alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  function toggleAdminEdit(jobId, btn) {
+    const card = btn.closest('.job-card');
+    const box = card.querySelector('.admin-edit-box');
+    if (box.style.display === 'block') { box.style.display = 'none'; return; }
+
+    const j = JSON.parse(box.dataset.job);
+    const esExterna = j.fuente === 'admin';
+    box.innerHTML = `
+      <div class="field"><label>Puesto</label><input type="text" class="ae-titulo" value="${escapeHtml(j.titulo)}"></div>
+      ${esExterna ? `<div class="field"><label>Empresa</label><input type="text" class="ae-empresa" value="${escapeHtml(j.empresaNombre)}"></div>` : ''}
+      <div class="form-grid-2">
+        <div class="field"><label>Modalidad</label>
+          <select class="ae-modalidad">
+            <option value="" ${!j.modalidad ? 'selected' : ''}>Selecciona...</option>
+            <option ${j.modalidad === 'Remoto' ? 'selected' : ''}>Remoto</option>
+            <option ${j.modalidad === 'Híbrido' ? 'selected' : ''}>Híbrido</option>
+            <option ${j.modalidad === 'Presencial' ? 'selected' : ''}>Presencial</option>
+          </select>
+        </div>
+        <div class="field"><label>Ubicación</label><input type="text" class="ae-ubicacion" value="${escapeHtml(j.ubicacion || '')}"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="field"><label>Sueldo mínimo</label><input type="number" class="ae-min" value="${j.salarioMin || ''}"></div>
+        <div class="field"><label>Sueldo máximo</label><input type="number" class="ae-max" value="${j.salarioMax || ''}"></div>
+      </div>
+      <div class="field"><label>Descripción</label><textarea class="ae-descripcion">${escapeHtml(j.descripcion || '')}</textarea></div>
+      ${esExterna ? `
+      <div class="field"><label>Link de la vacante original</label><input type="url" class="ae-link" value="${escapeHtml(j.linkExterno || '')}"></div>
+      <div class="field"><label>Nota para el candidato</label><input type="text" class="ae-nota" value="${escapeHtml(j.notaAdmin || '')}"></div>` : ''}
+      <button class="btn btn-primary" style="padding:10px 18px;font-size:.85rem" onclick="saveAdminEdit('${jobId}', this)">Guardar cambios</button>
+      <div class="status-msg" id="ae-status-${jobId}"></div>`;
+    box.style.display = 'block';
+  }
+
+  async function saveAdminEdit(jobId, btn) {
+    const box = btn.closest('.admin-edit-box');
+    const status = document.getElementById('ae-status-' + jobId);
+    const payload = {
+      titulo: box.querySelector('.ae-titulo').value,
+      modalidad: box.querySelector('.ae-modalidad').value,
+      ubicacion: box.querySelector('.ae-ubicacion').value,
+      salarioMin: box.querySelector('.ae-min').value,
+      salarioMax: box.querySelector('.ae-max').value,
+      descripcion: box.querySelector('.ae-descripcion').value,
+    };
+    const empresaInput = box.querySelector('.ae-empresa');
+    if (empresaInput) payload.empresaNombre = empresaInput.value;
+    const linkInput = box.querySelector('.ae-link');
+    if (linkInput) payload.linkExterno = linkInput.value;
+    const notaInput = box.querySelector('.ae-nota');
+    if (notaInput) payload.notaAdmin = notaInput.value;
+
+    btn.disabled = true;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      const data = await JobMatchAPI.adminUpdateJob(adminKey, jobId, payload);
+      if (data.error) throw new Error(data.error);
+      status.className = 'status-msg show ok';
+      status.textContent = 'Guardado ✓';
+      loadAdminJobs();
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
       btn.disabled = false;
     }
   }

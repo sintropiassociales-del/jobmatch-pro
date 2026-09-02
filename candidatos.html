@@ -185,12 +185,21 @@
   });
 
   async function checkSession(token) {
-    const data = await JobMatchAPI.listCandidatesDirectory(token);
+    let data;
+    try {
+      data = await JobMatchAPI.listCandidatesDirectory(token);
+    } catch (networkErr) {
+      // Falla de red pasajera: no tocamos el token guardado, solo nos
+      // quedamos en modo "sin sesión" para esta carga de página.
+      console.warn('No se pudo verificar la sesión de empresa:', networkErr);
+      return;
+    }
     if (data.error || !data.sesionActiva) {
+      // El backend sí respondió, y de forma explícita dice que ese código
+      // ya no es válido — ahí sí lo borramos.
       localStorage.removeItem(COMPANY_TOKEN_KEY);
       return;
     }
-    localStorage.setItem(COMPANY_TOKEN_KEY, token);
     currentEmpresaToken = token;
     currentPuedeSolicitar = data.puedeSolicitarContacto;
     document.getElementById('session-logged-out').style.display = 'none';
@@ -397,9 +406,9 @@
     { nombre: 'Finanzas y contabilidad', color: '#2E9E5B', rx: /excel|contabilidad|finan|\bsat\b|impuest|n[oó]mina|conciliaci|presupuest|reportes financ/i },
     { nombre: 'Tecnología', color: '#2B6FE0', rx: /javascript|python|\bsql\b|react|node|programa|desarroll|software|base(s)? de datos|machine learning|\bgit\b|visualizaci[oó]n de datos/i },
     { nombre: 'Marketing y ventas', color: '#D6336C', rx: /marketing|ventas|\bseo\b|redes sociales|publicidad|contenido|\bads\b|\bcrm\b/i },
-    { nombre: 'Recursos humanos', color: '#9C5FD6', rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas/i },
-    { nombre: 'Logística y operaciones', color: '#C77D19', rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n/i },
-    { nombre: 'Legal y administrativo', color: '#5C6BC0', rx: /legal|contrato|jur[ií]dic|administrativ/i },
+    { nombre: 'Recursos humanos', color: '#D4A017', rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas/i },
+    { nombre: 'Logística y operaciones', color: '#B85C00', rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n/i },
+    { nombre: 'Legal y administrativo', color: '#546E7A', rx: /legal|contrato|jur[ií]dic|administrativ/i },
     { nombre: 'Salud', color: '#0F9B8E', rx: /salud|enfermer[ií]a|m[eé]dic|paciente/i },
   ];
   const CATEGORIA_GENERAL = { nombre: 'General', color: '#FF6B1A' };

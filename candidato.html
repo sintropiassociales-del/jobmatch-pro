@@ -220,7 +220,10 @@
     } catch (err) {
       document.getElementById('login-status').className = 'status-msg show err';
       document.getElementById('login-status').textContent = err.message;
-      localStorage.removeItem(STORAGE_KEY);
+      // Solo borramos si el backend confirmó que el código ya no es válido.
+      if (['Código no encontrado', 'Falta el código de acceso'].includes(err.message)) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
   }
 
