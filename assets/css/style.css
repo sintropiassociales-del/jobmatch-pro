@@ -91,7 +91,7 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
   display:flex;align-items:center;justify-content:center;
   color:#fff;font-family:var(--font-display);font-weight:700;font-size:.95rem;flex-shrink:0;
 }
-.nav-links{display:flex;gap:22px;align-items:center;}
+.nav-links{display:flex;gap:18px;align-items:center;}
 .sintropia-badge{
   font-size:.74rem;color:var(--ink-soft);padding:4px 11px;
   border:1px solid var(--line);border-radius:100px;white-space:nowrap;
@@ -99,7 +99,7 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .sintropia-badge strong{color:var(--purple-700);}
 .sintropia-badge:hover{border-color:var(--purple-500);color:var(--purple-700);}
 @media (max-width:1250px){ .sintropia-badge{display:none;} }
-.nav-links a{font-weight:500;font-size:.94rem;color:var(--ink-soft);}
+.nav-links a{font-weight:500;font-size:.94rem;color:var(--ink-soft);white-space:nowrap;}
 .nav-links a:hover{color:var(--purple-700);}
 .nav-cta{
   background:var(--orange-500);color:#fff !important;
@@ -260,6 +260,10 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .featured-job-card .desc{
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;
 }
+.expand-panel{
+  border-top:1px dashed rgba(255,107,26,.3);padding-top:14px;margin-top:2px;
+}
+.expand-panel .desc{-webkit-line-clamp:unset;display:block;}
 .tag{
   font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:100px;
   background:var(--purple-100);color:var(--purple-700);
@@ -377,7 +381,7 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .skel{background:linear-gradient(90deg,var(--purple-050) 25%,var(--purple-100) 37%,var(--purple-050) 63%);background-size:400% 100%;animation:skel 1.4s ease infinite;border-radius:var(--radius-sm);}
 @keyframes skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
 
-@media (max-width:900px){
+@media (max-width:1180px){
   .nav-toggle{display:block;z-index:210;position:relative;}
   .nav-links{
     display:none;
