@@ -50,13 +50,18 @@
 
       <div class="form-card" style="max-width:480px">
         <div class="field">
-          <label for="login-token">Código de acceso de tu empresa</label>
-          <input type="text" id="login-token" placeholder="Lo recibiste por correo al crear tu cuenta">
+          <label for="login-email">O entra sin Google: te mandamos un link por correo</label>
+          <input type="email" id="login-email" placeholder="El correo con el que registraste tu empresa">
         </div>
-        <button class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+        <button class="btn btn-primary btn-block" id="btn-login">Enviarme mi acceso</button>
         <div class="status-msg" id="login-status"></div>
         <p style="text-align:center;margin-top:16px;font-size:.85rem">¿No tienes cuenta? <a href="registro-empresa.html" style="color:var(--purple-700);font-weight:600">Créala gratis →</a></p>
       </div>
+    </div>
+
+    <!-- ============ VERIFICANDO SESIÓN GUARDADA ============ -->
+    <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
+      <p style="color:var(--ink-soft)">Verificando tu sesión…</p>
     </div>
 
     <!-- ============ PANEL (oculto hasta entrar) ============ -->
@@ -266,8 +271,16 @@
   let currentEmpresa = null;
   let pendingSubscription = null;
 
-  function showPanel() { document.getElementById('access-view').style.display = 'none'; document.getElementById('panel-view').style.display = 'block'; }
-  function showAccess() { document.getElementById('access-view').style.display = 'block'; document.getElementById('panel-view').style.display = 'none'; }
+  function showPanel() {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('panel-view').style.display = 'block';
+  }
+  function showAccess() {
+    document.getElementById('access-view').style.display = 'block';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('panel-view').style.display = 'none';
+  }
 
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -287,6 +300,7 @@
 
       document.getElementById('empresa-nombre').textContent = data.empresa.razonSocial;
       document.getElementById('plan-chip').textContent = `Plan ${data.empresa.plan}`;
+      cacheEmpresaSession({ razonSocial: data.empresa.razonSocial, plan: data.empresa.plan });
 
       let limitTxt = data.limiteVacantes === null
         ? `Tu plan (${data.empresa.plan}) permite vacantes ilimitadas. Llevas ${data.vacantesActivas}.`
@@ -309,6 +323,7 @@
 
       showPanel();
     } catch (err) {
+      showAccess();
       document.getElementById('login-status').className = 'status-msg show err';
       document.getElementById('login-status').textContent = err.message;
       // Solo borramos la sesión guardada si el backend confirmó que el
@@ -316,7 +331,7 @@
       // antes también la borraba y te obligaba a volver a iniciar sesión
       // sin necesidad.
       const invalido = ['Código no encontrado', 'Falta el código de acceso', 'Tu cuenta está desactivada. Contacta a Sintropía Social.'].includes(err.message);
-      if (invalido) localStorage.removeItem(COMPANY_TOKEN_KEY);
+      if (invalido) { localStorage.removeItem(COMPANY_TOKEN_KEY); clearCachedEmpresaSession(); }
     }
   }
 
@@ -543,12 +558,24 @@
     }
   });
 
-  document.getElementById('btn-login').addEventListener('click', () => {
-    const token = document.getElementById('login-token').value.trim();
-    if (token) loadEmpresa(token);
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const status = document.getElementById('login-status');
+    if (!email) { status.className = 'status-msg show err'; status.textContent = 'Escribe tu correo primero.'; return; }
+    status.className = 'status-msg show pending';
+    status.textContent = 'Enviando...';
+    try {
+      await JobMatchAPI.requestEmpresaLoginLink(email, window.location.origin + window.location.pathname);
+      status.className = 'status-msg show ok';
+      status.textContent = 'Listo — revisa tu correo (y spam) y da clic en el link para entrar. No hace falta copiar nada.';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
   });
   document.getElementById('btn-logout').addEventListener('click', () => {
     localStorage.removeItem(COMPANY_TOKEN_KEY);
+    clearCachedEmpresaSession();
     showAccess();
   });
 
@@ -583,8 +610,33 @@
     }
   });
 
-  const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
-  if (saved) loadEmpresa(saved);
+  // Si vienes de un link de acceso por correo (?token=...), entra directo
+  // y limpia la URL para no dejar el token visible en la barra/historial.
+  const urlParams = new URLSearchParams(window.location.search);
+  const linkToken = urlParams.get('token');
+  if (linkToken) {
+    history.replaceState({}, '', window.location.pathname);
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'block';
+    loadEmpresa(linkToken);
+  } else {
+    const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
+    const cached = getCachedEmpresaSession();
+    if (saved && cached) {
+      // Mostramos el panel de inmediato con los últimos datos que ya
+      // conocíamos, mientras se confirma con el servidor en segundo plano —
+      // así no hay que esperar el arranque en frío de Apps Script para ver
+      // algo en pantalla.
+      document.getElementById('empresa-nombre').textContent = cached.razonSocial;
+      document.getElementById('plan-chip').textContent = `Plan ${cached.plan}`;
+      showPanel();
+      loadEmpresa(saved);
+    } else if (saved) {
+      document.getElementById('access-view').style.display = 'none';
+      document.getElementById('session-check-view').style.display = 'block';
+      loadEmpresa(saved);
+    }
+  }
 </script>
 </body>
 </html>

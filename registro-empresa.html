@@ -138,7 +138,7 @@
 
       localStorage.setItem(COMPANY_TOKEN_KEY, result.companyToken);
       status.className = 'status-msg show ok';
-      status.textContent = '¡Cuenta creada! Te enviamos tu código por correo. Redirigiendo a tu panel...';
+      status.textContent = '¡Cuenta creada! Ya tienes tu sesión abierta. Redirigiendo a tu panel...';
       setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1200);
     } catch (err) {
       status.className = 'status-msg show err';

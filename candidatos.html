@@ -52,8 +52,8 @@
           <div id="google-btn"></div>
           <div style="text-align:center;color:var(--ink-soft);font-size:.8rem;margin:10px 0">— o —</div>
           <div style="display:flex;gap:10px">
-            <input type="text" id="login-token" placeholder="Código de acceso de tu empresa" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
-            <button class="btn btn-primary" id="btn-login">Entrar</button>
+            <input type="email" id="login-email" placeholder="Tu correo de empresa (te mandamos un link)" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
+            <button class="btn btn-primary" id="btn-login">Enviarme acceso</button>
           </div>
           <div class="status-msg" id="login-status"></div>
         </div>
@@ -110,9 +110,11 @@
 
     <!-- ============ VISTA DE MAPA (estilo Obsidian, en colores del sitio) ============ -->
     <div id="map-view" style="display:none">
-      <div class="field" style="max-width:400px;margin-bottom:14px">
+      <p style="font-size:.82rem;color:var(--ink-soft);max-width:640px;margin-bottom:14px">Cada punto grande es un candidato y cada punto chico es una habilidad — las líneas los conectan. Arrastra para reacomodar, rueda/pellizca para hacer zoom, y da clic en un candidato para ver su detalle.</p>
+      <div class="field" style="max-width:400px;margin-bottom:10px">
         <input type="text" id="graph-search" placeholder="Buscar por hashtag/habilidad o candidato...">
       </div>
+      <div id="graph-hashtags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
       <div id="graph-container" class="graph-quadrants" style="height:600px;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"></div>
       <div id="graph-panel" style="display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px;margin-top:20px"></div>
     </div>
@@ -145,8 +147,30 @@
   window.addEventListener('load', () => {
     loadDirectory(); // el directorio se carga siempre, con o sin sesión
 
+    // Si vienes de un link de acceso por correo (?token=...), entra directo
+    // y limpia la URL para no dejar el token visible en la barra/historial.
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkToken = urlParams.get('token');
+    if (linkToken) {
+      history.replaceState({}, '', window.location.pathname);
+      checkSession(linkToken);
+      return;
+    }
+
     const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
     if (saved) {
+      const cached = getCachedEmpresaSession();
+      if (cached) {
+        // Mostramos la tarjeta "con sesión" de inmediato con los últimos
+        // datos conocidos, mientras se confirma en segundo plano — evita el
+        // hueco en blanco mientras Apps Script arranca en frío.
+        currentEmpresaToken = saved;
+        currentPuedeSolicitar = !!cached.puedeSolicitarContacto;
+        document.getElementById('session-logged-out').style.display = 'none';
+        document.getElementById('session-logged-in').style.display = 'block';
+        document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(cached.razonSocial)}</strong> · Plan ${escapeHtml(cached.plan)}` +
+          (currentPuedeSolicitar ? ' — puedes comparar y solicitar contacto.' : ' — mejora tu plan a Business o A la medida para comparar/contactar.');
+      }
       checkSession(saved);
     } else if (typeof google !== 'undefined' && google.accounts) {
       google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
@@ -170,13 +194,25 @@
     }
   }
 
-  document.getElementById('btn-login').addEventListener('click', () => {
-    const token = document.getElementById('login-token').value.trim();
-    if (token) checkSession(token);
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const status = document.getElementById('login-status');
+    if (!email) { status.className = 'status-msg show err'; status.textContent = 'Escribe tu correo primero.'; return; }
+    status.className = 'status-msg show pending';
+    status.textContent = 'Enviando...';
+    try {
+      await JobMatchAPI.requestEmpresaLoginLink(email, window.location.origin + window.location.pathname);
+      status.className = 'status-msg show ok';
+      status.textContent = 'Listo — revisa tu correo (y spam) y da clic en el link para entrar. No hace falta copiar nada.';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
   });
 
   document.getElementById('btn-session-logout').addEventListener('click', () => {
     localStorage.removeItem(COMPANY_TOKEN_KEY);
+    clearCachedEmpresaSession();
     currentEmpresaToken = null;
     currentPuedeSolicitar = false;
     document.getElementById('session-logged-in').style.display = 'none';
@@ -198,6 +234,9 @@
       // El backend sí respondió, y de forma explícita dice que ese código
       // ya no es válido — ahí sí lo borramos.
       localStorage.removeItem(COMPANY_TOKEN_KEY);
+      clearCachedEmpresaSession();
+      document.getElementById('session-logged-in').style.display = 'none';
+      document.getElementById('session-logged-out').style.display = 'block';
       return;
     }
     currentEmpresaToken = token;
@@ -206,6 +245,8 @@
     document.getElementById('session-logged-in').style.display = 'block';
     document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(data.empresaNombre)}</strong> · Plan ${escapeHtml(data.empresaPlan)}` +
       (currentPuedeSolicitar ? ' — puedes comparar y solicitar contacto.' : ' — mejora tu plan a Business o A la medida para comparar/contactar.');
+    cacheEmpresaSession({ razonSocial: data.empresaNombre, plan: data.empresaPlan, puedeSolicitarContacto: currentPuedeSolicitar });
+    localStorage.setItem(COMPANY_TOKEN_KEY, token);
     renderDirectory(data.items);
   }
 
@@ -400,20 +441,13 @@
 
   // ---------- Vista de mapa: habilidades y candidatos como nodos, en los
   // colores del propio sitio (nada de fondo negro), integrado a la página. ----------
-  // Categorías aproximadas por palabra clave — no es un dato que capturemos,
-  // es una clasificación automática para poder darle más color al mapa.
-  const SKILL_CATEGORIES = [
-    { nombre: 'Finanzas y contabilidad', color: '#2E9E5B', rx: /excel|contabilidad|finan|\bsat\b|impuest|n[oó]mina|conciliaci|presupuest|reportes financ/i },
-    { nombre: 'Tecnología', color: '#2B6FE0', rx: /javascript|python|\bsql\b|react|node|programa|desarroll|software|base(s)? de datos|machine learning|\bgit\b|visualizaci[oó]n de datos/i },
-    { nombre: 'Marketing y ventas', color: '#D6336C', rx: /marketing|ventas|\bseo\b|redes sociales|publicidad|contenido|\bads\b|\bcrm\b/i },
-    { nombre: 'Recursos humanos', color: '#D4A017', rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas/i },
-    { nombre: 'Logística y operaciones', color: '#B85C00', rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n/i },
-    { nombre: 'Legal y administrativo', color: '#546E7A', rx: /legal|contrato|jur[ií]dic|administrativ/i },
-    { nombre: 'Salud', color: '#0F9B8E', rx: /salud|enfermer[ií]a|m[eé]dic|paciente/i },
-  ];
-  const CATEGORIA_GENERAL = { nombre: 'General', color: '#FF6B1A' };
+  // El mapa de categorías (SKILL_MAP) vive en assets/js/app.js — es el mismo
+  // que usa candidato.html para sugerir habilidades al armar el perfil, así
+  // que solo hay que mantenerlo actualizado en un lugar.
+  const SKILL_CATEGORIES = SKILL_MAP;
+  const CATEGORIA_GENERAL = SKILL_CATEGORIA_GENERAL;
   function categorizar(skill) {
-    return SKILL_CATEGORIES.find((cat) => cat.rx.test(skill)) || CATEGORIA_GENERAL;
+    return categorizarHabilidad(skill);
   }
 
   function renderGraph(items, showScore) {
@@ -421,6 +455,8 @@
     container.innerHTML = '';
     if (!items || items.length === 0) {
       container.insertAdjacentHTML('beforeend', `<p style="color:var(--ink-soft);text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
+      const hashtagsEl = document.getElementById('graph-hashtags');
+      if (hashtagsEl) hashtagsEl.innerHTML = '';
       return;
     }
 
@@ -502,19 +538,51 @@
 
     // Filtro en vivo: buscar por hashtag/habilidad o candidato (apodo) atenúa lo que no coincide
     const searchInput = document.getElementById('graph-search');
+    function filtrarMapa(q) {
+      const query = (q || '').trim().toLowerCase();
+      node.attr('opacity', (d) => !query || d.label.toLowerCase().includes(query) ? 1 : .12);
+      label.attr('opacity', (d) => !query || d.label.toLowerCase().includes(query) ? .85 : .1);
+    }
     if (searchInput) {
-      searchInput.oninput = () => {
-        const q = searchInput.value.trim().toLowerCase();
-        node.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? 1 : .12);
-        label.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? .85 : .1);
-      };
+      searchInput.oninput = () => filtrarMapa(searchInput.value);
     }
 
+    // Hashtags de ejemplo: las habilidades más comunes en ESTE directorio
+    // (recién cargado), para dar ideas de búsqueda rápida sin tener que
+    // adivinar cómo las escribió cada quien. Como se recalculan cada vez que
+    // se dibuja el mapa a partir de los candidatos reales, la lista crece y
+    // cambia sola conforme se registran más personas — no hay nada fijo aquí.
+    const hashtagsEl = document.getElementById('graph-hashtags');
+    if (hashtagsEl) {
+      const topSkills = [...skillCandidatos.entries()]
+        .sort((a, b) => b[1].length - a[1].length)
+        .slice(0, 12)
+        .map(([key]) => skillNodes.get(key).label);
+      hashtagsEl.innerHTML = topSkills
+        .map((skillLabel) => `<button type="button" class="tag hashtag-btn" data-skill="${escapeHtml(skillLabel)}">#${escapeHtml(skillLabel)}</button>`)
+        .join('');
+      hashtagsEl.querySelectorAll('.hashtag-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const value = btn.dataset.skill;
+          if (searchInput) searchInput.value = value;
+          hashtagsEl.querySelectorAll('.hashtag-btn').forEach((b) => b.classList.toggle('active', b === btn));
+          filtrarMapa(value);
+        });
+      });
+    }
+
+    // El radio de colisión toma en cuenta el largo de la etiqueta (no solo
+    // el tamaño del punto): antes usaba un radio fijo, y por eso los nombres
+    // largos (apodos, habilidades) se enciman cuando hay varios nodos cerca.
+    // Con esto cada nodo empuja a los demás lo suficiente para dejarle
+    // espacio a su propio texto.
+    const collideRadius = (d) => (d.tipo === 'habilidad' ? 9 : 7) + Math.min(d.label.length * 2.6, 60);
+
     simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
-      .force('charge', d3.forceManyBody().strength(-140))
+      .force('link', d3.forceLink(links).id((d) => d.id).distance(66))
+      .force('charge', d3.forceManyBody().strength(-170))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collide', d3.forceCollide().radius(26))
+      .force('collide', d3.forceCollide().radius(collideRadius).iterations(2))
       .on('tick', () => {
         link.attr('x1', (d) => d.source.x).attr('y1', (d) => d.source.y)
           .attr('x2', (d) => d.target.x).attr('y2', (d) => d.target.y);
@@ -579,8 +647,10 @@
       ${puedeComparar ? `
       <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">
         <label style="font-size:.82rem;font-weight:600;color:var(--purple-900)">Calcular match con una vacante</label>
-        <textarea id="panel-vacancy-text" placeholder="Pega el texto de la vacante..." style="min-height:70px;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
+        <p style="font-size:.78rem;color:var(--ink-soft);margin:4px 0 8px">Pega el <strong>texto completo</strong> de la descripción del puesto (copia y pega el contenido, no solo el link) y te decimos qué % de sus habilidades coincide con este candidato.</p>
+        <textarea id="panel-vacancy-text" placeholder="Pega aquí el texto de la vacante (no el link)..." style="min-height:70px;width:100%;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
         <button class="btn btn-ghost" style="margin-top:8px;padding:9px 16px;font-size:.82rem" onclick="matchOneInPanel('${c.candidatoId}', this)">Calcular match</button>
+        <div id="panel-match-result" style="display:none;margin-top:12px"></div>
         <div class="status-msg" id="panel-match-status"></div>
       </div>` : ''}`;
 
@@ -594,7 +664,14 @@
   async function matchOneInPanel(candidatoId, btn) {
     const texto = document.getElementById('panel-vacancy-text').value.trim();
     const status = document.getElementById('panel-match-status');
+    const result = document.getElementById('panel-match-result');
+    result.style.display = 'none';
     if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
+    if (/^https?:\/\/\S+$/i.test(texto)) {
+      status.className = 'status-msg show err';
+      status.textContent = 'Eso parece un link — pega el texto de la descripción del puesto (no la URL) para que se puedan leer las habilidades que pide.';
+      return;
+    }
     btn.disabled = true;
     status.className = 'status-msg show pending';
     status.textContent = 'Calculando...';
@@ -602,8 +679,16 @@
       const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
       if (data.error) throw new Error(data.error);
       const match = data.items.find((i) => String(i.candidatoId) === String(candidatoId));
-      status.className = 'status-msg show ok';
-      status.textContent = match ? `${match.score}% de habilidades en común con esta vacante.` : 'Este candidato no tiene habilidades en común con esta vacante.';
+      const score = match ? match.score : 0;
+      status.className = 'status-msg';
+      status.textContent = '';
+      result.style.display = 'block';
+      result.innerHTML = `
+        <div class="match">
+          <div class="match-track"><div class="match-fill" style="width:${score}%"></div></div>
+          <span class="match-label">${score}% afinidad</span>
+        </div>
+        ${score === 0 ? `<p style="font-size:.78rem;color:var(--ink-soft);margin-top:6px">Este candidato no tiene habilidades en común con lo que detectamos en ese texto.</p>` : ''}`;
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
