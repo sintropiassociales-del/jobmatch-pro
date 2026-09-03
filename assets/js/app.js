@@ -84,6 +84,28 @@ function categorizarHabilidad(skill) {
   return SKILL_MAP.find((cat) => cat.rx.test(skill)) || SKILL_CATEGORIA_GENERAL;
 }
 
+/* ---------- Nav que se adapta a la sesión activa ----------
+   El menú de arriba es el mismo HTML copiado en todas las páginas. Si hay
+   una sesión de empresa abierta en este navegador, "Mi perfil" ya no debe
+   mandar al login de candidato (que ofrece entrar con LinkedIn — no tiene
+   sentido estando en modo empresa) — mejor manda directo al panel de la
+   empresa. "Acceso empresas" se oculta en ese caso porque ya sería
+   redundante (llevaría al mismo lugar que "Mi cuenta"). Si NO hay sesión de
+   empresa (o solo hay sesión de candidato), el menú se queda igual que
+   siempre. */
+document.addEventListener('DOMContentLoaded', () => {
+  const hasCompanySession = !!localStorage.getItem(COMPANY_TOKEN_KEY);
+  if (!hasCompanySession) return;
+  document.querySelectorAll('.nav-links a').forEach((a) => {
+    if (a.getAttribute('href') === 'candidato.html') {
+      a.setAttribute('href', 'portal-empresa.html');
+      a.textContent = 'Mi cuenta';
+    } else if (a.textContent.trim() === 'Acceso empresas') {
+      a.style.display = 'none';
+    }
+  });
+});
+
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
