@@ -66,6 +66,15 @@
       </div>
     </div>
 
+    <!-- ============ VERIFICANDO SESIÓN GUARDADA ============
+         Se muestra brevemente en vez de la pantalla de acceso cuando ya
+         hay un código guardado en este navegador, mientras se confirma con
+         el servidor — así no parece que "pide volver a entrar" cuando en
+         realidad solo está cargando. -->
+    <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
+      <p style="color:var(--ink-soft)">Verificando tu sesión…</p>
+    </div>
+
     <!-- ============ PERFIL (oculto hasta entrar) ============ -->
     <div id="profile-view" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
@@ -100,7 +109,11 @@
           <label for="habilidades">Habilidades (sepáralas con comas)</label>
           <input type="text" id="habilidades" placeholder="Ej. Excel avanzado, gestión de proyectos, atención a clientes, Python">
         </div>
-        <button class="btn btn-ghost btn-block" id="btn-save-habilidades">Guardar habilidades</button>
+
+        <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin:16px 0 4px">O elige de la lista — da clic en las que apliquen y se agregan solas</p>
+        <div class="skill-picker" id="skill-picker"></div>
+
+        <button class="btn btn-ghost btn-block" id="btn-save-habilidades" style="margin-top:18px">Guardar habilidades</button>
         <div class="status-msg" id="habilidades-status"></div>
       </div>
 
@@ -180,7 +193,70 @@
 
 <script src="assets/js/app.js"></script>
 <script>
-  const STORAGE_KEY = 'jobmatch_candidate_token';
+  // Usamos la misma llave que assets/js/app.js (CANDIDATE_TOKEN_KEY) para
+  // que quede un solo lugar donde se define — antes esta página tenía su
+  // propia copia del nombre, con el mismo valor pero repetido.
+  const STORAGE_KEY = CANDIDATE_TOKEN_KEY;
+
+  // ---------- Selector de habilidades por categoría ----------
+  // Usa el mismo mapa (SKILL_MAP / SKILL_CATEGORIA_GENERAL) que candidatos.html
+  // usa para colorear el directorio — así solo hay una lista que mantener.
+  const skillCategoriesForPicker = [...SKILL_MAP, SKILL_CATEGORIA_GENERAL];
+
+  function currentSkillList() {
+    return document.getElementById('habilidades').value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function setSkillList(list) {
+    // Quita duplicados sin importar mayúsculas/minúsculas, conservando el
+    // primer texto tal como se escribió.
+    const seen = new Set();
+    const clean = list.filter((s) => {
+      const key = s.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    document.getElementById('habilidades').value = clean.join(', ');
+    renderSkillPicker();
+  }
+
+  function toggleSkill(skill) {
+    const list = currentSkillList();
+    const idx = list.findIndex((s) => s.toLowerCase() === skill.toLowerCase());
+    if (idx === -1) list.push(skill);
+    else list.splice(idx, 1);
+    setSkillList(list);
+  }
+
+  function renderSkillPicker() {
+    const active = new Set(currentSkillList().map((s) => s.toLowerCase()));
+    const container = document.getElementById('skill-picker');
+    container.innerHTML = skillCategoriesForPicker.map((cat) => `
+      <div class="skill-picker-cat">
+        <div class="skill-picker-cat-label">
+          <span class="skill-picker-cat-dot" style="background:${cat.color}"></span>
+          ${escapeHtml(cat.nombre)}
+        </div>
+        <div class="skill-picker-chips">
+          ${cat.skills.map((skill) => `
+            <button type="button" class="skill-chip${active.has(skill.toLowerCase()) ? ' active' : ''}" data-skill="${escapeHtml(skill)}">${escapeHtml(skill)}</button>
+          `).join('')}
+        </div>
+      </div>`).join('');
+
+    container.querySelectorAll('.skill-chip').forEach((btn) => {
+      btn.addEventListener('click', () => toggleSkill(btn.dataset.skill));
+    });
+  }
+
+  renderSkillPicker();
+  // Si la persona escribe a mano en el campo de texto, los chips reflejan
+  // en vivo cuáles ya están incluidos.
+  document.getElementById('habilidades').addEventListener('input', renderSkillPicker);
 
   document.getElementById('btn-linkedin-login').addEventListener('click', () => {
     const redirectUri = window.location.origin + window.location.pathname;
@@ -226,8 +302,16 @@
   }
   handleLinkedinRedirect();
 
-  function showProfileView() { document.getElementById('access-view').style.display = 'none'; document.getElementById('profile-view').style.display = 'block'; }
-  function showAccessView() { document.getElementById('access-view').style.display = 'block'; document.getElementById('profile-view').style.display = 'none'; }
+  function showProfileView() {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('profile-view').style.display = 'block';
+  }
+  function showAccessView() {
+    document.getElementById('access-view').style.display = 'block';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('profile-view').style.display = 'none';
+  }
 
   async function loadProfile(token) {
     try {
@@ -240,6 +324,7 @@
         ? '✅ Ya tienes un CV subido. Puedes reemplazarlo subiendo uno nuevo.'
         : 'Todavía no has subido tu CV.';
       document.getElementById('habilidades').value = data.candidate.habilidades || '';
+      renderSkillPicker();
 
       if (data.socioeconomico) {
         document.getElementById('ingreso').value = data.socioeconomico.ingresoFamiliar || '';
@@ -266,6 +351,7 @@
       }
       showProfileView();
     } catch (err) {
+      showAccessView();
       document.getElementById('login-status').className = 'status-msg show err';
       document.getElementById('login-status').textContent = err.message;
       // Solo borramos si el backend confirmó que el código ya no es válido.
@@ -377,9 +463,15 @@
     }
   });
 
-  // Auto-login si ya había una sesión guardada en este navegador
+  // Auto-login si ya había una sesión guardada en este navegador. Mostramos
+  // "Verificando tu sesión…" en vez de dejar la pantalla de acceso, para que
+  // no parezca que hay que volver a entrar mientras se confirma el código.
   const savedToken = localStorage.getItem(STORAGE_KEY);
-  if (savedToken) loadProfile(savedToken);
+  if (savedToken) {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'block';
+    loadProfile(savedToken);
+  }
 </script>
 </body>
 </html>
