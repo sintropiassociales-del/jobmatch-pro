@@ -11,6 +11,22 @@ const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.w
 const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
 const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
 
+/* ---------- Caché ligera de la sesión de empresa ----------
+   Guarda solo lo mínimo (nombre y plan) para poder mostrar el panel/tarjeta
+   de sesión al instante en la siguiente visita, mientras se confirma en
+   segundo plano con Apps Script — evita la pantalla en blanco/"Verificando
+   tu sesión..." mientras Apps Script hace su arranque en frío. */
+const COMPANY_CACHE_KEY = 'jobmatch_company_cache';
+function cacheEmpresaSession(data) {
+  try { localStorage.setItem(COMPANY_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function getCachedEmpresaSession() {
+  try { return JSON.parse(localStorage.getItem(COMPANY_CACHE_KEY) || 'null'); } catch (e) { return null; }
+}
+function clearCachedEmpresaSession() {
+  try { localStorage.removeItem(COMPANY_CACHE_KEY); } catch (e) {}
+}
+
 /* ---------- Mapa de habilidades y competencias ----------
    Fuente única de verdad para todo el sitio: candidato.html lo usa para
    ofrecer opciones prellenadas al armar el perfil (más rápido que escribir
@@ -125,6 +141,7 @@ const JobMatchAPI = {
   registerEmpresa: (empresa) => asPost('registerEmpresa', empresa),
   registerEmpresaGoogle: (idToken, razonSocial, rfc) => asPost('registerEmpresaGoogle', { idToken, razonSocial, rfc }),
   loginEmpresaGoogle: (idToken) => asPost('loginEmpresaGoogle', { idToken }),
+  requestEmpresaLoginLink: (email, returnUrl) => asPost('requestEmpresaLoginLink', { email, returnUrl }),
   adminLoginGoogle: (idToken) => asPost('adminLoginGoogle', { idToken }),
   getEmpresaProfile: (token) => asGet('getEmpresaProfile', { token }),
   uploadLogo: (companyToken, fileBase64, fileName) => asPost('uploadLogo', { companyToken, fileBase64, fileName }),

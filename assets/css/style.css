@@ -269,6 +269,9 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
   background:var(--purple-100);color:var(--purple-700);
 }
 .tag-orange{background:#FFEADB;color:var(--orange-600);}
+.hashtag-btn{cursor:pointer;border:none;font-family:var(--font-body);transition:background .15s ease,color .15s ease;}
+.hashtag-btn:hover{background:var(--purple-500);color:#fff;}
+.hashtag-btn.active{background:var(--purple-700);color:#fff;}
 
 /* ---------- Selector de habilidades por categoría (candidato.html) ---------- */
 .skill-picker{margin-top:14px;}
