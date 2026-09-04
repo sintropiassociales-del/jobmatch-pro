@@ -440,6 +440,13 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
     box-shadow:0 8px 20px rgba(255,107,26,.3);
   }
   body.menu-open{overflow:hidden;}
+  /* El blur del header (backdrop-filter) crea sin querer un "contenedor" nuevo
+     para elementos position:fixed dentro de él (regla del CSS, no es un bug
+     nuestro) — eso hacía que el menú móvil, al ser position:fixed, se
+     recortara al tamaño de la barra del header en vez de cubrir toda la
+     pantalla, dejando ver el contenido de abajo. Quitamos el blur mientras
+     el menú está abierto para que el menú sí cubra toda la pantalla. */
+  body.menu-open .site-header{backdrop-filter:none;}
   .footer-grid{grid-template-columns:1fr 1fr;}
   .search-card{grid-template-columns:1fr;}
   .form-grid-2{grid-template-columns:1fr;}
