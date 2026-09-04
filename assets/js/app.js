@@ -106,6 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Mismo criterio, pero para una sesión de candidato: el link "Precios" no le
+// sirve de nada (esa página es para empresas) — en su lugar, para un
+// candidato con sesión, apunta a su estudio socioeconómico privado (ver
+// precios.html, que muestra un contenido u otro según haya o no sesión de
+// candidato).
+document.addEventListener('DOMContentLoaded', () => {
+  const hasCandidateSession = !!localStorage.getItem(CANDIDATE_TOKEN_KEY);
+  if (!hasCandidateSession) return;
+  document.querySelectorAll('.nav-links a').forEach((a) => {
+    if (a.getAttribute('href') === 'precios.html') {
+      a.textContent = 'Mi estudio';
+    }
+  });
+});
+
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
@@ -181,6 +196,14 @@ const JobMatchAPI = {
   matchCandidatesToVacancy: (companyToken, texto, jobId) => asPost('matchCandidatesToVacancy', { companyToken, texto: texto || '', jobId: jobId || '' }),
   requestContact: (companyToken, candidatoId) => asPost('requestContact', { companyToken, candidatoId }),
   getCandidateContactInfo: (companyToken, candidatoId) => asGet('getCandidateContactInfo', { companyToken, candidatoId }),
+  getResumenSocioeconomicoEmpresa: (companyToken, candidatoId) => asGet('getResumenSocioeconomicoEmpresa', { companyToken, candidatoId }),
+
+  // Estudio socioeconómico completo (perfil del candidato, una sola vez)
+  getMySocioeconomicoCompleto: (candidateToken) => asGet('getMySocioeconomicoCompleto', { token: candidateToken }),
+  saveMySocioeconomicoCompleto: (candidateToken, datos) => asPost('saveMySocioeconomicoCompleto', { candidateToken, ...datos }),
+  adminListEstudiosSocioeconomicos: (adminKey) => asGet('adminListEstudiosSocioeconomicos', { adminKey }),
+  adminGetEstudioSocioeconomico: (adminKey, candidatoId) => asGet('adminGetEstudioSocioeconomico', { adminKey, candidatoId }),
+  adminSaveVerificacionSocioeconomica: (adminKey, candidatoId, datos) => asPost('adminSaveVerificacionSocioeconomica', { adminKey, candidatoId, ...datos }),
 
   // Postulaciones
   applyToJob: (application) => asPost('applyJob', application),
