@@ -45,6 +45,26 @@
     </div>
 
     <div id="login-area">
+      <!-- Si hay sesión de candidato activa (inició sesión en candidato.html),
+           no tiene sentido mostrarle el login de empresa ni el acceso admin —
+           en su lugar ve un resumen de su propio perfil y una invitación al
+           diagnóstico de proceso. -->
+      <div id="candidato-session-card" style="display:none;max-width:520px;margin-bottom:12px">
+        <div class="form-card" style="margin-bottom:12px">
+          <p style="font-size:.85rem">👋 Hola, <strong id="candidato-nombre"></strong></p>
+          <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px" id="candidato-resumen"></p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+            <a href="candidato.html" class="btn btn-ghost" style="padding:8px 16px;font-size:.82rem">Ver mi perfil completo →</a>
+            <button class="btn btn-ghost" id="btn-candidato-logout" style="padding:8px 16px;font-size:.82rem">Salir</button>
+          </div>
+        </div>
+        <div class="form-card" style="background:var(--purple-050);border:none">
+          <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:6px">¿Cómo va tu búsqueda?</p>
+          <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:12px">15 preguntas breves sobre tu proceso actual — menos de 4 minutos. Primero cuéntanos un poco de ti para poder mostrarte tu resultado.</p>
+          <a href="https://sintropiassociales-del.github.io/panel/muestra_candidato.html" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 18px;font-size:.82rem">Hacer mi diagnóstico →</a>
+        </div>
+      </div>
+
       <!-- Sesión de empresa opcional: solo desbloquea comparar/contactar -->
       <div id="empresa-session-card" class="form-card" style="max-width:520px;margin-bottom:12px">
         <div id="session-logged-out">
@@ -153,9 +173,44 @@
     if (!visible && card) card.style.display = 'none';
   }
 
+  // ---------- Sesión de candidato (oculta login de empresa/admin) ----------
+  function setCandidateAreaVisible(visible) {
+    document.getElementById('candidato-session-card').style.display = visible ? 'block' : 'none';
+    document.getElementById('empresa-session-card').style.display = visible ? 'none' : 'block';
+    setAdminAccessVisible(!visible);
+  }
+
+  async function initCandidateArea() {
+    const token = localStorage.getItem(CANDIDATE_TOKEN_KEY);
+    if (!token) return false;
+    try {
+      const data = await JobMatchAPI.getCandidateProfile(token);
+      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); return false; }
+      const c = data.candidate;
+      const nHabilidades = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean).length;
+      document.getElementById('candidato-nombre').textContent = c.nombre || 'tu cuenta';
+      document.getElementById('candidato-resumen').textContent = nHabilidades
+        ? `Tienes ${nHabilidades} habilidad(es) registradas en tu perfil.`
+        : 'Todavía no tienes habilidades registradas en tu perfil.';
+      setCandidateAreaVisible(true);
+      return true;
+    } catch (err) {
+      console.warn('No se pudo verificar la sesión de candidato:', err);
+      return false;
+    }
+  }
+
+  document.getElementById('btn-candidato-logout').addEventListener('click', () => {
+    localStorage.removeItem(CANDIDATE_TOKEN_KEY);
+    setCandidateAreaVisible(false);
+  });
+
   // ---------- Sesión de empresa (opcional, no bloquea el directorio) ----------
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
     loadDirectory(); // el directorio se carga siempre, con o sin sesión
+
+    const esCandidato = await initCandidateArea();
+    if (esCandidato) return; // no tiene sentido mostrar el login de empresa/admin
 
     // Si vienes de un link de acceso por correo (?token=...), entra directo
     // y limpia la URL para no dejar el token visible en la barra/historial.
