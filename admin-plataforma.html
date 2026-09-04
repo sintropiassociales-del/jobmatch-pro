@@ -51,6 +51,10 @@
       </div>
     </div>
 
+    <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
+      <p style="color:var(--ink-soft)">Verificando tu sesión…</p>
+    </div>
+
     <div id="admin-panel" style="display:none;margin-top:32px">
       <div style="text-align:right;margin-bottom:12px">
         <button class="btn btn-ghost" id="btn-admin-logout" style="padding:8px 16px;font-size:.82rem">Salir</button>
@@ -60,6 +64,7 @@
         <button class="tab-btn" data-tab="vacantes-admin">Vacantes</button>
         <button class="tab-btn" data-tab="curaduria">Curaduría (triada)</button>
         <button class="tab-btn" data-tab="candidatos-admin">Candidatos</button>
+        <button class="tab-btn" data-tab="estudios-se">Estudios socioeconómicos</button>
         <button class="tab-btn" data-tab="externas">Publicar vacante externa</button>
       </div>
 
@@ -92,6 +97,99 @@
       <div class="tab-panel" id="tab-candidatos-admin">
         <p style="font-size:.85rem">Perfiles de candidatos registrados. Eliminar borra permanentemente su perfil, CV, perfil socioeconómico y postulaciones — úsalo para solicitudes de baja de datos personales.</p>
         <div id="admin-candidates-list" style="margin-top:16px"></div>
+      </div>
+
+      <!-- TAB: Estudios socioeconómicos -->
+      <div class="tab-panel" id="tab-estudios-se">
+        <p style="font-size:.85rem">Candidatos que ya llenaron su estudio socioeconómico completo en su perfil (privado — solo tú y ellos lo ven). Revisa lo que reportaron, verifica lo que puedas (visita, videollamada o revisión documental) y guarda el resultado final — eso, y <strong>solo</strong> eso (nivel socioeconómico + resultado), es lo que una empresa con plan Business/A la medida puede llegar a ver, y únicamente si el candidato ya autorizó su solicitud de contacto.</p>
+        <div id="estudios-se-list" style="margin-top:16px"></div>
+
+        <div id="estudio-se-detalle" style="display:none;margin-top:24px">
+          <button class="btn btn-ghost" id="btn-cerrar-estudio" style="padding:8px 16px;font-size:.82rem;margin-bottom:16px">← Volver a la lista</button>
+
+          <div class="form-card" style="margin-bottom:16px">
+            <div class="eyebrow">Lo que reportó el candidato</div>
+            <div id="estudio-se-reportado" style="font-size:.85rem;margin-top:10px"></div>
+          </div>
+
+          <div class="form-card">
+            <div class="eyebrow">Verificación e informe (Sintropía Social)</div>
+            <div class="form-grid-2" style="margin-top:10px">
+              <div class="field">
+                <label for="rv-modalidadVerificacion">Modalidad de verificación</label>
+                <select id="rv-modalidadVerificacion">
+                  <option value="">Sin especificar</option>
+                  <option>Visita domiciliaria presencial</option>
+                  <option>Videollamada de verificación</option>
+                  <option>Verificación documental</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="rv-personaAtendio">Persona que atendió (si hubo visita/llamada)</label>
+                <input type="text" id="rv-personaAtendio">
+              </div>
+              <div class="field">
+                <label for="rv-domicilioCoincide">¿Domicilio coincide con lo declarado?</label>
+                <select id="rv-domicilioCoincide"><option value="">No aplicado</option><option>Sí</option><option>No</option><option>Parcial</option></select>
+              </div>
+              <div class="field">
+                <label for="rv-composicionCoincide">¿Composición familiar coincide?</label>
+                <select id="rv-composicionCoincide"><option value="">No aplicado</option><option>Sí</option><option>No</option><option>Parcial</option></select>
+              </div>
+              <div class="field">
+                <label for="rv-viviendaCoincide">¿Condiciones de vivienda coinciden?</label>
+                <select id="rv-viviendaCoincide"><option value="">No aplicado</option><option>Sí</option><option>No</option><option>Parcial</option></select>
+              </div>
+              <div class="field">
+                <label for="rv-referenciaVecinalConsultada">¿Referencia vecinal consultada?</label>
+                <select id="rv-referenciaVecinalConsultada"><option value="">No</option><option>Sí</option><option>No</option></select>
+              </div>
+              <div class="field" style="grid-column:1/-1">
+                <label for="rv-hallazgos">Hallazgos relevantes / inconsistencias</label>
+                <textarea id="rv-hallazgos"></textarea>
+              </div>
+              <div class="field">
+                <label for="rv-nivelAMAI">Nivel socioeconómico estimado (AMAI)</label>
+                <select id="rv-nivelAMAI">
+                  <option value="">Sin definir</option>
+                  <option>A/B</option><option>C+</option><option>C</option><option>C-</option>
+                  <option>D+</option><option>D</option><option>E</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="rv-resultadoEstudio">Resultado del estudio</label>
+                <select id="rv-resultadoEstudio">
+                  <option value="">Sin definir</option>
+                  <option>Favorable</option><option>Favorable con observaciones</option>
+                  <option>Desfavorable</option><option>No concluyente</option>
+                </select>
+              </div>
+              <div class="field" style="grid-column:1/-1">
+                <label for="rv-factoresEstabilidad">Factores de estabilidad identificados</label>
+                <textarea id="rv-factoresEstabilidad"></textarea>
+              </div>
+              <div class="field" style="grid-column:1/-1">
+                <label for="rv-factoresRiesgo">Factores de riesgo identificados</label>
+                <textarea id="rv-factoresRiesgo"></textarea>
+              </div>
+              <div class="field">
+                <label for="rv-recomendacion">Recomendación de siguiente paso</label>
+                <select id="rv-recomendacion">
+                  <option value="">Sin definir</option>
+                  <option>Procede a investigación sociolaboral</option>
+                  <option>Procede directo a decisión final</option>
+                  <option>No procede</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="rv-elaboradoPor">Elaborado por</label>
+                <input type="text" id="rv-elaboradoPor" placeholder="Tu nombre">
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-guardar-verificacion" style="margin-top:14px">Guardar verificación e informe</button>
+            <div class="status-msg" id="estudio-se-status"></div>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: Vacante externa -->
@@ -229,11 +327,21 @@
     if (key) unlockAdmin(key);
   });
 
+  function showAdminAccess() {
+    document.getElementById('access-view').style.display = 'block';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'none';
+  }
+  function showAdminPanel() {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+  }
+
   document.getElementById('btn-admin-logout').addEventListener('click', () => {
     localStorage.removeItem(ADMIN_KEY_STORAGE);
     adminKey = '';
-    document.getElementById('access-view').style.display = 'block';
-    document.getElementById('admin-panel').style.display = 'none';
+    showAdminAccess();
   });
 
   async function unlockAdmin(key) {
@@ -245,12 +353,13 @@
       if (data.error) throw new Error(data.error);
       adminKey = key;
       localStorage.setItem(ADMIN_KEY_STORAGE, key);
-      document.getElementById('access-view').style.display = 'none';
-      document.getElementById('admin-panel').style.display = 'block';
+      showAdminPanel();
       renderCompanies(data.items);
       loadAdminJobs();
       loadAdminCandidates();
+      loadAdminEstudios();
     } catch (err) {
+      showAdminAccess();
       status.className = 'status-msg show err';
       status.textContent = err.message;
       // Solo borramos si el backend confirmó que la clave ya no es válida —
@@ -260,8 +369,15 @@
     }
   }
 
+  // Igual que en candidato.html y portal-empresa.html: si ya hay una clave
+  // guardada, mostramos "Verificando tu sesión…" en vez de la pantalla de
+  // acceso mientras se confirma con el servidor.
   const savedAdminKey = localStorage.getItem(ADMIN_KEY_STORAGE);
-  if (savedAdminKey) unlockAdmin(savedAdminKey);
+  if (savedAdminKey) {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'block';
+    unlockAdmin(savedAdminKey);
+  }
 
   function renderCompanies(items) {
     const list = document.getElementById('companies-list');
@@ -591,6 +707,102 @@
       list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
     }
   }
+
+  // ---------- Estudios socioeconómicos ----------
+  const SE_ETIQUETAS = {
+    estadoCivil: 'Estado civil', domicilioColonia: 'Colonia', domicilioMunicipio: 'Municipio/alcaldía',
+    domicilioEstado: 'Estado', domicilioCP: 'C.P.', tiempoResidencia: 'Tiempo en el domicilio actual',
+    telefonoContacto: 'Teléfono', contactoEmergencia: 'Contacto de emergencia', accesoTelefono: 'Acceso a teléfono',
+    situacionLaboral: 'Situación laboral', empleoActual: 'Empleo actual', afiliacionSalud: 'Afiliación a salud',
+    medioTransporte: 'Medio de transporte', tiempoTraslado: 'Tiempo de traslado (min)',
+    escolaridad: 'Escolaridad', dependientesEconomicos: 'Dependientes económicos', resumenHogar: 'Integrantes del hogar',
+    tipoTenencia: 'Tenencia de la vivienda', tipoVivienda: 'Tipo de vivienda', materialVivienda: 'Material predominante',
+    numHabitaciones: 'Habitaciones', serviciosVivienda: 'Servicios disponibles',
+    ingresoPersonal: 'Ingreso personal (MXN)', ingresoFamiliar: 'Ingreso familiar (MXN)',
+    egresoVivienda: 'Egreso vivienda', egresoAlimentacion: 'Egreso alimentación', egresoTransporte: 'Egreso transporte',
+    egresoEducacion: 'Egreso educación', egresoSalud: 'Egreso salud', egresoDeudas: 'Egreso deudas',
+    tieneDeudasInformales: 'Deudas informales', tieneAhorroEmergencia: 'Ahorro de emergencia',
+    participaProgramasSociales: 'Programas sociales', referencia1: 'Referencia 1', referencia2: 'Referencia 2',
+    situacionVulnerabilidad: 'Situación a destacar', notasAdicionales: 'Notas adicionales',
+  };
+  const RV_CAMPOS = [
+    'modalidadVerificacion', 'personaAtendio', 'domicilioCoincide', 'composicionCoincide', 'viviendaCoincide',
+    'referenciaVecinalConsultada', 'hallazgos', 'nivelAMAI', 'resultadoEstudio', 'factoresEstabilidad',
+    'factoresRiesgo', 'recomendacion', 'elaboradoPor',
+  ];
+  let estudioSeCandidatoId = null;
+
+  async function loadAdminEstudios() {
+    const list = document.getElementById('estudios-se-list');
+    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
+    try {
+      const data = await JobMatchAPI.adminListEstudiosSocioeconomicos(adminKey);
+      if (data.error) throw new Error(data.error);
+      if (data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Todavía ningún candidato ha llenado su estudio socioeconómico.</p></div>`;
+        return;
+      }
+      list.innerHTML = data.items.map((it) => `
+        <div class="job-card" style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h3 style="font-size:1rem">${escapeHtml(it.nombre)}</h3>
+            <div class="meta"><span>Llenado: ${it.fechaPerfil ? new Date(it.fechaPerfil).toLocaleDateString('es-MX') : '—'}</span>
+              <span>${it.yaRevisado ? `✅ Revisado — ${escapeHtml(it.resultadoEstudio || 'sin resultado definido')}` : '⏳ Falta revisar'}</span></div>
+          </div>
+          <button class="btn btn-primary" style="padding:9px 16px;font-size:.82rem" onclick="abrirEstudioSE('${it.candidatoId}')">Revisar →</button>
+        </div>`).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state"><p>⚠️ ${err.message}</p></div>`;
+    }
+  }
+
+  async function abrirEstudioSE(candidatoId) {
+    estudioSeCandidatoId = candidatoId;
+    document.getElementById('estudios-se-list').style.display = 'none';
+    document.getElementById('estudio-se-detalle').style.display = 'block';
+    document.getElementById('estudio-se-reportado').innerHTML = 'Cargando...';
+    try {
+      const data = await JobMatchAPI.adminGetEstudioSocioeconomico(adminKey, candidatoId);
+      if (data.error) throw new Error(data.error);
+      document.getElementById('estudio-se-reportado').innerHTML = Object.keys(SE_ETIQUETAS)
+        .filter((campo) => data.socioeconomico[campo])
+        .map((campo) => `<p style="margin-bottom:6px"><strong>${SE_ETIQUETAS[campo]}:</strong> ${escapeHtml(String(data.socioeconomico[campo]))}</p>`)
+        .join('') || '<p style="color:var(--ink-soft)">No reportó ningún campo.</p>';
+
+      RV_CAMPOS.forEach((campo) => {
+        const el = document.getElementById('rv-' + campo);
+        if (el) el.value = data.verificacion ? (data.verificacion[campo] || '') : '';
+      });
+    } catch (err) {
+      document.getElementById('estudio-se-reportado').innerHTML = `<p>⚠️ ${err.message}</p>`;
+    }
+  }
+
+  document.getElementById('btn-cerrar-estudio').addEventListener('click', () => {
+    document.getElementById('estudio-se-detalle').style.display = 'none';
+    document.getElementById('estudios-se-list').style.display = 'block';
+  });
+
+  document.getElementById('btn-guardar-verificacion').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-guardar-verificacion');
+    const status = document.getElementById('estudio-se-status');
+    btn.disabled = true;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      const datos = {};
+      RV_CAMPOS.forEach((campo) => { datos[campo] = document.getElementById('rv-' + campo).value; });
+      const result = await JobMatchAPI.adminSaveVerificacionSocioeconomica(adminKey, estudioSeCandidatoId, datos);
+      if (result.error) throw new Error(result.error);
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Guardado!';
+      loadAdminEstudios();
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+    btn.disabled = false;
+  });
 
   async function deleteCandidate(candidatoId, btn) {
     if (!confirm('¿Eliminar permanentemente este candidato (perfil, CV, postulaciones y datos socioeconómicos)? No se puede deshacer.')) return;

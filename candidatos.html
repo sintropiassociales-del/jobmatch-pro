@@ -459,9 +459,26 @@
     try {
       const data = await JobMatchAPI.getCandidateContactInfo(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
+
+      // El estudio socioeconómico es aparte: si Sintropía Social ya lo
+      // verificó, aquí solo mostramos su RESULTADO final (nunca los datos
+      // crudos que llenó el candidato) — ver getResumenSocioeconomicoEmpresa_
+      // en Code.gs. Si falla o no hay nada que mostrar, no rompe lo demás.
+      let socioHTML = '';
+      try {
+        const socio = await JobMatchAPI.getResumenSocioeconomicoEmpresa(currentEmpresaToken, candidatoId);
+        if (socio.disponible) {
+          socioHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+            <strong>Estudio socioeconómico (verificado por Sintropía Social):</strong><br>
+            Nivel: ${escapeHtml(socio.nivelSocioeconomico || 'sin definir')} · Resultado: ${escapeHtml(socio.resultado || 'sin definir')}
+          </div>`;
+        }
+      } catch (socioErr) { /* si falla, simplemente no se muestra esa parte */ }
+
       btn.outerHTML = `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;font-size:.85rem;width:100%">
         <strong>${escapeHtml(data.nombre)}</strong><br>${escapeHtml(data.email)}
         ${data.cvLink ? `<br><a href="${escapeHtml(data.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a>` : ''}
+        ${socioHTML}
       </div>`;
     } catch (err) {
       alert(err.message);

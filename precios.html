@@ -27,6 +27,7 @@
   </div>
 </header>
 
+<div id="precios-empresa-content">
 <section class="section" style="padding-top:56px;text-align:center">
   <div class="container">
     <div class="eyebrow" style="justify-content:center">Planes para empresas</div>
@@ -121,6 +122,250 @@
     </p>
   </div>
 </section>
+</div>
+<!-- ============ /precios-empresa-content ============ -->
+
+<!-- ============ Contenido exclusivo para candidatos con sesión activa ============ -->
+<div id="precios-candidato-content" style="display:none">
+  <section class="section" style="padding-top:56px;text-align:center">
+    <div class="container" style="max-width:720px">
+      <div class="eyebrow" style="justify-content:center">Solo tú lo ves</div>
+      <h1>Tu estudio socioeconómico</h1>
+      <p class="lead">Haz tu estudio socioeconómico — esto ayuda a que las empresas se fijen en ti. Esta información solo la ven tú y el equipo de Sintropía Social. Las empresas interesadas en tu perfil pueden pedirte autorización para verlo, y un miembro del equipo de Sintropía corrobora tu información antes de compartir cualquier resultado contigo o con ellas.</p>
+      <p style="max-width:56ch;margin:14px auto 0;font-size:.86rem;color:var(--ink-soft)">Llenarlo es opcional y no afecta tus postulaciones normales. Puedes guardarlo, salir, y volver a completarlo después — se guarda tal como lo dejaste.</p>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="container" style="max-width:720px">
+      <form id="se-form">
+
+        <details class="form-card" open style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">1. Contacto y domicilio</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field">
+              <label for="se-estadoCivil">Estado civil</label>
+              <select id="se-estadoCivil">
+                <option value="">Prefiero no decir</option>
+                <option>Soltero/a</option><option>Casado/a</option><option>Unión libre</option>
+                <option>Divorciado/a</option><option>Viudo/a</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-tiempoResidencia">Tiempo viviendo en tu domicilio actual</label>
+              <select id="se-tiempoResidencia">
+                <option value="">Prefiero no decir</option>
+                <option>Menos de 1 año</option><option>1-3 años</option><option>3-5 años</option><option>Más de 5 años</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-domicilioColonia">Colonia</label>
+              <input type="text" id="se-domicilioColonia">
+            </div>
+            <div class="field">
+              <label for="se-domicilioMunicipio">Municipio / alcaldía</label>
+              <input type="text" id="se-domicilioMunicipio">
+            </div>
+            <div class="field">
+              <label for="se-domicilioEstado">Estado</label>
+              <input type="text" id="se-domicilioEstado">
+            </div>
+            <div class="field">
+              <label for="se-domicilioCP">Código postal</label>
+              <input type="text" id="se-domicilioCP">
+            </div>
+            <div class="field">
+              <label for="se-telefonoContacto">Teléfono de contacto</label>
+              <input type="tel" id="se-telefonoContacto">
+            </div>
+            <div class="field">
+              <label for="se-contactoEmergencia">Contacto de emergencia (nombre y teléfono)</label>
+              <input type="text" id="se-contactoEmergencia">
+            </div>
+            <div class="field">
+              <label for="se-accesoTelefono">¿Tienes acceso regular a un teléfono?</label>
+              <select id="se-accesoTelefono"><option value="">Prefiero no decir</option><option>Sí</option><option>No</option></select>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-card" style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">2. Situación laboral</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field">
+              <label for="se-situacionLaboral">Situación laboral actual</label>
+              <select id="se-situacionLaboral">
+                <option value="">Prefiero no decir</option>
+                <option>Empleado/a</option><option>Desempleado/a</option><option>Trabajo informal</option>
+                <option>Estudiante</option><option>Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-empleoActual">Empresa y puesto actual (si aplica)</label>
+              <input type="text" id="se-empleoActual">
+            </div>
+            <div class="field">
+              <label for="se-afiliacionSalud">Afiliación a servicios de salud</label>
+              <select id="se-afiliacionSalud">
+                <option value="">Prefiero no decir</option>
+                <option>IMSS</option><option>ISSSTE</option><option>IMSS-Bienestar</option>
+                <option>Seguro privado</option><option>Ninguna</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-medioTransporte">Medio de transporte habitual</label>
+              <select id="se-medioTransporte">
+                <option value="">Prefiero no decir</option>
+                <option>A pie</option><option>Bicicleta</option><option>Transporte público</option>
+                <option>Vehículo propio</option><option>Transporte de la empresa</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-tiempoTraslado">Tiempo de traslado estimado (minutos)</label>
+              <input type="number" id="se-tiempoTraslado" min="0">
+            </div>
+          </div>
+        </details>
+
+        <details class="form-card" style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">3. Escolaridad y familia</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field">
+              <label for="se-escolaridad">Último grado de estudios</label>
+              <select id="se-escolaridad">
+                <option value="">Prefiero no decir</option>
+                <option>Primaria</option><option>Secundaria</option><option>Bachillerato</option>
+                <option>Preparatoria</option><option>Técnico</option><option>Carrera técnica</option>
+                <option>Licenciatura</option><option>Ingeniería</option><option>Maestría</option><option>Doctorado</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-dependientesEconomicos">Personas que dependen económicamente de ti</label>
+              <input type="number" id="se-dependientesEconomicos" min="0">
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="se-resumenHogar">¿Quién más vive en tu hogar?</label>
+              <textarea id="se-resumenHogar" placeholder="Nombre o parentesco, edad, si depende económicamente de ti — uno por línea (opcional)"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-card" style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">4. Vivienda</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field">
+              <label for="se-tipoTenencia">Tipo de tenencia</label>
+              <select id="se-tipoTenencia">
+                <option value="">Prefiero no decir</option>
+                <option>Propia pagada</option><option>Propia con crédito</option><option>Rentada</option>
+                <option>Prestada</option><option>Familiar</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-tipoVivienda">Tipo de vivienda</label>
+              <select id="se-tipoVivienda">
+                <option value="">Prefiero no decir</option>
+                <option>Casa independiente</option><option>Departamento</option>
+                <option>Cuarto en vecindad</option><option>Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-materialVivienda">Material de construcción predominante</label>
+              <select id="se-materialVivienda">
+                <option value="">Prefiero no decir</option>
+                <option>Concreto/tabique</option><option>Lámina</option><option>Madera</option><option>Mixto</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="se-numHabitaciones">Número de habitaciones (sin cocina/baño)</label>
+              <input type="number" id="se-numHabitaciones" min="0">
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="se-serviciosVivienda">Servicios disponibles</label>
+              <input type="text" id="se-serviciosVivienda" placeholder="Ej. agua, luz, drenaje, internet">
+            </div>
+          </div>
+        </details>
+
+        <details class="form-card" style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">5. Ingresos y egresos</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field">
+              <label for="se-ingresoPersonal">Tu ingreso mensual aproximado (MXN)</label>
+              <input type="number" id="se-ingresoPersonal" min="0">
+            </div>
+            <div class="field">
+              <label for="se-ingresoFamiliar">Ingreso familiar mensual aproximado (MXN)</label>
+              <input type="number" id="se-ingresoFamiliar" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoVivienda">Egreso en vivienda (renta/hipoteca)</label>
+              <input type="number" id="se-egresoVivienda" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoAlimentacion">Egreso en alimentación</label>
+              <input type="number" id="se-egresoAlimentacion" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoTransporte">Egreso en transporte</label>
+              <input type="number" id="se-egresoTransporte" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoEducacion">Egreso en educación</label>
+              <input type="number" id="se-egresoEducacion" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoSalud">Egreso en salud</label>
+              <input type="number" id="se-egresoSalud" min="0">
+            </div>
+            <div class="field">
+              <label for="se-egresoDeudas">Egreso en deudas/créditos</label>
+              <input type="number" id="se-egresoDeudas" min="0">
+            </div>
+            <div class="field">
+              <label for="se-tieneDeudasInformales">¿Tienes deudas o préstamos informales (tandas, empeños, préstamos personales)?</label>
+              <select id="se-tieneDeudasInformales"><option value="">Prefiero no decir</option><option>Sí</option><option>No</option></select>
+            </div>
+            <div class="field">
+              <label for="se-tieneAhorroEmergencia">¿Cuentas con algún ahorro para una emergencia?</label>
+              <select id="se-tieneAhorroEmergencia"><option value="">Prefiero no decir</option><option>Sí</option><option>No</option></select>
+            </div>
+          </div>
+        </details>
+
+        <details class="form-card" style="margin-bottom:16px">
+          <summary style="cursor:pointer;font-weight:700;color:var(--purple-900);font-size:1rem">6. Contexto adicional</summary>
+          <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="field" style="grid-column:1/-1">
+              <label for="se-situacionVulnerabilidad">¿Formas parte de algún grupo o situación que quieras que la empresa conozca?</label>
+              <input type="text" id="se-situacionVulnerabilidad" placeholder="Ej. jefa/e de familia, persona con discapacidad, etc. (opcional)">
+            </div>
+            <div class="field">
+              <label for="se-participaProgramasSociales">¿Participas en algún programa social?</label>
+              <input type="text" id="se-participaProgramasSociales">
+            </div>
+            <div class="field">
+              <label for="se-referencia1">Referencia personal 1 (nombre y teléfono)</label>
+              <input type="text" id="se-referencia1">
+            </div>
+            <div class="field">
+              <label for="se-referencia2">Referencia personal 2 (nombre y teléfono)</label>
+              <input type="text" id="se-referencia2">
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="se-notasAdicionales">Notas adicionales</label>
+              <textarea id="se-notasAdicionales" placeholder="Cualquier contexto que quieras compartir"></textarea>
+            </div>
+          </div>
+        </details>
+
+        <button type="submit" class="btn btn-primary btn-block" id="se-submit-btn">Guardar información privada</button>
+        <div class="status-msg" id="se-status"></div>
+      </form>
+    </div>
+  </section>
+</div>
+<!-- ============ /precios-candidato-content ============ -->
 
 <!-- ============ Modal de datos de facturación (aparece tras pagar) ============ -->
 <div id="billing-modal" style="display:none;position:fixed;inset:0;background:rgba(30,10,71,.55);z-index:300;align-items:center;justify-content:center;padding:20px">
@@ -169,7 +414,71 @@
 <script>
   let pendingSubscription = null;
 
+  // ---------- Campos del estudio socioeconómico (deben coincidir 1:1 con
+  // SHEET_HEADERS[SHEET_SOCIOECONOMIC] en Code.gs, sin 'candidatoId' ni 'fecha') ----------
+  const SE_CAMPOS = [
+    'estadoCivil', 'domicilioColonia', 'domicilioMunicipio', 'domicilioEstado', 'domicilioCP',
+    'tiempoResidencia', 'telefonoContacto', 'contactoEmergencia', 'accesoTelefono',
+    'situacionLaboral', 'afiliacionSalud', 'medioTransporte', 'tiempoTraslado', 'empleoActual',
+    'escolaridad', 'dependientesEconomicos', 'resumenHogar',
+    'tipoTenencia', 'tipoVivienda', 'materialVivienda', 'numHabitaciones', 'serviciosVivienda',
+    'ingresoFamiliar', 'ingresoPersonal', 'egresoVivienda', 'egresoAlimentacion', 'egresoTransporte',
+    'egresoEducacion', 'egresoSalud', 'egresoDeudas', 'tieneDeudasInformales', 'tieneAhorroEmergencia',
+    'participaProgramasSociales', 'referencia1', 'referencia2', 'situacionVulnerabilidad', 'notasAdicionales',
+  ];
+
+  // ---------- Si hay sesión de candidato, esta página es su estudio
+  // socioeconómico privado en vez de los planes de empresa ----------
+  window.addEventListener('load', async () => {
+    const candidateToken = localStorage.getItem(CANDIDATE_TOKEN_KEY);
+    if (!candidateToken) return; // sin sesión de candidato, la página se comporta como siempre (planes)
+
+    document.getElementById('precios-empresa-content').style.display = 'none';
+    document.getElementById('precios-candidato-content').style.display = 'block';
+
+    try {
+      const data = await JobMatchAPI.getMySocioeconomicoCompleto(candidateToken);
+      if (data.error) return; // sesión inválida — deja el formulario vacío, no truena
+      if (data.socioeconomico) {
+        SE_CAMPOS.forEach((campo) => {
+          const el = document.getElementById('se-' + campo);
+          if (el && data.socioeconomico[campo] !== undefined) el.value = data.socioeconomico[campo];
+        });
+      }
+    } catch (err) {
+      console.warn('No se pudo cargar el estudio socioeconómico guardado:', err);
+    }
+  });
+
+  document.getElementById('se-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const candidateToken = localStorage.getItem(CANDIDATE_TOKEN_KEY);
+    const btn = document.getElementById('se-submit-btn');
+    const status = document.getElementById('se-status');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+    status.className = 'status-msg show pending';
+    status.textContent = 'Un momento...';
+    try {
+      const datos = {};
+      SE_CAMPOS.forEach((campo) => {
+        const el = document.getElementById('se-' + campo);
+        datos[campo] = el ? el.value : '';
+      });
+      const result = await JobMatchAPI.saveMySocioeconomicoCompleto(candidateToken, datos);
+      if (result.error) throw new Error(result.error);
+      status.className = 'status-msg show ok';
+      status.textContent = '¡Guardado! Puedes volver a editarlo cuando quieras.';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Guardar información privada';
+  });
+
   window.addEventListener('load', () => {
+    if (localStorage.getItem(CANDIDATE_TOKEN_KEY)) return; // esta vista es para empresas, no aplica con sesión de candidato
     const token = localStorage.getItem(COMPANY_TOKEN_KEY);
     const slots = document.querySelectorAll('.paypal-slot');
 
