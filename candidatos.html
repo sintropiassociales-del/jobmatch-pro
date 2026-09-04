@@ -442,7 +442,7 @@
       const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto, jobId);
       if (data.error) throw new Error(data.error);
       status.className = 'status-msg show ok';
-      status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}`;
+      status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}` + (data.fuenteExtraccion === 'ia' ? ' (con ayuda de IA)' : '');
       document.getElementById('btn-clear-match').style.display = 'inline-flex';
       renderDirectory(data.items, { showScore: true });
       return data;
@@ -713,6 +713,7 @@
           <div class="match-track"><div class="match-fill" style="width:${score}%"></div></div>
           <span class="match-label">${score}% afinidad</span>
         </div>
+        ${data.fuenteExtraccion === 'ia' ? `<p style="font-size:.72rem;color:var(--ink-soft);margin-top:4px">Habilidades detectadas con ayuda de IA.</p>` : ''}
         ${score === 0 ? `<p style="font-size:.78rem;color:var(--ink-soft);margin-top:6px">Este candidato no tiene habilidades en común con lo que detectamos en ese texto.</p>` : ''}`;
     } catch (err) {
       status.className = 'status-msg show err';
