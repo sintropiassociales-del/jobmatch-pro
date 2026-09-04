@@ -167,6 +167,7 @@ const JobMatchAPI = {
   adminLoginGoogle: (idToken) => asPost('adminLoginGoogle', { idToken }),
   getEmpresaProfile: (token) => asGet('getEmpresaProfile', { token }),
   uploadLogo: (companyToken, fileBase64, fileName) => asPost('uploadLogo', { companyToken, fileBase64, fileName }),
+  updateEmpresaInfo: (companyToken, info) => asPost('updateEmpresaInfo', { companyToken, ...info }),
 
   // Candidatos
   registerCandidate: (candidate) => asPost('registerCandidate', candidate),
