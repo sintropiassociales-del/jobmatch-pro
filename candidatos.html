@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <p style="max-width:520px;margin-bottom:12px">
+      <p id="admin-access-row" style="max-width:520px;margin-bottom:12px">
         <a href="#" id="toggle-admin-login" style="font-size:.8rem;color:var(--ink-soft)">Acceso admin (Sintropía Social) →</a>
       </p>
       <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:12px;display:none">
@@ -143,6 +143,16 @@
   let isAdminView = false;
   let simulation = null;
 
+  // El acceso admin no tiene sentido mientras hay una sesión de empresa
+  // abierta (confunde — no es para eso), así que se oculta en ese caso y
+  // reaparece en cuanto se cierra sesión.
+  function setAdminAccessVisible(visible) {
+    const row = document.getElementById('admin-access-row');
+    const card = document.getElementById('admin-login-card');
+    if (row) row.style.display = visible ? 'block' : 'none';
+    if (!visible && card) card.style.display = 'none';
+  }
+
   // ---------- Sesión de empresa (opcional, no bloquea el directorio) ----------
   window.addEventListener('load', () => {
     loadDirectory(); // el directorio se carga siempre, con o sin sesión
@@ -170,6 +180,7 @@
         document.getElementById('session-logged-in').style.display = 'block';
         document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(cached.razonSocial)}</strong> · Plan ${escapeHtml(cached.plan)}` +
           (currentPuedeSolicitar ? ' — puedes comparar y solicitar contacto.' : ' — mejora tu plan a Business o A la medida para comparar/contactar.');
+        setAdminAccessVisible(false);
       }
       checkSession(saved);
     } else if (typeof google !== 'undefined' && google.accounts) {
@@ -217,6 +228,7 @@
     currentPuedeSolicitar = false;
     document.getElementById('session-logged-in').style.display = 'none';
     document.getElementById('session-logged-out').style.display = 'block';
+    setAdminAccessVisible(true);
     loadDirectory();
   });
 
@@ -237,10 +249,12 @@
       clearCachedEmpresaSession();
       document.getElementById('session-logged-in').style.display = 'none';
       document.getElementById('session-logged-out').style.display = 'block';
+      setAdminAccessVisible(true);
       return;
     }
     currentEmpresaToken = token;
     currentPuedeSolicitar = data.puedeSolicitarContacto;
+    setAdminAccessVisible(false);
     document.getElementById('session-logged-out').style.display = 'none';
     document.getElementById('session-logged-in').style.display = 'block';
     document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(data.empresaNombre)}</strong> · Plan ${escapeHtml(data.empresaPlan)}` +
