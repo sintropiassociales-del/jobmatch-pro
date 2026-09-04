@@ -81,6 +81,7 @@
         <button class="tab-btn active" data-tab="publicar">Publicar vacante</button>
         <button class="tab-btn" data-tab="vacantes">Mis vacantes</button>
         <button class="tab-btn" data-tab="postulaciones">Postulaciones</button>
+        <button class="tab-btn" data-tab="datos">Mis datos</button>
         <button class="tab-btn" data-tab="plan">Mi plan</button>
       </div>
 
@@ -139,11 +140,11 @@
         <div id="postulaciones-list"></div>
       </div>
 
-      <!-- TAB: Mi plan -->
-      <div class="tab-panel" id="tab-plan">
+      <!-- TAB: Mis datos -->
+      <div class="tab-panel" id="tab-datos">
         <div class="form-card" style="margin-bottom:24px">
           <h3 style="font-size:1.05rem">Tu logo</h3>
-          <div id="logo-locked" class="locked-feature" style="display:none">🔒 Subir logo es una función de planes de pago. Mejora tu plan abajo.</div>
+          <div id="logo-locked" class="locked-feature" style="display:none">🔒 Subir logo es una función de planes de pago. Mejora tu plan en la pestaña "Mi plan".</div>
           <div id="logo-upload-area" style="display:none">
             <div class="field">
               <label for="logo-file">Sube tu logo (PNG)</label>
@@ -154,6 +155,40 @@
           </div>
         </div>
 
+        <div class="form-card">
+          <h3 style="font-size:1.05rem">Información de la empresa</h3>
+          <p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:14px">Razón social, RFC y correo de contacto son los datos con los que verificamos tu cuenta (el correo además es con el que entras) — si necesitas corregir alguno, escríbele al equipo. El sitio web y el teléfono sí los puedes actualizar aquí abajo.</p>
+          <div class="field">
+            <label for="datos-razon-social">Razón social</label>
+            <input type="text" id="datos-razon-social" disabled style="background:var(--purple-050)">
+          </div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="datos-rfc">RFC</label>
+              <input type="text" id="datos-rfc" disabled style="background:var(--purple-050)">
+            </div>
+            <div class="field">
+              <label for="datos-email">Correo de contacto</label>
+              <input type="text" id="datos-email" disabled style="background:var(--purple-050)">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="datos-sitio-web">Sitio web de la empresa</label>
+              <input type="url" id="datos-sitio-web" placeholder="https://...">
+            </div>
+            <div class="field">
+              <label for="datos-telefono">Teléfono de contacto</label>
+              <input type="tel" id="datos-telefono" placeholder="55 1234 5678">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-save-datos">Guardar cambios</button>
+          <div class="status-msg" id="datos-status"></div>
+        </div>
+      </div>
+
+      <!-- TAB: Mi plan -->
+      <div class="tab-panel" id="tab-plan">
         <div class="plans">
           <div class="plan-card">
             <h3>Starter</h3>
@@ -301,6 +336,12 @@
       document.getElementById('empresa-nombre').textContent = data.empresa.razonSocial;
       document.getElementById('plan-chip').textContent = `Plan ${data.empresa.plan}`;
       cacheEmpresaSession({ razonSocial: data.empresa.razonSocial, plan: data.empresa.plan });
+
+      document.getElementById('datos-razon-social').value = data.empresa.razonSocial || '';
+      document.getElementById('datos-rfc').value = data.empresa.rfc || '';
+      document.getElementById('datos-email').value = data.empresa.emailContacto || '';
+      document.getElementById('datos-sitio-web').value = data.empresa.sitioWeb || '';
+      document.getElementById('datos-telefono').value = data.empresa.telefono || '';
 
       let limitTxt = data.limiteVacantes === null
         ? `Tu plan (${data.empresa.plan}) permite vacantes ilimitadas. Llevas ${data.vacantesActivas}.`
@@ -526,6 +567,24 @@
       await JobMatchAPI.uploadLogo(token, base64, fileInput.files[0].name);
       status.className = 'status-msg show ok';
       status.textContent = 'Logo actualizado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('btn-save-datos').addEventListener('click', async () => {
+    const status = document.getElementById('datos-status');
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      await JobMatchAPI.updateEmpresaInfo(token, {
+        sitioWeb: document.getElementById('datos-sitio-web').value.trim(),
+        telefono: document.getElementById('datos-telefono').value.trim(),
+      });
+      status.className = 'status-msg show ok';
+      status.textContent = 'Datos actualizados ✓';
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;

@@ -86,9 +86,9 @@
 
       <div class="form-card" style="margin-bottom:24px">
         <p style="font-size:.88rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Comparar contra una vacante</p>
-        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante y vemos qué candidatos del directorio tienen más habilidades en común. Requiere plan Business o A la medida.</p>
+        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante, el link de una vacante publicada en JobMatch Pro, o el link de una vacante de otro sitio (lo intentamos leer — algunos sitios no lo permiten), y vemos qué candidatos del directorio tienen más habilidades en común. Requiere plan Business o A la medida.</p>
         <div class="field">
-          <textarea id="vacancy-text" placeholder="Pega aquí el texto completo de la vacante..." style="min-height:100px"></textarea>
+          <textarea id="vacancy-text" placeholder="Pega aquí el texto de la vacante, o el link..." style="min-height:100px"></textarea>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" id="btn-match-vacancy">Comparar candidatos</button>
@@ -402,15 +402,30 @@
 
   document.getElementById('btn-match-vacancy').addEventListener('click', () => runMatch());
 
+  // Si lo que se pegó es un link a una vacante publicada en JobMatch Pro
+  // (vacante.html?id=...), usamos directo su descripción real guardada en
+  // el Sheet — sale más exacto y no hay que copiar/pegar nada. Cualquier
+  // otro link (de otro sitio) se manda tal cual al backend, que intenta
+  // leerlo directamente de la página (ver fetchTextFromUrl_ en Code.gs); si
+  // ese sitio arma su contenido con JavaScript (común en varios ATS), la
+  // lectura automática no va a encontrar texto real y el backend regresa un
+  // error pidiendo que se pegue el texto a mano.
+  function resolveVacancyInput(raw) {
+    const m = raw.match(/vacante\.html\?[^\s]*\bid=([^&\s]+)/i);
+    if (m) return { jobId: decodeURIComponent(m[1]), texto: '' };
+    return { jobId: '', texto: raw };
+  }
+
   async function runMatch(textoOverride) {
-    const texto = textoOverride || document.getElementById('vacancy-text').value.trim();
+    const raw = textoOverride || document.getElementById('vacancy-text').value.trim();
     const status = document.getElementById('match-status');
     if (!currentEmpresaToken) { status.className = 'status-msg show err'; status.textContent = 'Inicia sesión con una cuenta de empresa Business o A la medida primero.'; return; }
-    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
+    if (!raw) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
+    const { jobId, texto } = resolveVacancyInput(raw);
     status.className = 'status-msg show pending';
-    status.textContent = 'Leyendo la vacante y comparando candidatos...';
+    status.textContent = jobId || !/^https?:\/\/\S+$/i.test(raw) ? 'Leyendo la vacante y comparando candidatos...' : 'Intentando leer esa página y comparando candidatos...';
     try {
-      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto, jobId);
       if (data.error) throw new Error(data.error);
       status.className = 'status-msg show ok';
       status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}`;
@@ -647,8 +662,8 @@
       ${puedeComparar ? `
       <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">
         <label style="font-size:.82rem;font-weight:600;color:var(--purple-900)">Calcular match con una vacante</label>
-        <p style="font-size:.78rem;color:var(--ink-soft);margin:4px 0 8px">Pega el <strong>texto completo</strong> de la descripción del puesto (copia y pega el contenido, no solo el link) y te decimos qué % de sus habilidades coincide con este candidato.</p>
-        <textarea id="panel-vacancy-text" placeholder="Pega aquí el texto de la vacante (no el link)..." style="min-height:70px;width:100%;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
+        <p style="font-size:.78rem;color:var(--ink-soft);margin:4px 0 8px">Pega el link de una vacante publicada en JobMatch Pro (la leemos directo), el link de una vacante de otro sitio (lo intentamos leer — algunos sitios no lo permiten), o el texto completo de la descripción del puesto.</p>
+        <textarea id="panel-vacancy-text" placeholder="Pega el texto, o el link de la vacante..." style="min-height:70px;width:100%;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
         <button class="btn btn-ghost" style="margin-top:8px;padding:9px 16px;font-size:.82rem" onclick="matchOneInPanel('${c.candidatoId}', this)">Calcular match</button>
         <div id="panel-match-result" style="display:none;margin-top:12px"></div>
         <div class="status-msg" id="panel-match-status"></div>
@@ -662,21 +677,17 @@
   }
 
   async function matchOneInPanel(candidatoId, btn) {
-    const texto = document.getElementById('panel-vacancy-text').value.trim();
+    const raw = document.getElementById('panel-vacancy-text').value.trim();
     const status = document.getElementById('panel-match-status');
     const result = document.getElementById('panel-match-result');
     result.style.display = 'none';
-    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
-    if (/^https?:\/\/\S+$/i.test(texto)) {
-      status.className = 'status-msg show err';
-      status.textContent = 'Eso parece un link — pega el texto de la descripción del puesto (no la URL) para que se puedan leer las habilidades que pide.';
-      return;
-    }
+    if (!raw) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
+    const { jobId, texto } = resolveVacancyInput(raw);
     btn.disabled = true;
     status.className = 'status-msg show pending';
-    status.textContent = 'Calculando...';
+    status.textContent = jobId || !/^https?:\/\/\S+$/i.test(raw) ? 'Calculando...' : 'Intentando leer esa página...';
     try {
-      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto, jobId);
       if (data.error) throw new Error(data.error);
       const match = data.items.find((i) => String(i.candidatoId) === String(candidatoId));
       const score = match ? match.score : 0;
