@@ -166,6 +166,21 @@ function adaptNavForCandidateSession() {
 }
 document.addEventListener('DOMContentLoaded', adaptNavForCandidateSession);
 
+/* ---------- Resalta en el menú la página en la que estás ----------
+   Corre DESPUÉS de las dos adaptaciones de arriba (empresa/candidato) a
+   propósito: esas dos a veces cambian el href de un link (ej. "Mi perfil"
+   apunta a portal-empresa.html en vez de candidato.html si hay sesión de
+   empresa) — si esto corriera antes, compararía contra el href viejo. El
+   botón "Publicar gratis"/"Cerrar sesión" se excluye a propósito: ya tiene
+   su propio estilo de botón y no es realmente un "destino" de menú. */
+document.addEventListener('DOMContentLoaded', () => {
+  const currentPage = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('.nav-links a').forEach((a) => {
+    if (a.classList.contains('nav-cta')) return;
+    if (a.getAttribute('href') === currentPage) a.classList.add('active');
+  });
+});
+
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   const toggle = document.querySelector('.nav-toggle');
@@ -232,6 +247,8 @@ const JobMatchAPI = {
   // Candidatos
   registerCandidate: (candidate) => asPost('registerCandidate', candidate),
   uploadCV: (fileBase64, fileName) => asPost('uploadCV', { fileBase64, fileName }),
+  getRecomendacionesPerfil: (candidateToken) => asPost('getRecomendacionesPerfil', { candidateToken }),
+  generarCVConIA: (candidateToken) => asPost('generarCVConIA', { candidateToken }),
   getCandidateProfile: (candidateToken) => asGet('getCandidateProfile', { token: candidateToken }),
   listCandidatesDirectory: (companyToken, q) => asGet('listCandidatesDirectory', { companyToken: companyToken || '', q: q || '' }),
   adminListCandidatesDirectory: (adminKey) => asGet('adminListCandidatesDirectory', { adminKey }),
