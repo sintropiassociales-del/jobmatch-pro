@@ -96,6 +96,28 @@
       </div>
     </div>
 
+    <script>
+      // Anti-parpadeo: en esta página, después de este punto todavía falta
+      // cargar d3.js (para la vista de mapa) antes de que corra el script
+      // grande de abajo que decide qué tarjeta mostrar (empresa vs.
+      // candidato) — con conexiones lentas eso tarda uno o dos segundos, y
+      // en ese lapso se alcanzaba a ver la tarjeta de "¿Tienes cuenta de
+      // empresa?" aunque hubiera sesión de candidato. Como este bloque va
+      // justo después de las tarjetas en el HTML, corre en cuanto el
+      // navegador llega aquí (mucho antes de d3.js) y oculta de una vez la
+      // tarjeta de empresa/admin si ya hay un token de candidato guardado,
+      // sin esperar a confirmar la sesión con el servidor.
+      (function () {
+        try {
+          if (!localStorage.getItem('jobmatch_candidate_token')) return;
+          var empresaCard = document.getElementById('empresa-session-card');
+          var adminRow = document.getElementById('admin-access-row');
+          if (empresaCard) empresaCard.style.display = 'none';
+          if (adminRow) adminRow.style.display = 'none';
+        } catch (e) {}
+      })();
+    </script>
+
     <div class="view-switch" style="margin-bottom:16px">
       <button class="view-switch-btn active" id="btn-view-list">Vista de lista</button>
       <button class="view-switch-btn" id="btn-view-map">Vista de mapa</button>
@@ -185,7 +207,7 @@
     if (!token) return false;
     try {
       const data = await JobMatchAPI.getCandidateProfile(token);
-      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); return false; }
+      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); setCandidateAreaVisible(false); return false; }
       const c = data.candidate;
       const nHabilidades = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean).length;
       document.getElementById('candidato-nombre').textContent = c.nombre || 'tu cuenta';
@@ -196,6 +218,11 @@
       return true;
     } catch (err) {
       console.warn('No se pudo verificar la sesión de candidato:', err);
+      // El token existe pero no se pudo confirmar (ej. sin internet): no lo
+      // borramos (podría ser válido), pero si el anti-parpadeo de arriba ya
+      // ocultó la tarjeta de empresa, la regresamos para no dejar la
+      // pantalla sin ninguna tarjeta visible.
+      setCandidateAreaVisible(false);
       return false;
     }
   }
