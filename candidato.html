@@ -150,8 +150,15 @@
             usamos junto con tus habilidades para darte recomendaciones y,
             si quieres, para generarte un CV.
           </p>
+          <p style="font-size:.8rem;background:#FCE9E4;color:#B3311C;border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px">
+            ⚠️ Esto se muestra públicamente (a cualquiera que vea tu perfil en el mapa de Candidatos, sin necesidad de que una empresa te contacte). Evita poner nombres de empresas muy específicas, datos de contacto u otra información que te identifique directamente si quieres mantenerte anónimo.
+          </p>
+          <div class="view-switch" style="margin-bottom:12px;max-width:400px">
+            <button type="button" class="view-switch-btn active" id="btn-modo-libre">✍️ Escribir sobre mí</button>
+            <button type="button" class="view-switch-btn" id="btn-modo-resume">📄 Pegar mi resumé laboral</button>
+          </div>
           <div class="field">
-            <label for="resumen-perfil">Cuéntanos de ti</label>
+            <label for="resumen-perfil" id="resumen-perfil-label">Cuéntanos de ti</label>
             <textarea id="resumen-perfil" placeholder="Ej. Soy contador con 4 años de experiencia en empresas de manufactura, manejo de nómina para más de 200 empleados, certificación en NIIF..." style="min-height:110px"></textarea>
           </div>
           <button class="btn btn-ghost btn-block" id="btn-save-resumen">Guardar</button>
@@ -347,7 +354,18 @@
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       localStorage.setItem(STORAGE_KEY, data.candidateToken);
-      loadProfile(data.candidateToken);
+      // El Worker ya regresa el perfil completo junto con el token (para
+      // evitar una segunda llamada a Apps Script, que antes hacía que el
+      // login por LinkedIn se sintiera larguísimo y sin ningún indicio de
+      // haber funcionado hasta cambiar de página) — lo usamos directo. Si el
+      // Worker todavía no está actualizado a esa versión (solo trae
+      // candidateToken, sin .candidate), caemos de vuelta a loadProfile()
+      // para no dejar la pantalla sin reaccionar.
+      if (data.candidate) {
+        renderProfile(data.candidateToken, data);
+      } else {
+        loadProfile(data.candidateToken);
+      }
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
@@ -370,47 +388,7 @@
     try {
       const data = await JobMatchAPI.getCandidateProfile(token);
       if (data.error) throw new Error(data.error);
-      localStorage.setItem(STORAGE_KEY, token);
-      document.getElementById('profile-name').textContent = data.candidate.nombre || data.candidate.email;
-      document.getElementById('profile-name').dataset.email = data.candidate.email;
-      document.getElementById('cv-current').textContent = data.candidate.cvLink
-        ? '✅ Ya tienes un CV subido. Puedes reemplazarlo subiendo uno nuevo.'
-        : 'Todavía no has subido tu CV.';
-      document.getElementById('habilidades').value = data.candidate.habilidades || '';
-      renderSkillPicker();
-      document.getElementById('resumen-perfil').value = data.candidate.resumenPerfil || '';
-      currentCandidate = data.candidate;
-      renderPreview();
-
-      if (data.socioeconomico) {
-        document.getElementById('ingreso').value = data.socioeconomico.ingresoFamiliar || '';
-        document.getElementById('dependientes').value = data.socioeconomico.dependientesEconomicos || '';
-        document.getElementById('vivienda').value = data.socioeconomico.tipoVivienda || '';
-        document.getElementById('escolaridad').value = data.socioeconomico.escolaridad || '';
-        document.getElementById('vulnerabilidad').value = data.socioeconomico.situacionVulnerabilidad || '';
-        document.getElementById('notas').value = data.socioeconomico.notasAdicionales || '';
-      }
-
-      const list = document.getElementById('my-applications');
-      if (!data.applications || data.applications.length === 0) {
-        list.innerHTML = `<div class="empty-state"><p>Todavía no te has postulado a ninguna vacante.</p></div>`;
-      } else {
-        list.innerHTML = data.applications.map((a) => `
-          <div class="job-card" style="margin-bottom:12px">
-            <h3 style="font-size:1rem">${escapeHtml(a.jobTitulo)}</h3>
-            <div class="company">${escapeHtml(a.jobEmpresa)}</div>
-            <div class="match">
-              <div class="match-track"><div class="match-fill" style="width:${a.matchScore || 0}%"></div></div>
-              <span class="match-label">${a.matchScore || 0}% afinidad</span>
-            </div>
-          </div>`).join('');
-      }
-      showProfileView();
-      // El login acaba de pasar en esta misma página (sin recargar) — el
-      // menú de arriba todavía tiene las opciones de "visitante" porque esa
-      // adaptación normalmente solo corre una vez, al cargar la página.
-      // La volvemos a correr ahora que ya hay token guardado.
-      if (typeof adaptNavForCandidateSession === 'function') adaptNavForCandidateSession();
+      renderProfile(token, data);
     } catch (err) {
       showAccessView();
       document.getElementById('login-status').className = 'status-msg show err';
@@ -420,6 +398,54 @@
         localStorage.removeItem(STORAGE_KEY);
       }
     }
+  }
+
+  // Separado de loadProfile() para que el login por LinkedIn (que ya recibe
+  // el perfil completo de una sola vez, ver handleLinkedinRedirect) pueda
+  // pintar la pantalla directo, sin tener que hacer una segunda llamada a
+  // Apps Script solo para volver a pedir lo mismo que ya le mandaron.
+  function renderProfile(token, data) {
+    localStorage.setItem(STORAGE_KEY, token);
+    document.getElementById('profile-name').textContent = data.candidate.nombre || data.candidate.email;
+    document.getElementById('profile-name').dataset.email = data.candidate.email;
+    document.getElementById('cv-current').textContent = data.candidate.cvLink
+      ? '✅ Ya tienes un CV subido. Puedes reemplazarlo subiendo uno nuevo.'
+      : 'Todavía no has subido tu CV.';
+    document.getElementById('habilidades').value = data.candidate.habilidades || '';
+    renderSkillPicker();
+    document.getElementById('resumen-perfil').value = data.candidate.resumenPerfil || '';
+    currentCandidate = data.candidate;
+    renderPreview();
+
+    if (data.socioeconomico) {
+      document.getElementById('ingreso').value = data.socioeconomico.ingresoFamiliar || '';
+      document.getElementById('dependientes').value = data.socioeconomico.dependientesEconomicos || '';
+      document.getElementById('vivienda').value = data.socioeconomico.tipoVivienda || '';
+      document.getElementById('escolaridad').value = data.socioeconomico.escolaridad || '';
+      document.getElementById('vulnerabilidad').value = data.socioeconomico.situacionVulnerabilidad || '';
+      document.getElementById('notas').value = data.socioeconomico.notasAdicionales || '';
+    }
+
+    const list = document.getElementById('my-applications');
+    if (!data.applications || data.applications.length === 0) {
+      list.innerHTML = `<div class="empty-state"><p>Todavía no te has postulado a ninguna vacante.</p></div>`;
+    } else {
+      list.innerHTML = data.applications.map((a) => `
+        <div class="job-card" style="margin-bottom:12px">
+          <h3 style="font-size:1rem">${escapeHtml(a.jobTitulo)}</h3>
+          <div class="company">${escapeHtml(a.jobEmpresa)}</div>
+          <div class="match">
+            <div class="match-track"><div class="match-fill" style="width:${a.matchScore || 0}%"></div></div>
+            <span class="match-label">${a.matchScore || 0}% afinidad</span>
+          </div>
+        </div>`).join('');
+    }
+    showProfileView();
+    // El login acaba de pasar en esta misma página (sin recargar) — el
+    // menú de arriba todavía tiene las opciones de "visitante" porque esa
+    // adaptación normalmente solo corre una vez, al cargar la página.
+    // La volvemos a correr ahora que ya hay token guardado.
+    if (typeof adaptNavForCandidateSession === 'function') adaptNavForCandidateSession();
   }
 
   document.getElementById('btn-login').addEventListener('click', () => {
@@ -542,6 +568,30 @@
         : `<p style="font-size:.8rem;color:var(--ink-soft);margin-top:6px">Todavía no has subido tu CV.</p>`}`;
   }
   document.getElementById('habilidades').addEventListener('input', renderPreview);
+
+  // Los dos modos ("escribir sobre mí" / "pegar mi resumé laboral") guardan
+  // en el mismo campo (resumenPerfil) — solo cambia la etiqueta y el
+  // ejemplo, para que cada quien use el que le sea más fácil: redactar algo
+  // corto de una vez, o pegar directo el texto de un CV/resumé que ya tenga
+  // escrito en otro lado.
+  const MODOS_RESUMEN = {
+    libre: {
+      label: 'Cuéntanos de ti',
+      placeholder: 'Ej. Soy contador con 4 años de experiencia en empresas de manufactura, manejo de nómina para más de 200 empleados, certificación en NIIF...',
+    },
+    resume: {
+      label: 'Pega aquí tu resumé laboral',
+      placeholder: 'Pega el texto de tu CV o resumé laboral tal cual lo tengas escrito (de un Word, PDF, LinkedIn, etc.) — no hace falta que le des formato, solo que la información esté completa.',
+    },
+  };
+  function setModoResumen(modo) {
+    document.getElementById('resumen-perfil-label').textContent = MODOS_RESUMEN[modo].label;
+    document.getElementById('resumen-perfil').placeholder = MODOS_RESUMEN[modo].placeholder;
+    document.getElementById('btn-modo-libre').classList.toggle('active', modo === 'libre');
+    document.getElementById('btn-modo-resume').classList.toggle('active', modo === 'resume');
+  }
+  document.getElementById('btn-modo-libre').addEventListener('click', () => setModoResumen('libre'));
+  document.getElementById('btn-modo-resume').addEventListener('click', () => setModoResumen('resume'));
 
   document.getElementById('btn-save-resumen').addEventListener('click', async () => {
     const status = document.getElementById('resumen-status');
