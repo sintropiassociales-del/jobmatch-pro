@@ -117,6 +117,58 @@
         <div class="status-msg" id="habilidades-status"></div>
       </div>
 
+      <!-- Vista previa y recomendaciones -->
+      <div class="form-card" style="margin-top:24px">
+        <h3 style="font-size:1.05rem">Vista previa de tu perfil</h3>
+        <p style="font-size:.85rem">
+          Así te ve una empresa: primero solo tus habilidades, de forma anónima
+          (igual que en el directorio público) — y si tú autorizas compartir tu
+          contacto, tu nombre, correo y CV.
+        </p>
+        <p style="font-size:.82rem;background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px">
+          📄 <strong>Sobre tu CV:</strong> súbelo en PDF con texto que se pueda
+          seleccionar (no una foto o escaneo) para que se lea bien si alguien
+          lo abre. La plataforma no lo analiza automáticamente — lo que usamos
+          para encontrarte y calcular tu afinidad con cada vacante es el campo
+          de habilidades de arriba, así que llénalo aunque ya esté en tu CV.
+        </p>
+
+        <div style="margin-top:18px">
+          <p style="font-size:.78rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Así te ven en el directorio público (anónimo)</p>
+          <div class="candidate-card" id="preview-card-anon" style="max-width:340px"></div>
+        </div>
+
+        <div style="margin-top:18px">
+          <p style="font-size:.78rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Así te ve una empresa después de que autorizas su contacto</p>
+          <div class="form-card" id="preview-card-revealed" style="background:var(--purple-050);border:none;max-width:340px"></div>
+        </div>
+
+        <div style="margin-top:22px;border-top:1px solid var(--line);padding-top:18px">
+          <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin-bottom:4px">¿Quieres mejorar tu perfil?</p>
+          <p style="font-size:.85rem;margin-bottom:14px">
+            Cuéntanos de tu experiencia (trayectoria, logros, estudios) — la
+            usamos junto con tus habilidades para darte recomendaciones y,
+            si quieres, para generarte un CV.
+          </p>
+          <div class="field">
+            <label for="resumen-perfil">Cuéntanos de ti</label>
+            <textarea id="resumen-perfil" placeholder="Ej. Soy contador con 4 años de experiencia en empresas de manufactura, manejo de nómina para más de 200 empleados, certificación en NIIF..." style="min-height:110px"></textarea>
+          </div>
+          <button class="btn btn-ghost btn-block" id="btn-save-resumen">Guardar</button>
+          <div class="status-msg" id="resumen-status"></div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+            <button class="btn btn-primary" id="btn-recomendaciones" style="flex:1;min-width:220px">Recomendaciones para tu perfil</button>
+            <button class="btn btn-ghost" id="btn-generar-cv" style="flex:1;min-width:220px">Generar CV con IA</button>
+          </div>
+          <div class="status-msg" id="ia-status"></div>
+          <div class="form-card" id="recomendaciones-resultado" style="display:none;margin-top:14px;background:var(--purple-050);border:none">
+            <p style="font-size:.78rem;font-weight:700;color:var(--purple-900);margin-bottom:6px">📋 Recomendaciones (generadas con IA, basadas en lo que empresas y sistemas de selección suelen buscar)</p>
+            <p id="recomendaciones-texto" style="font-size:.85rem;white-space:pre-line"></p>
+          </div>
+        </div>
+      </div>
+
       <!-- Perfil socioeconómico -->
       <div class="form-card" style="margin-top:24px">
         <h3 style="font-size:1.05rem">Perfil socioeconómico (opcional)</h3>
@@ -197,6 +249,7 @@
   // que quede un solo lugar donde se define — antes esta página tenía su
   // propia copia del nombre, con el mismo valor pero repetido.
   const STORAGE_KEY = CANDIDATE_TOKEN_KEY;
+  let currentCandidate = null; // último perfil cargado — lo usa la Vista previa
 
   // ---------- Selector de habilidades por categoría ----------
   // Usa el mismo mapa (SKILL_MAP / SKILL_CATEGORIA_GENERAL) que candidatos.html
@@ -325,6 +378,9 @@
         : 'Todavía no has subido tu CV.';
       document.getElementById('habilidades').value = data.candidate.habilidades || '';
       renderSkillPicker();
+      document.getElementById('resumen-perfil').value = data.candidate.resumenPerfil || '';
+      currentCandidate = data.candidate;
+      renderPreview();
 
       if (data.socioeconomico) {
         document.getElementById('ingreso').value = data.socioeconomico.ingresoFamiliar || '';
@@ -442,10 +498,113 @@
       });
       status.className = 'status-msg show ok';
       status.textContent = 'Guardado ✓';
+      if (currentCandidate) currentCandidate.habilidades = document.getElementById('habilidades').value;
+      renderPreview();
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
+  });
+
+  // ---------- Vista previa ----------
+  // Refleja lo que ya sabemos del candidato (currentCandidate, cargado en
+  // loadProfile) más lo que tenga escrito ahora mismo en el campo de
+  // habilidades (así se actualiza en vivo aunque todavía no le haya dado
+  // "Guardar habilidades").
+  function renderPreview() {
+    if (!currentCandidate) return;
+    const habilidades = (document.getElementById('habilidades').value || '').split(',').map((h) => h.trim()).filter(Boolean);
+    const [primera, ...resto] = habilidades;
+    const apodo = 'Candidato #' + String(currentCandidate.id).slice(-4).toUpperCase();
+    const iniciales = apodo.replace('Candidato #', '').slice(0, 2);
+
+    const anon = document.getElementById('preview-card-anon');
+    if (habilidades.length === 0) {
+      anon.innerHTML = `<p style="font-size:.82rem;color:var(--ink-soft)">Agrega y guarda al menos una habilidad arriba para ver aquí tu vista previa — sin habilidades, no apareces en el directorio.</p>`;
+    } else {
+      anon.innerHTML = `
+        <div class="candidate-card-top">
+          <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
+          <div><div class="candidate-apodo">${escapeHtml(apodo)}</div></div>
+        </div>
+        <div class="tag-row" style="margin-top:14px">
+          ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
+          ${resto.slice(0, 5).map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
+          ${resto.length > 5 ? `<span class="tag" style="background:var(--purple-050);opacity:.7">+${resto.length - 5} más</span>` : ''}
+        </div>`;
+    }
+
+    const revealed = document.getElementById('preview-card-revealed');
+    revealed.innerHTML = `
+      <p style="font-size:.85rem"><strong>${escapeHtml(currentCandidate.nombre || 'Sin nombre')}</strong><br>${escapeHtml(currentCandidate.email || '')}</p>
+      ${currentCandidate.cvLink
+        ? `<p style="font-size:.82rem;margin-top:6px"><a href="${escapeHtml(currentCandidate.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a></p>`
+        : `<p style="font-size:.8rem;color:var(--ink-soft);margin-top:6px">Todavía no has subido tu CV.</p>`}`;
+  }
+  document.getElementById('habilidades').addEventListener('input', renderPreview);
+
+  document.getElementById('btn-save-resumen').addEventListener('click', async () => {
+    const status = document.getElementById('resumen-status');
+    const token = localStorage.getItem(STORAGE_KEY);
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      const profile = await JobMatchAPI.getCandidateProfile(token);
+      const resumenPerfil = document.getElementById('resumen-perfil').value;
+      await JobMatchAPI.registerCandidate({
+        email: profile.candidate.email,
+        nombre: profile.candidate.nombre,
+        resumenPerfil,
+      });
+      if (currentCandidate) currentCandidate.resumenPerfil = resumenPerfil;
+      status.className = 'status-msg show ok';
+      status.textContent = 'Guardado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('btn-recomendaciones').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    const status = document.getElementById('ia-status');
+    const resultado = document.getElementById('recomendaciones-resultado');
+    const token = localStorage.getItem(STORAGE_KEY);
+    btn.disabled = true;
+    resultado.style.display = 'none';
+    status.className = 'status-msg show pending';
+    status.textContent = 'Un momento, esto puede tardar unos segundos...';
+    try {
+      const data = await JobMatchAPI.getRecomendacionesPerfil(token);
+      document.getElementById('recomendaciones-texto').textContent = data.recomendaciones || '';
+      resultado.style.display = 'block';
+      status.className = '';
+      status.textContent = '';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // A diferencia del botón de arriba, este NO espera a que la IA (y armar el
+  // Word) terminen — puede tardar bastante y a veces la IA falla al primer
+  // intento, así que en vez de dejar al candidato viendo una rueda girando,
+  // le avisamos de una vez que el resultado le va a llegar por correo. La
+  // llamada sigue en camino al servidor (no se cancela), solo que ya no
+  // bloquea la pantalla ni se usa su respuesta.
+  document.getElementById('btn-generar-cv').addEventListener('click', () => {
+    const status = document.getElementById('ia-status');
+    const token = localStorage.getItem(STORAGE_KEY);
+    if (!(document.getElementById('resumen-perfil').value || '').trim()) {
+      status.className = 'status-msg show err';
+      status.textContent = 'Cuéntanos primero de tu experiencia (arriba) para poder generar tu CV.';
+      return;
+    }
+    status.className = 'status-msg show ok';
+    status.textContent = '✅ Hecho — a la brevedad te llegará un correo con tu CV generado por IA, en formato Word, para que lo revises y ajustes.';
+    JobMatchAPI.generarCVConIA(token).catch((err) => console.warn('generarCVConIA:', err.message));
   });
 
   document.getElementById('btn-save-socio').addEventListener('click', async () => {
