@@ -107,6 +107,14 @@
       // navegador llega aquí (mucho antes de d3.js) y oculta de una vez la
       // tarjeta de empresa/admin si ya hay un token de candidato guardado,
       // sin esperar a confirmar la sesión con el servidor.
+      //
+      // Además, si ya guardamos antes el nombre/resumen de este candidato
+      // (ver cacheCandidateSession en assets/js/app.js), lo mostramos de
+      // inmediato en la tarjeta "Hola, <nombre>" en vez de dejarla vacía —
+      // el arranque en frío de Apps Script puede tardar varios segundos, y
+      // así no hay que esperarlo para ver algo útil. El script grande de
+      // abajo sigue confirmando los datos reales con el servidor y
+      // actualiza la tarjeta si algo cambió.
       (function () {
         try {
           if (!localStorage.getItem('jobmatch_candidate_token')) return;
@@ -114,6 +122,16 @@
           var adminRow = document.getElementById('admin-access-row');
           if (empresaCard) empresaCard.style.display = 'none';
           if (adminRow) adminRow.style.display = 'none';
+
+          var cached = JSON.parse(localStorage.getItem('jobmatch_candidate_cache') || 'null');
+          if (cached) {
+            var nombreEl = document.getElementById('candidato-nombre');
+            var resumenEl = document.getElementById('candidato-resumen');
+            var cardEl = document.getElementById('candidato-session-card');
+            if (nombreEl) nombreEl.textContent = cached.nombre || 'tu cuenta';
+            if (resumenEl) resumenEl.textContent = cached.resumen || '';
+            if (cardEl) cardEl.style.display = 'block';
+          }
         } catch (e) {}
       })();
     </script>
@@ -207,13 +225,16 @@
     if (!token) return false;
     try {
       const data = await JobMatchAPI.getCandidateProfile(token);
-      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); setCandidateAreaVisible(false); return false; }
+      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); clearCachedCandidateSession(); setCandidateAreaVisible(false); return false; }
       const c = data.candidate;
       const nHabilidades = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean).length;
-      document.getElementById('candidato-nombre').textContent = c.nombre || 'tu cuenta';
-      document.getElementById('candidato-resumen').textContent = nHabilidades
+      const nombre = c.nombre || 'tu cuenta';
+      const resumen = nHabilidades
         ? `Tienes ${nHabilidades} habilidad(es) registradas en tu perfil.`
         : 'Todavía no tienes habilidades registradas en tu perfil.';
+      document.getElementById('candidato-nombre').textContent = nombre;
+      document.getElementById('candidato-resumen').textContent = resumen;
+      cacheCandidateSession({ nombre, resumen });
       setCandidateAreaVisible(true);
       return true;
     } catch (err) {
@@ -229,7 +250,11 @@
 
   document.getElementById('btn-candidato-logout').addEventListener('click', () => {
     localStorage.removeItem(CANDIDATE_TOKEN_KEY);
-    setCandidateAreaVisible(false);
+    clearCachedCandidateSession();
+    // Recargamos (en vez de solo alternar tarjetas) para que el menú de
+    // arriba, que mientras había sesión ocultaba "Publicar vacante"/"Acceso
+    // empresas" y mostraba "Cerrar sesión", también vuelva a la normalidad.
+    window.location.reload();
   });
 
   // ---------- Sesión de empresa (opcional, no bloquea el directorio) ----------

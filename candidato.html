@@ -350,6 +350,11 @@
           </div>`).join('');
       }
       showProfileView();
+      // El login acaba de pasar en esta misma página (sin recargar) — el
+      // menú de arriba todavía tiene las opciones de "visitante" porque esa
+      // adaptación normalmente solo corre una vez, al cargar la página.
+      // La volvemos a correr ahora que ya hay token guardado.
+      if (typeof adaptNavForCandidateSession === 'function') adaptNavForCandidateSession();
     } catch (err) {
       showAccessView();
       document.getElementById('login-status').className = 'status-msg show err';
@@ -391,7 +396,12 @@
 
   document.getElementById('btn-logout').addEventListener('click', () => {
     localStorage.removeItem(STORAGE_KEY);
-    showAccessView();
+    if (typeof clearCachedCandidateSession === 'function') clearCachedCandidateSession();
+    // Recargamos en vez de solo mostrar la vista de acceso: así el menú de
+    // arriba (que mientras había sesión ocultaba "Publicar vacante"/"Acceso
+    // empresas" y mostraba "Cerrar sesión") también vuelve a su estado
+    // normal de visitante, en vez de quedarse desincronizado.
+    window.location.reload();
   });
 
   document.getElementById('btn-upload-cv').addEventListener('click', async () => {
