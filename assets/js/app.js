@@ -110,13 +110,27 @@ document.addEventListener('DOMContentLoaded', () => {
 // sirve de nada (esa página es para empresas) — en su lugar, para un
 // candidato con sesión, apunta a su estudio socioeconómico privado (ver
 // precios.html, que muestra un contenido u otro según haya o no sesión de
-// candidato).
+// candidato). "Publicar vacante" y "Acceso empresas" tampoco le sirven (son
+// para empresas), así que se ocultan, y el botón "Publicar gratis" — que no
+// tiene sentido para alguien que ya tiene cuenta de candidato — se
+// convierte en "Cerrar sesión".
 document.addEventListener('DOMContentLoaded', () => {
   const hasCandidateSession = !!localStorage.getItem(CANDIDATE_TOKEN_KEY);
   if (!hasCandidateSession) return;
   document.querySelectorAll('.nav-links a').forEach((a) => {
-    if (a.getAttribute('href') === 'precios.html') {
+    const href = a.getAttribute('href');
+    if (a.classList.contains('nav-cta')) {
+      a.textContent = 'Cerrar sesión';
+      a.setAttribute('href', '#');
+      a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        localStorage.removeItem(CANDIDATE_TOKEN_KEY);
+        window.location.href = 'index.html';
+      });
+    } else if (href === 'precios.html') {
       a.textContent = 'Mi estudio';
+    } else if (href === 'registro-empresa.html' || a.textContent.trim() === 'Acceso empresas') {
+      a.style.display = 'none';
     }
   });
 });
