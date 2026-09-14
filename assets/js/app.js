@@ -27,6 +27,23 @@ function clearCachedEmpresaSession() {
   try { localStorage.removeItem(COMPANY_CACHE_KEY); } catch (e) {}
 }
 
+/* ---------- Caché ligera de la sesión de candidato ----------
+   Mismo motivo que la de empresa arriba: candidatos.html necesita mostrar la
+   tarjeta "Hola, <nombre>" al instante (no unos segundos después) cuando ya
+   hay sesión de candidato — sin esto, la tarjeta se queda vacía/oculta
+   mientras se confirma con Apps Script, que puede tardar varios segundos en
+   un arranque en frío. */
+const CANDIDATE_CACHE_KEY = 'jobmatch_candidate_cache';
+function cacheCandidateSession(data) {
+  try { localStorage.setItem(CANDIDATE_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function getCachedCandidateSession() {
+  try { return JSON.parse(localStorage.getItem(CANDIDATE_CACHE_KEY) || 'null'); } catch (e) { return null; }
+}
+function clearCachedCandidateSession() {
+  try { localStorage.removeItem(CANDIDATE_CACHE_KEY); } catch (e) {}
+}
+
 /* ---------- Mapa de habilidades y competencias ----------
    Fuente única de verdad para todo el sitio: candidato.html lo usa para
    ofrecer opciones prellenadas al armar el perfil (más rápido que escribir
@@ -114,7 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // para empresas), así que se ocultan, y el botón "Publicar gratis" — que no
 // tiene sentido para alguien que ya tiene cuenta de candidato — se
 // convierte en "Cerrar sesión".
-document.addEventListener('DOMContentLoaded', () => {
+//
+// Esto se define como función reutilizable (no solo un listener de
+// DOMContentLoaded) porque el login de candidato normalmente pasa DENTRO de
+// candidato.html sin recargar la página — si solo corriera en
+// DOMContentLoaded, el menú se quedaría con las opciones de "visitante"
+// hasta el siguiente cambio de página. candidato.html la vuelve a llamar en
+// cuanto el login termina (ver loadProfile()) para que el menú se actualice
+// al instante. Es segura de llamar más de una vez (no duplica el botón de
+// cerrar sesión ni sus efectos).
+function adaptNavForCandidateSession() {
   const hasCandidateSession = !!localStorage.getItem(CANDIDATE_TOKEN_KEY);
   if (!hasCandidateSession) return;
   document.querySelectorAll('.nav-links a').forEach((a) => {
@@ -122,18 +148,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (a.classList.contains('nav-cta')) {
       a.textContent = 'Cerrar sesión';
       a.setAttribute('href', '#');
-      a.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        localStorage.removeItem(CANDIDATE_TOKEN_KEY);
-        window.location.href = 'index.html';
-      });
+      if (!a.dataset.logoutWired) {
+        a.dataset.logoutWired = '1';
+        a.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          localStorage.removeItem(CANDIDATE_TOKEN_KEY);
+          clearCachedCandidateSession();
+          window.location.href = 'index.html';
+        });
+      }
     } else if (href === 'precios.html') {
       a.textContent = 'Mi estudio';
     } else if (href === 'registro-empresa.html' || a.textContent.trim() === 'Acceso empresas') {
       a.style.display = 'none';
     }
   });
-});
+}
+document.addEventListener('DOMContentLoaded', adaptNavForCandidateSession);
 
 /* ---------- Menú móvil ---------- */
 document.addEventListener('DOMContentLoaded', () => {
