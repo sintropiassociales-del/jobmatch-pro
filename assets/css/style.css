@@ -101,6 +101,11 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 @media (max-width:1250px){ .sintropia-badge{display:none;} }
 .nav-links a{font-weight:500;font-size:.94rem;color:var(--ink-soft);white-space:nowrap;}
 .nav-links a:hover{color:var(--purple-700);}
+.nav-links a.active{color:var(--purple-700);font-weight:700;position:relative;}
+.nav-links a.active::after{
+  content:'';position:absolute;left:0;right:0;bottom:-6px;height:2px;
+  background:var(--purple-700);border-radius:2px;
+}
 .nav-cta{
   background:var(--orange-500);color:#fff !important;
   padding:10px 20px;border-radius:100px;font-weight:600;font-size:.9rem;
@@ -439,6 +444,8 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
     text-align:center;border-bottom:none;margin-top:16px;padding:14px;
     box-shadow:0 8px 20px rgba(255,107,26,.3);
   }
+  .nav-links a.active{background:var(--purple-050);padding-left:14px;border-radius:8px;}
+  .nav-links a.active::after{display:none;}
   body.menu-open{overflow:hidden;}
   /* El blur del header (backdrop-filter) crea sin querer un "contenedor" nuevo
      para elementos position:fixed dentro de él (regla del CSS, no es un bug
