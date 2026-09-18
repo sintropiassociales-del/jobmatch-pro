@@ -301,7 +301,7 @@
         document.getElementById('session-logged-out').style.display = 'none';
         document.getElementById('session-logged-in').style.display = 'block';
         document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(cached.razonSocial)}</strong> · Plan ${escapeHtml(cached.plan)}` +
-          (currentPuedeSolicitar ? ' — puedes comparar y solicitar contacto.' : ' — mejora tu plan a Business o A la medida para comparar/contactar.');
+          (currentPuedeSolicitar ? ' — puedes comparar, solicitar contacto y guardar tu banco de talento favorito.' : ' — mejora tu plan a Business o A la medida para comparar, contactar y guardar tu banco de talento de candidatos favoritos.');
         setAdminAccessVisible(false);
       }
       checkSession(saved);
@@ -524,18 +524,45 @@
   // el objeto en memoria (currentItems/lastFetchedItems) para que si la
   // lista se vuelve a pintar (ej. al cambiar de filtro) el estado quede
   // correcto sin tener que volver a pedirle nada a Apps Script.
+  //
+  // Actualización OPTIMISTA: el ícono cambia al instante al hacer clic, sin
+  // esperar la respuesta de Apps Script (que puede tardar unos segundos) —
+  // si la llamada falla, se revierte al estado anterior y se avisa. Antes se
+  // esperaba la respuesta antes de mover el ícono, lo que se sentía como que
+  // el clic "no hacía nada" durante 3-4 segundos.
   async function toggleFavoritoClick(candidatoId, btn) {
+    const estabaFavorito = btn.textContent.trim() === '★';
+    const nuevoValor = !estabaFavorito;
+
     btn.disabled = true;
+    btn.textContent = nuevoValor ? '★' : '☆';
+    btn.title = nuevoValor ? 'Quitar de favoritos' : 'Guardar en banco de talento';
+    [currentItems, lastFetchedItems].forEach((list) => {
+      const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
+      if (item) item.esFavorito = nuevoValor;
+    });
+
     try {
       const data = await JobMatchAPI.toggleFavorito(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
-      btn.textContent = data.favorito ? '★' : '☆';
-      btn.title = data.favorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
+      // Por si el servidor regresa algo distinto de lo que asumimos (ej. dos
+      // pestañas abiertas a la vez), nos alineamos con lo real.
+      if (data.favorito !== nuevoValor) {
+        btn.textContent = data.favorito ? '★' : '☆';
+        btn.title = data.favorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
+        [currentItems, lastFetchedItems].forEach((list) => {
+          const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
+          if (item) item.esFavorito = data.favorito;
+        });
+      }
+    } catch (err) {
+      // Revertimos al estado anterior — el clic no se guardó.
+      btn.textContent = estabaFavorito ? '★' : '☆';
+      btn.title = estabaFavorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
       [currentItems, lastFetchedItems].forEach((list) => {
         const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
-        if (item) item.esFavorito = data.favorito;
+        if (item) item.esFavorito = estabaFavorito;
       });
-    } catch (err) {
       alert(err.message);
     } finally {
       btn.disabled = false;

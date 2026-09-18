@@ -44,7 +44,7 @@
 <section class="section-tight">
   <div class="container">
     <div class="plans">
-      <div class="plan-card">
+      <div class="plan-card" data-plan="Gratis" id="plan-Gratis">
         <div class="badge-pill" style="align-self:flex-start">Para empezar</div>
         <h3>Gratis</h3>
         <div class="price">$0<span>/siempre</span></div>
@@ -56,7 +56,7 @@
         </ul>
       </div>
 
-      <div class="plan-card">
+      <div class="plan-card" data-plan="Starter" id="plan-Starter">
         <div class="badge-pill" style="align-self:flex-start">Startups / Pymes</div>
         <h3>Starter</h3>
         <div class="price">$1,500<span>/mes</span></div>
@@ -71,7 +71,7 @@
         <div class="paypal-slot" data-plan="Starter" data-plan-id="P-85J178568B772993JNJN5PGI"></div>
       </div>
 
-      <div class="plan-card featured">
+      <div class="plan-card featured" data-plan="Pro" id="plan-Pro">
         <span class="badge">Más elegido</span>
         <div class="badge-pill" style="align-self:flex-start">Empresas medianas</div>
         <h3>Pro</h3>
@@ -87,7 +87,7 @@
         <div class="paypal-slot" data-plan="Pro" data-plan-id="P-3LD64246BP613823WNJN5WGI"></div>
       </div>
 
-      <div class="plan-card">
+      <div class="plan-card" data-plan="Business" id="plan-Business">
         <div class="badge-pill" style="align-self:flex-start">Corporativos</div>
         <h3>Business</h3>
         <div class="price">$9,500<span>/mes</span></div>
@@ -96,11 +96,16 @@
           <li>Vacantes activas ilimitadas</li>
           <li>5 vacantes destacadas al mes</li>
           <li>Acceso a datos socioeconómicos y reporte de hasta 3 candidatos por vacante (con autorización del candidato)</li>
+          <li>Filtros avanzados y banco de talento (favoritos)</li>
+          <li>Pipeline de postulaciones tipo kanban</li>
+          <li>Alertas automáticas de candidatos nuevos que hacen match</li>
+          <li>Reportes de reclutamiento</li>
+          <li>Agenda de entrevistas integrada</li>
         </ul>
         <div class="paypal-slot" data-plan="Business" data-plan-id="P-2DN85278YV0277106NJN5X3Q"></div>
       </div>
 
-      <div class="plan-card">
+      <div class="plan-card" data-plan="A la medida" id="plan-A-la-medida">
         <div class="badge-pill" style="align-self:flex-start">Enterprise</div>
         <h3>A la medida</h3>
         <div class="price">$15,000<span>+/mes</span></div>
@@ -477,7 +482,56 @@
     btn.textContent = 'Guardar información privada';
   });
 
-  window.addEventListener('load', () => {
+  // ---------- Reglas para invitar a subir de plan (arriba del todo se
+  // reemplaza el "Empieza gratis..." genérico por "Ya tienes el plan X" con
+  // razones concretas para pasar al siguiente) ----------
+  const PLAN_ORDER = ['Gratis', 'Starter', 'Pro', 'Business', 'A la medida'];
+  const PLAN_ANCHOR = { 'Gratis': 'plan-Gratis', 'Starter': 'plan-Starter', 'Pro': 'plan-Pro', 'Business': 'plan-Business', 'A la medida': 'plan-A-la-medida' };
+  const UPGRADE_COPY = {
+    'Gratis': { next: 'Starter', razones: 'tener 2 vacantes activas (no solo 1), editar tus vacantes libremente, subir tu logo y recibir recomendaciones de desarrollo para cada candidato.' },
+    'Starter': { next: 'Pro', razones: 'publicar hasta 8 vacantes activas al mismo tiempo, que el matching te explique por qué cada candidato hace match, y destacar vacantes para que se vean primero.' },
+    'Pro': { next: 'Business', razones: 'tener vacantes activas ilimitadas, acceso a perfiles socioeconómicos autorizados, banco de talento con favoritos, pipeline de postulaciones tipo kanban, alertas automáticas de candidatos nuevos, reportes de reclutamiento y agenda de entrevistas integrada.' },
+    'Business': { next: 'A la medida', razones: 'alcance ajustado a tu volumen, integraciones a la medida (ATS u otras herramientas, evaluadas caso por caso) y acompañamiento directo conmigo, no un algoritmo ni un call center.', mailto: true },
+  };
+
+  function limpiarBadgesPlanActual() {
+    document.querySelectorAll('.plan-card.current-plan').forEach((card) => {
+      card.classList.remove('current-plan');
+      const b = card.querySelector(':scope > .badge');
+      if (b) b.remove();
+    });
+  }
+
+  function personalizarPrecios(plan) {
+    if (!plan) return;
+    const heroH1 = document.querySelector('#precios-empresa-content h1');
+    const heroLead = document.querySelector('#precios-empresa-content .lead');
+    const heroActions = document.querySelector('#precios-empresa-content .hero-actions');
+    const upgrade = UPGRADE_COPY[plan];
+
+    if (heroH1) heroH1.textContent = `Ya tienes el plan ${plan}`;
+    if (heroLead) {
+      heroLead.innerHTML = upgrade
+        ? `¿Quieres pasar al plan <strong>${escapeHtml(upgrade.next)}</strong>? Con ese plan podrías ${upgrade.razones}`
+        : `Ya tienes nuestro plan más completo. Si necesitas algo adicional a la medida de tu operación, escríbenos — lo evaluamos caso por caso.`;
+    }
+    if (heroActions) {
+      heroActions.innerHTML = upgrade
+        ? (upgrade.mailto
+            ? `<a href="mailto:contacto@sintropiasocial.com?subject=JobMatch%20Pro%20Enterprise" class="btn btn-primary">Hablar con ventas →</a><a href="portal-empresa.html" class="btn btn-ghost">Ir a mi panel</a>`
+            : `<a href="#${PLAN_ANCHOR[upgrade.next]}" class="btn btn-primary">Ver plan ${escapeHtml(upgrade.next)} →</a><a href="portal-empresa.html" class="btn btn-ghost">Ir a mi panel</a>`)
+        : `<a href="portal-empresa.html" class="btn btn-primary">Ir a mi panel →</a>`;
+    }
+
+    limpiarBadgesPlanActual();
+    const card = document.querySelector(`.plan-card[data-plan="${plan}"]`);
+    if (card) {
+      card.classList.add('current-plan');
+      card.insertAdjacentHTML('afterbegin', `<span class="badge">Tu plan actual</span>`);
+    }
+  }
+
+  window.addEventListener('load', async () => {
     if (localStorage.getItem(CANDIDATE_TOKEN_KEY)) return; // esta vista es para empresas, no aplica con sesión de candidato
     const token = localStorage.getItem(COMPANY_TOKEN_KEY);
     const slots = document.querySelectorAll('.paypal-slot');
@@ -492,12 +546,46 @@
       return;
     }
 
+    // Con sesión de empresa: personaliza la página con su plan actual antes
+    // de decidir qué botones de PayPal mostrar. Pinta primero con lo que
+    // haya en caché (instantáneo) y confirma con Apps Script en segundo
+    // plano por si el plan cambió desde otro dispositivo.
+    let planActual = null;
+    const cached = getCachedEmpresaSession();
+    if (cached && cached.plan) { planActual = cached.plan; personalizarPrecios(planActual); }
+
+    try {
+      const data = await JobMatchAPI.getEmpresaProfile(token);
+      if (!data.error && data.empresa.plan !== planActual) {
+        planActual = data.empresa.plan;
+        personalizarPrecios(planActual);
+        cacheEmpresaSession({ razonSocial: data.empresa.razonSocial, plan: planActual });
+      }
+    } catch (err) { /* si falla, se queda con lo que ya se pintó del caché (o nada, si no había) */ }
+
+    const idxActual = PLAN_ORDER.indexOf(planActual);
+
     const script = document.createElement('script');
     script.src = 'https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription';
     script.onload = () => {
       slots.forEach((slot) => {
         const plan = slot.dataset.plan;
         const planId = slot.dataset.planId;
+        const idxSlot = PLAN_ORDER.indexOf(plan);
+
+        // No ofrecemos el botón de pago para un plan igual o menor al que ya
+        // tienen: además de no tener sentido, crearía una SEGUNDA
+        // suscripción de PayPal en paralelo a la que ya está activa (el
+        // webhook solo actualiza el plan en el Sheet, no cancela la
+        // suscripción anterior) — mejor no ofrecer el botón que arriesgar un
+        // doble cobro.
+        if (idxActual !== -1 && idxSlot !== -1 && idxSlot <= idxActual) {
+          slot.innerHTML = idxSlot === idxActual
+            ? `<span class="badge-pill">✓ Tu plan actual</span>`
+            : `<span class="badge-pill" style="opacity:.6">Ya tienes un plan superior</span>`;
+          return;
+        }
+
         paypal.Buttons({
           style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
           createSubscription: (d, actions) => actions.subscription.create({ plan_id: planId, custom_id: token }),

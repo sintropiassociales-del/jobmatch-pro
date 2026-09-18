@@ -164,6 +164,29 @@
           <button class="btn btn-ghost btn-block" id="btn-save-resumen">Guardar</button>
           <div class="status-msg" id="resumen-status"></div>
 
+          <div style="margin-top:22px;border-top:1px solid var(--line);padding-top:18px">
+            <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin-bottom:4px">Datos privados para tu banco de talento</p>
+            <p style="font-size:.8rem;background:var(--purple-050);border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:12px">
+              🔒 Esto NUNCA se muestra en el directorio público ni a empresas en general — solo lo ve una empresa específica si te guarda en su banco de talento (favoritos). Ambos campos son opcionales.
+            </p>
+            <div class="field">
+              <label for="genero">Género</label>
+              <select id="genero">
+                <option value="">Prefiero no decir</option>
+                <option>Mujer</option>
+                <option>Hombre</option>
+                <option>No binario</option>
+                <option>Otro</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="experiencia">Experiencia (labores realizadas — evita nombrar empresas)</label>
+              <textarea id="experiencia" placeholder="Ej. Atención a clientes en piso de venta, manejo de caja y cierre diario, capacitación a personal nuevo..." style="min-height:90px"></textarea>
+            </div>
+            <button class="btn btn-ghost btn-block" id="btn-save-genero-experiencia">Guardar</button>
+            <div class="status-msg" id="genero-experiencia-status"></div>
+          </div>
+
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
             <button class="btn btn-primary" id="btn-recomendaciones" style="flex:1;min-width:220px">Recomendaciones para tu perfil</button>
             <button class="btn btn-ghost" id="btn-generar-cv" style="flex:1;min-width:220px">Generar CV con IA</button>
@@ -414,6 +437,8 @@
     document.getElementById('habilidades').value = data.candidate.habilidades || '';
     renderSkillPicker();
     document.getElementById('resumen-perfil').value = data.candidate.resumenPerfil || '';
+    document.getElementById('genero').value = data.candidate.genero || '';
+    document.getElementById('experiencia').value = data.candidate.experiencia || '';
     currentCandidate = data.candidate;
     renderPreview();
 
@@ -607,6 +632,30 @@
         resumenPerfil,
       });
       if (currentCandidate) currentCandidate.resumenPerfil = resumenPerfil;
+      status.className = 'status-msg show ok';
+      status.textContent = 'Guardado ✓';
+    } catch (err) {
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+    }
+  });
+
+  document.getElementById('btn-save-genero-experiencia').addEventListener('click', async () => {
+    const status = document.getElementById('genero-experiencia-status');
+    const token = localStorage.getItem(STORAGE_KEY);
+    status.className = 'status-msg show pending';
+    status.textContent = 'Guardando...';
+    try {
+      const profile = await JobMatchAPI.getCandidateProfile(token);
+      const genero = document.getElementById('genero').value;
+      const experiencia = document.getElementById('experiencia').value;
+      await JobMatchAPI.registerCandidate({
+        email: profile.candidate.email,
+        nombre: profile.candidate.nombre,
+        genero,
+        experiencia,
+      });
+      if (currentCandidate) { currentCandidate.genero = genero; currentCandidate.experiencia = experiencia; }
       status.className = 'status-msg show ok';
       status.textContent = 'Guardado ✓';
     } catch (err) {

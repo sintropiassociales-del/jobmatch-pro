@@ -363,6 +363,17 @@
       document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+      // Favoritos y Reportes se cargan hasta que se abre esa pestaña (no al
+      // iniciar sesión) — antes las 4 llamadas a Apps Script (Postulaciones,
+      // Favoritos, Reportes, y el perfil mismo) salían todas a la vez al
+      // entrar, y se hacían más lentas entre sí. Así, lo que sí ves de
+      // inmediato (Publicar vacante, Mis vacantes, Postulaciones) carga más
+      // rápido, y el resto llega cuando realmente lo pides.
+      const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+      if (!token || !currentEmpresa) return;
+      if (btn.dataset.tab === 'favoritos') loadFavoritos(token, currentEmpresa.empresa.plan);
+      if (btn.dataset.tab === 'reportes') loadReportes(token, currentEmpresa.empresa.plan);
     });
   });
 
@@ -400,8 +411,9 @@
 
       renderMisVacantes(data);
       loadPostulaciones(token);
-      loadFavoritos(token, data.empresa.plan);
-      loadReportes(token, data.empresa.plan);
+      // Favoritos y Reportes ya NO se cargan aquí — se cargan solo/hasta que
+      // se abre esa pestaña (ver el listener de .tab-btn más abajo), para no
+      // saturar a Apps Script con 4 llamadas simultáneas al iniciar sesión.
       setupPlanTab(data);
       renderJobPreview(); // refresca la vista previa ahora que ya conocemos el nombre/logo real de la empresa
 
@@ -639,6 +651,9 @@
     }
     locked.style.display = 'none';
     list.style.display = 'grid';
+    // Esqueleto de carga — evita que la pestaña se vea vacía/rota mientras
+    // Apps Script responde (puede tardar unos segundos).
+    list.innerHTML = [1, 2, 3].map(() => `<div class="candidate-card"><div class="skel" style="height:20px;width:60%;margin-bottom:14px"></div><div class="skel" style="height:14px;width:90%;margin-bottom:8px"></div><div class="skel" style="height:14px;width:40%"></div></div>`).join('');
     try {
       const data = await JobMatchAPI.listFavoritos(token);
       if (data.error) throw new Error(data.error);
@@ -649,13 +664,15 @@
       list.innerHTML = data.items.map((c) => {
         const skills = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean);
         const [primera, ...resto] = skills;
-        const iniciales = (c.apodo || '').replace('Candidato #', '').slice(0, 2);
+        const nombreMostrar = c.nombreDePila || c.apodo;
+        const iniciales = c.nombreDePila ? c.nombreDePila.slice(0, 2) : (c.apodo || '').replace('Candidato #', '').slice(0, 2);
         return `
         <div class="candidate-card">
           <div class="candidate-card-top">
             <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
             <div style="flex:1">
-              <div class="candidate-apodo">${escapeHtml(c.apodo)}</div>
+              <div class="candidate-apodo">${escapeHtml(nombreMostrar)}${c.genero ? ` <span style="font-weight:400;color:var(--ink-soft);font-size:.82rem">· ${escapeHtml(c.genero)}</span>` : ''}</div>
+              <div style="font-size:.72rem;color:var(--ink-soft)">${escapeHtml(c.apodo)}</div>
             </div>
             <button class="fav-star-btn" title="Quitar de favoritos" data-candidato-id="${c.candidatoId}" onclick="quitarFavoritoPortal('${c.candidatoId}', this)">★</button>
           </div>
@@ -664,7 +681,8 @@
             ${resto.slice(0, 5).map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
             ${resto.length > 5 ? `<span class="tag" style="background:var(--purple-050);opacity:.7">+${resto.length - 5} más</span>` : ''}
           </div>
-          ${c.resumenPerfil ? `<p style="font-size:.82rem;margin-top:12px;white-space:pre-line">${escapeHtml(c.resumenPerfil)}</p>` : ''}
+          ${c.resumenPerfil ? `<p style="font-size:.78rem;font-weight:600;color:var(--purple-700);margin-top:12px;margin-bottom:2px">Perfil</p><p style="font-size:.82rem;white-space:pre-line">${escapeHtml(c.resumenPerfil)}</p>` : ''}
+          ${c.experiencia ? `<p style="font-size:.78rem;font-weight:600;color:var(--purple-700);margin-top:10px;margin-bottom:2px">Experiencia</p><p style="font-size:.82rem;white-space:pre-line">${escapeHtml(c.experiencia)}</p>` : ''}
           <div class="foot" style="margin-top:16px">
             ${c.estadoSolicitud === 'autorizado'
               ? `<span class="badge-pill">✅ Contacto autorizado — ve a "Candidatos" para verlo</span>`
@@ -703,6 +721,7 @@
     }
     locked.style.display = 'none';
     content.style.display = 'block';
+    content.innerHTML = `<div class="skel" style="height:80px;width:100%;margin-bottom:16px"></div><div class="skel" style="height:120px;width:100%"></div>`;
     try {
       const data = await JobMatchAPI.getReportesEmpresa(token);
       if (data.error) throw new Error(data.error);
