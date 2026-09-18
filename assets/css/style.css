@@ -414,6 +414,29 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 }
 .candidate-apodo{font-weight:700;color:var(--purple-900);font-size:.95rem;}
 .candidate-score{font-size:.78rem;color:var(--orange-600);font-weight:600;margin-top:2px;}
+.fav-star-btn{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:1.3rem;line-height:1;color:var(--orange-600);padding:4px;border-radius:8px;}
+.fav-star-btn:hover{background:var(--purple-050);}
+
+/* ---------- Kanban (pipeline de postulaciones) ---------- */
+.kanban-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:14px;-webkit-overflow-scrolling:touch;}
+.kanban-col{flex:0 0 270px;background:var(--purple-050);border-radius:var(--radius-sm);padding:12px;}
+.kanban-col h4{font-size:.8rem;font-weight:700;color:var(--purple-900);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.kanban-col h4 span{background:var(--purple-100);color:var(--purple-700);font-size:.72rem;padding:2px 8px;border-radius:100px;}
+.kanban-col .job-card{margin-bottom:10px;padding:14px;}
+.pipeline-select{width:100%;margin-top:10px;padding:8px 10px;border-radius:8px;border:1px solid var(--purple-100);font-size:.8rem;font-family:inherit;background:#fff;color:var(--ink);}
+.reporte-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;}
+.reporte-stat{background:var(--purple-050);border-radius:var(--radius-sm);padding:16px;text-align:center;}
+.reporte-stat .num{font-size:1.6rem;font-weight:800;color:var(--purple-700);}
+.reporte-stat .lbl{font-size:.76rem;color:var(--ink-soft);margin-top:2px;}
+.reporte-funnel{display:flex;flex-direction:column;gap:6px;margin-bottom:24px;}
+.reporte-funnel-row{display:flex;align-items:center;gap:10px;font-size:.82rem;}
+.reporte-funnel-row .lbl{flex:0 0 110px;color:var(--ink-soft);}
+.reporte-funnel-row .bar-track{flex:1;background:var(--purple-050);border-radius:100px;height:14px;overflow:hidden;}
+.reporte-funnel-row .bar-fill{background:var(--grad-signal);height:100%;border-radius:100px;}
+.reporte-funnel-row .val{flex:0 0 30px;text-align:right;font-weight:700;color:var(--purple-900);}
+@media (max-width:640px){
+  .kanban-col{flex:0 0 230px;}
+}
 
 /* ---------- Utility ---------- */
 .empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
