@@ -84,6 +84,11 @@
 <script>
   let googleIdToken = null;
 
+  // Igual que en portal-empresa.html: manda esta petición "vacía" desde ya,
+  // para que Apps Script ya no esté arrancando en frío cuando la persona
+  // realmente envíe el formulario de registro.
+  warmupAppsScript();
+
   window.addEventListener('load', () => {
     if (typeof google === 'undefined' || !google.accounts) return; // el atajo es opcional; si no carga, el formulario normal sigue funcionando
     google.accounts.id.initialize({
@@ -125,8 +130,7 @@
     const status = document.getElementById('form-status');
     btn.disabled = true;
     btn.textContent = 'Creando cuenta...';
-    status.className = 'status-msg show pending';
-    status.textContent = 'Un momento...';
+    setPendingStatus(status, 'Creando tu cuenta...');
 
     const razonSocial = document.getElementById('razon-social').value;
     const rfc = document.getElementById('rfc').value.trim().toUpperCase();
@@ -136,11 +140,13 @@
         ? await JobMatchAPI.registerEmpresaGoogle(googleIdToken, razonSocial, rfc)
         : await JobMatchAPI.registerEmpresa({ razonSocial, rfc, emailContacto: document.getElementById('email-contacto').value });
 
+      clearTimeout(status._pendingTimer);
       localStorage.setItem(COMPANY_TOKEN_KEY, result.companyToken);
       status.className = 'status-msg show ok';
       status.textContent = '¡Cuenta creada! Ya tienes tu sesión abierta. Redirigiendo a tu panel...';
       setTimeout(() => { window.location.href = 'portal-empresa.html'; }, 1200);
     } catch (err) {
+      clearTimeout(status._pendingTimer);
       status.className = 'status-msg show err';
       status.textContent = err.message;
       btn.disabled = false;

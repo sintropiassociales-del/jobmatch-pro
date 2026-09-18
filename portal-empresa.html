@@ -61,7 +61,7 @@
 
     <!-- ============ VERIFICANDO SESIÓN GUARDADA ============ -->
     <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
-      <p style="color:var(--ink-soft)">Verificando tu sesión…</p>
+      <p style="color:var(--ink-soft)"><span class="spinner"></span><span id="session-check-text">Verificando tu sesión…</span></p>
     </div>
 
     <!-- ============ PANEL (oculto hasta entrar) ============ -->
@@ -267,6 +267,12 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
 <script>
+  // Manda esta petición "vacía" lo antes posible — así, para cuando la
+  // persona de verdad haga clic en "Entrar con Google" o pida su link por
+  // correo, Apps Script ya no está arrancando en frío (ver warmupAppsScript
+  // en app.js). No bloquea nada de lo de abajo.
+  warmupAppsScript();
+
   window.addEventListener('load', () => {
     if (typeof google === 'undefined' || !google.accounts) return;
     google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
@@ -277,10 +283,10 @@
 
   async function handleGoogleLogin(response) {
     const status = document.getElementById('google-login-status');
-    status.className = 'status-msg show pending';
-    status.textContent = 'Verificando...';
+    setPendingStatus(status, 'Verificando tu cuenta con Google...');
     try {
       const data = await JobMatchAPI.loginEmpresaGoogle(response.credential);
+      clearTimeout(status._pendingTimer);
       if (data.error) {
         if (data.necesitaRegistro) {
           status.className = 'status-msg show err';
@@ -292,6 +298,7 @@
       }
       loadEmpresa(data.companyToken);
     } catch (err) {
+      clearTimeout(status._pendingTimer);
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
@@ -621,13 +628,14 @@
     const email = document.getElementById('login-email').value.trim();
     const status = document.getElementById('login-status');
     if (!email) { status.className = 'status-msg show err'; status.textContent = 'Escribe tu correo primero.'; return; }
-    status.className = 'status-msg show pending';
-    status.textContent = 'Enviando...';
+    setPendingStatus(status, 'Enviando...');
     try {
       await JobMatchAPI.requestEmpresaLoginLink(email, window.location.origin + window.location.pathname);
+      clearTimeout(status._pendingTimer);
       status.className = 'status-msg show ok';
       status.textContent = 'Listo — revisa tu correo (y spam) y da clic en el link para entrar. No hace falta copiar nada.';
     } catch (err) {
+      clearTimeout(status._pendingTimer);
       status.className = 'status-msg show err';
       status.textContent = err.message;
     }
@@ -669,14 +677,27 @@
     }
   });
 
+  // Mientras se confirma la sesión (o se verifica el login), si tarda más
+  // de la cuenta lo decimos explícitamente — sin esto, la pantalla de
+  // "Verificando tu sesión…" fija durante varios segundos se siente como
+  // que algo se trabó, aunque en realidad solo es el arranque en frío de
+  // Apps Script.
+  function showSessionCheck() {
+    document.getElementById('access-view').style.display = 'none';
+    document.getElementById('session-check-view').style.display = 'block';
+    const textEl = document.getElementById('session-check-text');
+    setTimeout(() => {
+      textEl.textContent = 'Esto puede tardar varios segundos, sobre todo si es la primera vez en un rato — no cierres esta pestaña.';
+    }, 4000);
+  }
+
   // Si vienes de un link de acceso por correo (?token=...), entra directo
   // y limpia la URL para no dejar el token visible en la barra/historial.
   const urlParams = new URLSearchParams(window.location.search);
   const linkToken = urlParams.get('token');
   if (linkToken) {
     history.replaceState({}, '', window.location.pathname);
-    document.getElementById('access-view').style.display = 'none';
-    document.getElementById('session-check-view').style.display = 'block';
+    showSessionCheck();
     loadEmpresa(linkToken);
   } else {
     const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
@@ -691,8 +712,7 @@
       showPanel();
       loadEmpresa(saved);
     } else if (saved) {
-      document.getElementById('access-view').style.display = 'none';
-      document.getElementById('session-check-view').style.display = 'block';
+      showSessionCheck();
       loadEmpresa(saved);
     }
   }
