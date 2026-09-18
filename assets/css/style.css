@@ -337,6 +337,12 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 .status-msg.err{background:#FCE9E4;color:#B3311C;}
 .status-msg.pending{background:var(--purple-100);color:var(--purple-700);}
 
+/* Spinner chico para mensajes "pending" (login, verificación de sesión) —
+   sin esto, una espera de varios segundos se siente como que la página se
+   congeló; con el spinner queda claro que algo sigue trabajando. */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(107,33,245,.25);border-top-color:var(--purple-700);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
 /* ---------- Footer ---------- */
 .site-footer{background:var(--purple-900);color:rgba(255,255,255,.75);padding:56px 0 28px;margin-top:80px;}
 .site-footer h4{color:#fff;font-size:.95rem;margin-bottom:14px;}
