@@ -126,7 +126,24 @@
             </div>
             <button type="submit" class="btn btn-primary btn-block" id="submit-job-btn">Publicar vacante</button>
             <div class="status-msg" id="job-form-status"></div>
+            <!-- Aparece después de publicar: link directo + botones para compartir
+                 (reutiliza los mismos botones que ya usan las tarjetas de
+                 vacantes.html, no son nuevos). -->
+            <div id="job-publish-share" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+              <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Compártela para que le llegue a más candidatos</p>
+              <div id="job-publish-share-buttons"></div>
+              <a id="job-publish-view-link" href="#" target="_blank" style="display:inline-block;margin-top:10px;font-size:.82rem;color:var(--purple-700);font-weight:600">Ver cómo la ven los candidatos →</a>
+            </div>
           </form>
+        </div>
+
+        <!-- Vista previa en vivo: así se va a ver exactamente en el buscador de
+             vacantes mientras la vas llenando (misma tarjeta que ya usa
+             vacantes.html) — antes de publicar nada. -->
+        <div class="form-card" style="margin-top:20px">
+          <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:2px">Vista previa</p>
+          <p style="font-size:.78rem;color:var(--ink-soft);margin-bottom:14px">Así la van a ver los candidatos en el buscador de vacantes.</p>
+          <div id="job-preview" style="pointer-events:none"></div>
         </div>
       </div>
 
@@ -368,6 +385,7 @@
       renderMisVacantes(data);
       loadPostulaciones(token);
       setupPlanTab(data);
+      renderJobPreview(); // refresca la vista previa ahora que ya conocemos el nombre/logo real de la empresa
 
       showPanel();
     } catch (err) {
@@ -650,23 +668,34 @@
     e.preventDefault();
     const btn = document.getElementById('submit-job-btn');
     const status = document.getElementById('job-form-status');
+    document.getElementById('job-publish-share').style.display = 'none';
     btn.disabled = true;
     btn.textContent = 'Publicando...';
     status.className = 'status-msg show pending';
     status.textContent = 'Un momento...';
     const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    const jobData = {
+      titulo: document.getElementById('titulo').value,
+      modalidad: document.getElementById('modalidad').value,
+      ubicacion: document.getElementById('ubicacion').value,
+      salarioMin: document.getElementById('salario-min').value,
+      salarioMax: document.getElementById('salario-max').value,
+      descripcion: document.getElementById('descripcion').value,
+    };
     try {
-      await JobMatchAPI.createJob(token, {
-        titulo: document.getElementById('titulo').value,
-        modalidad: document.getElementById('modalidad').value,
-        ubicacion: document.getElementById('ubicacion').value,
-        salarioMin: document.getElementById('salario-min').value,
-        salarioMax: document.getElementById('salario-max').value,
-        descripcion: document.getElementById('descripcion').value,
-      });
+      const result = await JobMatchAPI.createJob(token, jobData);
       status.className = 'status-msg show ok';
       status.textContent = '¡Vacante publicada!';
       document.getElementById('job-form').reset();
+      renderJobPreview();
+
+      // Comparte ya con el id real (para el link público) — reutiliza los
+      // mismos botones que ya usan las tarjetas de vacantes.html.
+      const shareContainer = document.getElementById('job-publish-share-buttons');
+      shareContainer.innerHTML = shareButtonsHTML({ id: result.id, titulo: jobData.titulo, empresaNombre: currentEmpresa.empresa.razonSocial });
+      document.getElementById('job-publish-view-link').href = 'vacante.html?id=' + encodeURIComponent(result.id);
+      document.getElementById('job-publish-share').style.display = 'block';
+
       loadEmpresa(token);
     } catch (err) {
       status.className = 'status-msg show err';
@@ -676,6 +705,59 @@
       btn.textContent = 'Publicar vacante';
     }
   });
+
+  // Vista previa en vivo del formulario — misma tarjeta visual que ya usa
+  // vacantes.html (mismas clases de CSS), pero sin link ni botones de
+  // compartir (esos solo tienen sentido cuando la vacante ya es real).
+  function renderJobPreview() {
+    const container = document.getElementById('job-preview');
+    if (!container) return;
+    const titulo = document.getElementById('titulo').value.trim();
+    const modalidad = document.getElementById('modalidad').value;
+    const ubicacion = document.getElementById('ubicacion').value.trim();
+    const salarioMin = document.getElementById('salario-min').value;
+    const salarioMax = document.getElementById('salario-max').value;
+    const descripcion = document.getElementById('descripcion').value.trim();
+    const empresaNombre = currentEmpresa ? currentEmpresa.empresa.razonSocial : '';
+    const logoUrl = currentEmpresa ? currentEmpresa.empresa.logoUrl : '';
+
+    if (!titulo && !descripcion) {
+      container.innerHTML = '<p style="font-size:.85rem;color:var(--ink-soft)">Empieza a llenar el formulario para ver aquí cómo se vería tu vacante publicada.</p>';
+      return;
+    }
+
+    const logo = logoUrl
+      ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(empresaNombre)}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;border:1px solid var(--line)">`
+      : `<div style="width:38px;height:38px;border-radius:8px;background:var(--purple-100);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--purple-700);font-family:var(--font-display)">${escapeHtml((empresaNombre || '?').charAt(0))}</div>`;
+    const descSnippet = descripcion.slice(0, 110);
+
+    container.innerHTML = `
+    <div class="job-card">
+      <div class="tag-row" style="justify-content:space-between;align-items:flex-start">
+        <div class="tag-row" style="margin:0">
+          <span class="tag">${escapeHtml(modalidad) || 'No especificado'}</span>
+        </div>
+        ${logo}
+      </div>
+      <h3>${escapeHtml(titulo) || 'Título de la vacante'}</h3>
+      <div class="company">${escapeHtml(empresaNombre)}</div>
+      <div class="meta">
+        <span>📍 ${escapeHtml(ubicacion) || 'Remoto'}</span>
+        <span>🕒 Hoy</span>
+      </div>
+      <p class="desc">${escapeHtml(descSnippet)}${descripcion.length > 110 ? '…' : ''}</p>
+      <div class="foot">
+        <span class="salary">${formatSalary(salarioMin, salarioMax)}</span>
+        <span class="badge-pill">Ver vacante →</span>
+      </div>
+    </div>`;
+  }
+  ['titulo', 'modalidad', 'ubicacion', 'salario-min', 'salario-max', 'descripcion'].forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', renderJobPreview);
+    el.addEventListener('change', renderJobPreview);
+  });
+  renderJobPreview();
 
   // Mientras se confirma la sesión (o se verifica el login), si tarda más
   // de la cuenta lo decimos explícitamente — sin esto, la pantalla de

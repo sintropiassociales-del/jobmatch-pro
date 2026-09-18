@@ -8,6 +8,17 @@
 </head>
 <body>
 
+<script>
+  // Si ya hay una sesión de empresa abierta en este navegador, esta página
+  // (crear cuenta nueva) no tiene sentido — manda directo al panel real.
+  // Esto cubre cualquier forma de llegar aquí (link viejo, marcador
+  // guardado, buscador), no solo el menú de arriba (que ya se corrige por
+  // separado en app.js).
+  if (localStorage.getItem('jobmatch_company_token')) {
+    window.location.replace('portal-empresa.html');
+  }
+</script>
+
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
