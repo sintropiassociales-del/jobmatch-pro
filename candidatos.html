@@ -158,9 +158,23 @@
       </div>
 
       <div class="form-card" style="margin-bottom:24px">
-        <div class="field" style="margin-bottom:0">
+        <div class="field" style="margin-bottom:14px">
           <label for="skill-search">O busca por habilidad directamente</label>
           <input type="text" id="skill-search" placeholder="Ej. Excel, atención a clientes, Python...">
+        </div>
+        <div class="form-grid-2" style="margin-bottom:0">
+          <div class="field" style="margin-bottom:0">
+            <label for="filter-categoria">Filtrar por área</label>
+            <select id="filter-categoria">
+              <option value="">Todas las áreas</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0;display:flex;align-items:flex-end">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:500;font-size:.85rem;cursor:pointer">
+              <input type="checkbox" id="filter-solo-autorizados" style="width:16px;height:16px">
+              Solo candidatos que ya me autorizaron
+            </label>
+          </div>
         </div>
       </div>
 
@@ -200,6 +214,7 @@
   let currentView = 'list';
   let currentShowScore = false;
   let currentItems = [];
+  let lastFetchedItems = []; // el set "crudo" que vino de Apps Script — los filtros de abajo (área, autorizados) se aplican sobre este SIN volver a pedirle nada al backend
   let isAdminView = false;
   let simulation = null;
 
@@ -428,18 +443,55 @@
     renderGraph(currentItems, currentShowScore);
   });
 
+  // ---------- Filtros avanzados (área + solo autorizados) ----------
+  // Se aplican del lado del cliente sobre el último set que trajo Apps
+  // Script (búsqueda por habilidad o comparación contra vacante) — así
+  // cambiar de filtro es instantáneo, sin ida y vuelta al servidor.
+  function applyClientFilters(items) {
+    const categoria = document.getElementById('filter-categoria').value;
+    const soloAutorizados = document.getElementById('filter-solo-autorizados').checked;
+    return items.filter((c) => {
+      if (soloAutorizados && c.estadoSolicitud !== 'autorizado') return false;
+      if (categoria) {
+        const skills = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean);
+        if (!skills.some((s) => categorizar(s).nombre === categoria)) return false;
+      }
+      return true;
+    });
+  }
+
+  ['filter-categoria', 'filter-solo-autorizados'].forEach((id) => {
+    document.getElementById(id).addEventListener('change', () => {
+      renderDirectory(lastFetchedItems, { showScore: currentShowScore });
+    });
+  });
+
   // ---------- Vista de lista ----------
-  function renderDirectory(items, { showScore = false } = {}) {
-    currentItems = items;
+  function renderDirectory(rawItems, { showScore = false } = {}) {
+    lastFetchedItems = rawItems;
     currentShowScore = showScore;
+
+    // El filtro "solo autorizados" no tiene sentido sin sesión de empresa
+    // (Business+) — sin eso, ningún candidato tendría ese estado nunca.
+    const autorizadosCheckbox = document.getElementById('filter-solo-autorizados');
+    const autorizadosField = autorizadosCheckbox.closest('.field');
+    if (!currentPuedeSolicitar) {
+      autorizadosCheckbox.checked = false;
+      autorizadosField.style.display = 'none';
+    } else {
+      autorizadosField.style.display = '';
+    }
+
+    const items = applyClientFilters(rawItems);
+    currentItems = items;
     if (currentView === 'map') renderGraph(items, showScore);
 
     document.getElementById('directory-count').textContent = showScore
-      ? `${items.length} candidato(s) con habilidades en común`
-      : `${items.length} candidato(s) con habilidades registradas`;
+      ? `${items.length} de ${rawItems.length} candidato(s) con habilidades en común`
+      : `${items.length} de ${rawItems.length} candidato(s) con habilidades registradas`;
     const list = document.getElementById('directory-list');
     if (items.length === 0) {
-      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${showScore ? 'Ningún candidato tiene habilidades en común con esta vacante todavía.' : 'Todavía no hay candidatos con habilidades registradas.'}</p></div>`;
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${rawItems.length === 0 ? (showScore ? 'Ningún candidato tiene habilidades en común con esta vacante todavía.' : 'Todavía no hay candidatos con habilidades registradas.') : 'Ningún candidato coincide con los filtros que elegiste — prueba quitando alguno.'}</p></div>`;
       return;
     }
     list.innerHTML = items.map((c) => {
@@ -450,10 +502,11 @@
       <div class="candidate-card">
         <div class="candidate-card-top">
           <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
-          <div>
+          <div style="flex:1">
             <div class="candidate-apodo">${escapeHtml(c.apodo)}</div>
             ${showScore ? `<div class="candidate-score">${c.score}% en común con esta vacante</div>` : ''}
           </div>
+          ${currentPuedeSolicitar && !isAdminView ? `<button class="fav-star-btn" title="${c.esFavorito ? 'Quitar de favoritos' : 'Guardar en banco de talento'}" data-candidato-id="${c.candidatoId}" onclick="toggleFavoritoClick('${c.candidatoId}', this)">${c.esFavorito ? '★' : '☆'}</button>` : ''}
         </div>
         <div class="tag-row" style="margin-top:14px">
           ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
@@ -465,6 +518,28 @@
         </div>
       </div>`;
     }).join('');
+  }
+
+  // Guarda o quita a un candidato del banco de talento — actualiza también
+  // el objeto en memoria (currentItems/lastFetchedItems) para que si la
+  // lista se vuelve a pintar (ej. al cambiar de filtro) el estado quede
+  // correcto sin tener que volver a pedirle nada a Apps Script.
+  async function toggleFavoritoClick(candidatoId, btn) {
+    btn.disabled = true;
+    try {
+      const data = await JobMatchAPI.toggleFavorito(currentEmpresaToken, candidatoId);
+      if (data.error) throw new Error(data.error);
+      btn.textContent = data.favorito ? '★' : '☆';
+      btn.title = data.favorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
+      [currentItems, lastFetchedItems].forEach((list) => {
+        const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
+        if (item) item.esFavorito = data.favorito;
+      });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   function contactButtonHTML(c) {
@@ -495,12 +570,13 @@
   async function solicitarContacto(candidatoId, btn) {
     btn.disabled = true;
     btn.textContent = 'Enviando...';
+    const foot = btn.closest('.foot');
     try {
       const data = await JobMatchAPI.requestContact(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
       btn.outerHTML = `<span class="badge-pill">⏳ Esperando respuesta del candidato</span>`;
     } catch (err) {
-      alert(err.message);
+      showFootError(foot, err.message);
       btn.disabled = false;
       btn.textContent = 'Solicitar contacto';
     }
@@ -508,21 +584,25 @@
 
   async function verContacto(candidatoId, btn) {
     btn.disabled = true;
+    const foot = btn.closest('.foot');
     try {
       const data = await JobMatchAPI.getCandidateContactInfo(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
 
       // El estudio socioeconómico es aparte: si Sintropía Social ya lo
-      // verificó, aquí solo mostramos su RESULTADO final (nunca los datos
-      // crudos que llenó el candidato) — ver getResumenSocioeconomicoEmpresa_
-      // en Code.gs. Si falla o no hay nada que mostrar, no rompe lo demás.
+      // verificó, aquí solo mostramos su RESULTADO final y la recomendación
+      // (nunca los datos crudos que llenó el candidato) — ver
+      // getResumenSocioeconomicoEmpresa_ en Code.gs. Si falla o no hay nada
+      // que mostrar, no rompe lo demás.
       let socioHTML = '';
       try {
         const socio = await JobMatchAPI.getResumenSocioeconomicoEmpresa(currentEmpresaToken, candidatoId);
         if (socio.disponible) {
+          const recColor = /no continuar|no recomend/i.test(socio.recomendacion || '') ? 'var(--orange-600)' : 'var(--purple-700)';
           socioHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
             <strong>Estudio socioeconómico (verificado por Sintropía Social):</strong><br>
             Nivel: ${escapeHtml(socio.nivelSocioeconomico || 'sin definir')} · Resultado: ${escapeHtml(socio.resultado || 'sin definir')}
+            ${socio.recomendacion ? `<br><span style="color:${recColor};font-weight:600">Recomendación de Sintropía: ${escapeHtml(socio.recomendacion)}</span>` : ''}
           </div>`;
         }
       } catch (socioErr) { /* si falla, simplemente no se muestra esa parte */ }
@@ -533,9 +613,25 @@
         ${socioHTML}
       </div>`;
     } catch (err) {
-      alert(err.message);
+      showFootError(foot, err.message);
       btn.disabled = false;
     }
+  }
+
+  // Muestra un error justo debajo del botón de contacto en vez de un alert()
+  // que interrumpe la navegación — se quita solo después de unos segundos.
+  function showFootError(foot, message) {
+    if (!foot) { alert(message); return; }
+    let box = foot.querySelector('.foot-error');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'foot-error';
+      box.style.cssText = 'width:100%;margin-top:8px;font-size:.78rem;color:var(--orange-600);background:#FFF4EC;border-radius:8px;padding:8px 10px';
+      foot.appendChild(box);
+    }
+    box.textContent = message;
+    clearTimeout(box._hideTimer);
+    box._hideTimer = setTimeout(() => box.remove(), 6000);
   }
 
   document.getElementById('btn-match-vacancy').addEventListener('click', () => runMatch());
@@ -602,6 +698,18 @@
   function categorizar(skill) {
     return categorizarHabilidad(skill);
   }
+
+  // Llena el filtro de "área" con las mismas categorías del mapa de
+  // habilidades (una sola fuente de verdad, ver SKILL_MAP en app.js).
+  (function fillCategoriaFilter() {
+    const select = document.getElementById('filter-categoria');
+    [...SKILL_CATEGORIES, CATEGORIA_GENERAL].forEach((cat) => {
+      const opt = document.createElement('option');
+      opt.value = cat.nombre;
+      opt.textContent = cat.nombre;
+      select.appendChild(opt);
+    });
+  })();
 
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
@@ -796,6 +904,11 @@
         ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
         ${resto.map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
       </div>
+      ${c.resumenPerfil ? `
+      <div style="margin-top:14px;background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 12px">
+        <p style="font-size:.78rem;font-weight:600;color:var(--purple-900);margin-bottom:4px">Sobre este candidato</p>
+        <p style="font-size:.82rem;white-space:pre-line">${escapeHtml(c.resumenPerfil)}</p>
+      </div>` : ''}
       <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>
       ${puedeComparar ? `
       <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">

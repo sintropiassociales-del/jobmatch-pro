@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda tu entrevista — JobMatch Pro</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container bar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
+    </div>
+    <nav class="nav-links">
+      <a href="vacantes.html">Buscar vacantes</a>
+      <a href="candidatos.html">Candidatos</a>
+      <a href="registro-empresa.html">Publicar vacante</a>
+      <a href="precios.html">Precios</a>
+      <a href="candidato.html">Mi perfil</a>
+      <a href="portal-empresa.html">Acceso empresas</a>
+    </nav>
+    <button class="nav-toggle" aria-label="Abrir menú">☰</button>
+  </div>
+</header>
+
+<section class="mini-hero">
+  <div class="container" style="max-width:640px">
+    <div class="eyebrow">Entrevista</div>
+    <h1>Elige el horario que mejor te acomode</h1>
+    <p>La empresa propuso estas opciones — elige la que te funcione, o avísales si ninguna te queda.</p>
+  </div>
+</section>
+
+<section class="section content-lift" style="padding-top:0">
+  <div class="container" style="max-width:640px">
+    <div class="form-card" style="margin-top:0" id="entrevista-card">
+      <div class="skel" style="height:24px;width:70%;margin-bottom:14px"></div>
+      <div class="skel" style="height:16px;width:40%;margin-bottom:22px"></div>
+      <div class="skel" style="height:80px;width:100%"></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom" style="border-top:none;margin-top:0;padding-top:0">
+      <span>© 2026 JobMatch Pro · Sintropía Social</span>
+      <span><a href="index.html">Volver al inicio</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const entrevistaId = params.get('id');
+  const card = document.getElementById('entrevista-card');
+
+  function formatOpcion(iso) {
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return iso; }
+  }
+
+  async function cargar() {
+    if (!entrevistaId) {
+      card.innerHTML = `<p>Falta el identificador de la entrevista. Revisa que hayas abierto el link completo desde tu correo.</p>`;
+      return;
+    }
+    try {
+      const data = await JobMatchAPI.getEntrevistaPublica(entrevistaId);
+      if (data.error) throw new Error(data.error);
+
+      const titulo = `<h2 style="font-size:1.15rem;margin-bottom:4px">${escapeHtml(data.empresaNombre)}</h2>
+        <p style="color:var(--ink-soft);margin-bottom:18px">Entrevista para: <strong>${escapeHtml(data.jobTitulo)}</strong></p>
+        ${data.notas ? `<p style="background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;font-size:.85rem;margin-bottom:18px;white-space:pre-line">${escapeHtml(data.notas)}</p>` : ''}`;
+
+      if (data.estado === 'confirmada') {
+        card.innerHTML = titulo + `<div class="status-msg show ok">✅ Ya confirmaste este horario: <strong>${formatOpcion(data.horarioConfirmado)}</strong>. La empresa fue notificada — si necesitas cambiarlo, escríbeles directamente.</div>`;
+        return;
+      }
+      if (data.estado === 'rechazada') {
+        card.innerHTML = titulo + `<div class="status-msg show pending">Ya le avisaste a la empresa que ninguna de estas opciones te funcionaba. Si tienen nuevas opciones, te llegará otro correo.</div>`;
+        return;
+      }
+
+      const opciones = data.opciones || [];
+      card.innerHTML = titulo + `
+        <div id="opciones-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+          ${opciones.map((op, i) => `
+            <label style="display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer">
+              <input type="radio" name="horario" value="${escapeHtml(op)}" ${i === 0 ? '' : ''}>
+              <span>${formatOpcion(op)}</span>
+            </label>`).join('')}
+          <label style="display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;cursor:pointer">
+            <input type="radio" name="horario" value="ninguno">
+            <span>Ninguna de estas opciones me funciona</span>
+          </label>
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-confirmar">Confirmar</button>
+        <div class="status-msg" id="confirmar-status"></div>`;
+
+      document.getElementById('btn-confirmar').addEventListener('click', confirmar);
+    } catch (err) {
+      card.innerHTML = `<div class="empty-state"><div class="mark">⚠️</div><p>${escapeHtml(err.message)}</p></div>`;
+    }
+  }
+
+  async function confirmar() {
+    const seleccion = document.querySelector('input[name="horario"]:checked');
+    const status = document.getElementById('confirmar-status');
+    if (!seleccion) {
+      status.className = 'status-msg show err';
+      status.textContent = 'Elige una opción antes de confirmar.';
+      return;
+    }
+    const btn = document.getElementById('btn-confirmar');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    setPendingStatus(status, 'Enviando tu respuesta...');
+    try {
+      const data = await JobMatchAPI.confirmarEntrevista(entrevistaId, seleccion.value);
+      if (data.error) throw new Error(data.error);
+      clearTimeout(status._pendingTimer);
+      cargar(); // recarga para mostrar la pantalla de confirmación
+    } catch (err) {
+      clearTimeout(status._pendingTimer);
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Confirmar';
+    }
+  }
+
+  cargar();
+</script>
+</body>
+</html>

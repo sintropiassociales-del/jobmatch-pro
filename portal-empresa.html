@@ -81,6 +81,8 @@
         <button class="tab-btn active" data-tab="publicar">Publicar vacante</button>
         <button class="tab-btn" data-tab="vacantes">Mis vacantes</button>
         <button class="tab-btn" data-tab="postulaciones">Postulaciones</button>
+        <button class="tab-btn" data-tab="favoritos">Favoritos</button>
+        <button class="tab-btn" data-tab="reportes">Reportes</button>
         <button class="tab-btn" data-tab="datos">Mis datos</button>
         <button class="tab-btn" data-tab="plan">Mi plan</button>
       </div>
@@ -155,6 +157,18 @@
       <!-- TAB: Postulaciones -->
       <div class="tab-panel" id="tab-postulaciones">
         <div id="postulaciones-list"></div>
+      </div>
+
+      <!-- TAB: Favoritos -->
+      <div class="tab-panel" id="tab-favoritos">
+        <div id="favoritos-locked" class="locked-feature" style="display:none">🔒 El banco de talento (favoritos) es una función de planes Business y A la medida. Mejora tu plan en la pestaña "Mi plan".</div>
+        <div class="grid-jobs" id="favoritos-list"></div>
+      </div>
+
+      <!-- TAB: Reportes -->
+      <div class="tab-panel" id="tab-reportes">
+        <div id="reportes-locked" class="locked-feature" style="display:none">🔒 Los reportes de reclutamiento son una función de planes Business y A la medida. Mejora tu plan en la pestaña "Mi plan".</div>
+        <div id="reportes-content"></div>
       </div>
 
       <!-- TAB: Mis datos -->
@@ -329,6 +343,8 @@
   };
   let currentEmpresa = null;
   let pendingSubscription = null;
+  // Debe coincidir con PLANS_BUSINESS (= PLANS_WITH_SOCIOECONOMIC_ACCESS) en apps-script/Code.gs.
+  const PLANS_BUSINESS_FRONTEND = ['Business', 'A la medida'];
 
   function showPanel() {
     document.getElementById('access-view').style.display = 'none';
@@ -384,6 +400,8 @@
 
       renderMisVacantes(data);
       loadPostulaciones(token);
+      loadFavoritos(token, data.empresa.plan);
+      loadReportes(token, data.empresa.plan);
       setupPlanTab(data);
       renderJobPreview(); // refresca la vista previa ahora que ya conocemos el nombre/logo real de la empresa
 
@@ -482,17 +500,14 @@
     }
   }
 
-  async function loadPostulaciones(token) {
-    const list = document.getElementById('postulaciones-list');
-    try {
-      const data = await JobMatchAPI.listApplications(token);
-      if (!data.items || data.items.length === 0) {
-        list.innerHTML = `<div class="empty-state"><p>Todavía no tienes postulaciones.</p></div>`;
-        return;
-      }
-      const sorted = [...data.items].sort((a, b) => (b.enTriada === true) - (a.enTriada === true) || (b.matchScore || 0) - (a.matchScore || 0));
-      list.innerHTML = sorted.map((app) => `
-        <div class="job-card" style="margin-bottom:14px${app.enTriada === true ? ';border-color:var(--orange-500)' : ''}">
+  // Etapas del pipeline de postulaciones (kanban) — deben coincidir exactamente
+  // con PIPELINE_STAGES en apps-script/Code.gs.
+  const PIPELINE_STAGES = ['nuevo', 'revision', 'entrevista', 'contratado', 'descartado'];
+  const PIPELINE_LABELS = { nuevo: 'Nuevo', revision: 'En revisión', entrevista: 'Entrevista', contratado: 'Contratado', descartado: 'Descartado' };
+
+  function applicationCardHTML(app, { withPipelineSelect = false, showAgendarEntrevista = false } = {}) {
+    return `
+        <div class="job-card" data-app-id="${app.id}" style="margin-bottom:14px${app.enTriada === true ? ';border-color:var(--orange-500)' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
             <div>
               <h3 style="font-size:1.05rem">${escapeHtml(app.nombre)} ${app.enTriada === true ? '<span class="tag tag-orange">⭐ Elegido por Sintropía</span>' : ''}</h3>
@@ -513,9 +528,216 @@
             ? `<button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="verSocioeconomico('${app.jobId}','${app.candidatoId}', this)">🔒 Ver perfil socioeconómico (autorizado)</button>
                <div class="socio-box" style="display:none;margin-top:12px;background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;font-size:.85rem"></div>`
             : `<span class="badge-pill" style="opacity:.6">Sin datos socioeconómicos autorizados</span>`}
-        </div>`).join('');
+          ${showAgendarEntrevista ? `
+          <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;margin-top:10px;width:100%" onclick="abrirAgendarEntrevista('${app.id}', this)">📅 Proponer horarios de entrevista</button>
+          <div class="agendar-box" style="display:none;margin-top:10px"></div>` : ''}
+          ${withPipelineSelect ? `
+          <select class="pipeline-select" onchange="cambiarEstadoPipeline('${app.id}', this.value, this)">
+            ${PIPELINE_STAGES.map((s) => `<option value="${s}" ${(app.estadoPipeline || 'nuevo') === s ? 'selected' : ''}>${PIPELINE_LABELS[s]}</option>`).join('')}
+          </select>` : ''}
+        </div>`;
+  }
+
+  async function loadPostulaciones(token) {
+    const list = document.getElementById('postulaciones-list');
+    try {
+      const data = await JobMatchAPI.listApplications(token);
+      if (!data.items || data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Todavía no tienes postulaciones.</p></div>`;
+        return;
+      }
+      const usaKanban = currentEmpresa && PLANS_BUSINESS_FRONTEND.includes(currentEmpresa.empresa.plan);
+
+      if (usaKanban) {
+        // Pipeline tipo kanban: una columna por etapa, cambiar de etapa con el <select> de cada tarjeta.
+        list.innerHTML = `<p style="font-size:.8rem;color:var(--ink-soft);margin-bottom:14px">Arrastra la vista con el mouse o el dedo para ver todas las columnas. Cambia la etapa de cada candidato con el menú de su tarjeta.</p>
+          <div class="kanban-board">${PIPELINE_STAGES.map((stage) => {
+            const enEstaEtapa = data.items.filter((a) => (a.estadoPipeline || 'nuevo') === stage)
+              .sort((a, b) => (b.enTriada === true) - (a.enTriada === true) || (b.matchScore || 0) - (a.matchScore || 0));
+            return `<div class="kanban-col" data-stage="${stage}">
+              <h4>${PIPELINE_LABELS[stage]} <span>${enEstaEtapa.length}</span></h4>
+              ${enEstaEtapa.length === 0 ? `<p style="font-size:.76rem;color:var(--ink-soft)">Sin candidatos aquí.</p>` : enEstaEtapa.map((app) => applicationCardHTML(app, { withPipelineSelect: true, showAgendarEntrevista: stage === 'entrevista' })).join('')}
+            </div>`;
+          }).join('')}</div>`;
+      } else {
+        const sorted = [...data.items].sort((a, b) => (b.enTriada === true) - (a.enTriada === true) || (b.matchScore || 0) - (a.matchScore || 0));
+        list.innerHTML = sorted.map((app) => applicationCardHTML(app)).join('');
+      }
     } catch (err) {
       list.innerHTML = `<div class="empty-state"><div class="mark">⚠️</div><p>${err.message}</p></div>`;
+    }
+  }
+
+  async function cambiarEstadoPipeline(applicationId, nuevoEstado, selectEl) {
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    selectEl.disabled = true;
+    try {
+      const result = await JobMatchAPI.updateApplicationStatus(token, applicationId, nuevoEstado);
+      if (result.error) throw new Error(result.error);
+      loadPostulaciones(token); // recarga para mover la tarjeta a su nueva columna
+    } catch (err) {
+      alert('No se pudo actualizar la etapa: ' + err.message);
+      selectEl.disabled = false;
+    }
+  }
+
+  // ---------- Agenda de entrevistas ----------
+  // Sin conectar a ningún calendario: la empresa escribe hasta 3 horarios
+  // como texto libre (así no depende de cómo esté configurada su zona
+  // horaria ni de dar acceso a un calendario externo) y el candidato elige
+  // uno desde agendar-entrevista.html.
+  function abrirAgendarEntrevista(applicationId, btn) {
+    const box = btn.nextElementSibling;
+    if (box.style.display === 'block') { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:14px">
+        <p style="font-size:.78rem;font-weight:600;color:var(--purple-700);margin-bottom:10px">Escribe hasta 3 opciones de horario (el candidato elige una)</p>
+        <div class="field" style="margin-bottom:8px"><input type="text" placeholder="Ej. Martes 24 de sept, 10:00 am" class="horario-input"></div>
+        <div class="field" style="margin-bottom:8px"><input type="text" placeholder="Ej. Miércoles 25 de sept, 4:00 pm" class="horario-input"></div>
+        <div class="field" style="margin-bottom:8px"><input type="text" placeholder="Opcional: una tercera opción" class="horario-input"></div>
+        <div class="field" style="margin-bottom:10px"><textarea rows="2" style="min-height:60px" placeholder="Notas para el candidato (opcional): modalidad, link de videollamada, dirección..." class="notas-input"></textarea></div>
+        <button class="btn btn-primary" style="padding:9px 16px;font-size:.82rem" onclick="enviarHorariosEntrevista('${applicationId}', this)">Enviar al candidato</button>
+        <div class="status-msg" style="margin-top:8px"></div>
+      </div>`;
+  }
+
+  async function enviarHorariosEntrevista(applicationId, btn) {
+    const box = btn.closest('.agendar-box');
+    const opciones = [...box.querySelectorAll('.horario-input')].map((i) => i.value.trim()).filter(Boolean);
+    const notas = box.querySelector('.notas-input').value.trim();
+    const status = box.querySelector('.status-msg');
+    if (opciones.length === 0) {
+      status.className = 'status-msg show err';
+      status.textContent = 'Escribe al menos un horario.';
+      return;
+    }
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    btn.disabled = true;
+    setPendingStatus(status, 'Enviando al candidato...');
+    try {
+      const result = await JobMatchAPI.proponerHorariosEntrevista(token, applicationId, opciones, notas);
+      if (result.error) throw new Error(result.error);
+      clearTimeout(status._pendingTimer);
+      box.innerHTML = `<div class="status-msg show ok">✅ Le mandamos las opciones de horario al candidato por correo.</div>`;
+    } catch (err) {
+      clearTimeout(status._pendingTimer);
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
+      btn.disabled = false;
+    }
+  }
+
+  // ---------- Favoritos / banco de talento ----------
+  async function loadFavoritos(token, plan) {
+    const locked = document.getElementById('favoritos-locked');
+    const list = document.getElementById('favoritos-list');
+    if (!PLANS_BUSINESS_FRONTEND.includes(plan)) {
+      locked.style.display = 'block';
+      list.style.display = 'none';
+      return;
+    }
+    locked.style.display = 'none';
+    list.style.display = 'grid';
+    try {
+      const data = await JobMatchAPI.listFavoritos(token);
+      if (data.error) throw new Error(data.error);
+      if (!data.items || data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Todavía no has guardado candidatos en tu banco de talento. Búscalos en la pestaña <a href="candidatos.html">Candidatos</a> y guarda los que te interesen con la ⭐.</p></div>`;
+        return;
+      }
+      list.innerHTML = data.items.map((c) => {
+        const skills = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean);
+        const [primera, ...resto] = skills;
+        const iniciales = (c.apodo || '').replace('Candidato #', '').slice(0, 2);
+        return `
+        <div class="candidate-card">
+          <div class="candidate-card-top">
+            <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
+            <div style="flex:1">
+              <div class="candidate-apodo">${escapeHtml(c.apodo)}</div>
+            </div>
+            <button class="fav-star-btn" title="Quitar de favoritos" data-candidato-id="${c.candidatoId}" onclick="quitarFavoritoPortal('${c.candidatoId}', this)">★</button>
+          </div>
+          <div class="tag-row" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
+            ${resto.slice(0, 5).map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
+            ${resto.length > 5 ? `<span class="tag" style="background:var(--purple-050);opacity:.7">+${resto.length - 5} más</span>` : ''}
+          </div>
+          ${c.resumenPerfil ? `<p style="font-size:.82rem;margin-top:12px;white-space:pre-line">${escapeHtml(c.resumenPerfil)}</p>` : ''}
+          <div class="foot" style="margin-top:16px">
+            ${c.estadoSolicitud === 'autorizado'
+              ? `<span class="badge-pill">✅ Contacto autorizado — ve a "Candidatos" para verlo</span>`
+              : c.estadoSolicitud === 'pendiente'
+                ? `<span class="badge-pill">⏳ Esperando respuesta del candidato</span>`
+                : `<a href="candidatos.html" class="btn btn-ghost-orange" style="padding:9px 16px;font-size:.82rem;width:100%;text-align:center;display:block">Solicitar contacto en el directorio →</a>`}
+          </div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>${err.message}</p></div>`;
+    }
+  }
+
+  async function quitarFavoritoPortal(candidatoId, btn) {
+    const token = localStorage.getItem(COMPANY_TOKEN_KEY);
+    btn.disabled = true;
+    try {
+      const data = await JobMatchAPI.toggleFavorito(token, candidatoId);
+      if (data.error) throw new Error(data.error);
+      loadFavoritos(token, currentEmpresa.empresa.plan); // recarga la lista sin el candidato que se quitó
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  // ---------- Reportes de reclutamiento ----------
+  async function loadReportes(token, plan) {
+    const locked = document.getElementById('reportes-locked');
+    const content = document.getElementById('reportes-content');
+    if (!PLANS_BUSINESS_FRONTEND.includes(plan)) {
+      locked.style.display = 'block';
+      content.style.display = 'none';
+      return;
+    }
+    locked.style.display = 'none';
+    content.style.display = 'block';
+    try {
+      const data = await JobMatchAPI.getReportesEmpresa(token);
+      if (data.error) throw new Error(data.error);
+      if (!data.totalPostulaciones) {
+        content.innerHTML = `<div class="empty-state"><p>Todavía no hay suficientes datos — los reportes aparecen en cuanto empiecen a llegar postulaciones a tus vacantes.</p></div>`;
+        return;
+      }
+      const funnelMax = Math.max(1, ...PIPELINE_STAGES.map((s) => data.porEtapa[s] || 0));
+      content.innerHTML = `
+        <div class="reporte-stats">
+          <div class="reporte-stat"><div class="num">${data.totalPostulaciones}</div><div class="lbl">Postulaciones totales</div></div>
+          <div class="reporte-stat"><div class="num">${data.vacantesActivas}</div><div class="lbl">Vacantes activas</div></div>
+          <div class="reporte-stat"><div class="num">${data.tiempoPromedioContratacionDias !== null ? data.tiempoPromedioContratacionDias + ' días' : '—'}</div><div class="lbl">Tiempo promedio a contratación</div></div>
+          <div class="reporte-stat"><div class="num">${data.porEtapa.contratado || 0}</div><div class="lbl">Contratados</div></div>
+        </div>
+        <h3 style="font-size:1rem;margin-bottom:12px">Embudo del pipeline</h3>
+        <div class="reporte-funnel">
+          ${PIPELINE_STAGES.map((s) => `
+            <div class="reporte-funnel-row">
+              <span class="lbl">${PIPELINE_LABELS[s]}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${((data.porEtapa[s] || 0) / funnelMax) * 100}%"></div></div>
+              <span class="val">${data.porEtapa[s] || 0}</span>
+            </div>`).join('')}
+        </div>
+        <h3 style="font-size:1rem;margin-bottom:12px">Postulaciones por vacante</h3>
+        ${data.porVacante.length === 0 ? `<p style="font-size:.85rem;color:var(--ink-soft)">Sin datos todavía.</p>` : `
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${data.porVacante.map((v) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 14px;font-size:.85rem">
+              <span>${escapeHtml(v.titulo)}</span>
+              <span class="badge-pill">${v.postulaciones} postulación(es)</span>
+            </div>`).join('')}
+        </div>`}`;
+    } catch (err) {
+      content.innerHTML = `<div class="empty-state"><div class="mark">⚠️</div><p>${err.message}</p></div>`;
     }
   }
 
