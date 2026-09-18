@@ -10,6 +10,15 @@ const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.w
 
 const COMPANY_TOKEN_KEY = 'jobmatch_company_token';
 const CANDIDATE_TOKEN_KEY = 'jobmatch_candidate_token';
+// Misma llave que usa admin-plataforma.html (ahí definida como
+// ADMIN_KEY_STORAGE) — una vez que inicias sesión de administrador ahí,
+// esta llave queda guardada y las demás páginas del sitio la pueden leer
+// para reconocer que tienes sesión de administrador activa, sin tener que
+// volver a escribir la clave en cada una.
+const ADMIN_SESSION_KEY = 'jobmatch_admin_session';
+function getAdminSessionKey() {
+  try { return localStorage.getItem(ADMIN_SESSION_KEY) || null; } catch (e) { return null; }
+}
 
 /* ---------- Caché ligera de la sesión de empresa ----------
    Guarda solo lo mínimo (nombre y plan) para poder mostrar el panel/tarjeta
@@ -209,6 +218,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* ---------- "Publicar gratis" cierra sesión de admin ----------
+   Si hay una sesión de administrador guardada (iniciada antes en
+   admin-plataforma.html), no tiene sentido que el botón "Publicar gratis"
+   del menú lleve a crear una cuenta de empresa — en su lugar cierra la
+   sesión de administrador, en cualquier página del sitio que tenga ese
+   botón. No se valida la clave contra el servidor aquí (sería una llamada
+   de más solo para pintar un botón); si la clave ya no es válida, el
+   siguiente intento de usarla en admin-plataforma.html la va a limpiar. */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!getAdminSessionKey()) return;
+  document.querySelectorAll('a.nav-cta').forEach((a) => {
+    a.textContent = 'Salir (admin)';
+    a.setAttribute('href', '#');
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      try { localStorage.removeItem(ADMIN_SESSION_KEY); } catch (err) {}
+      window.location.reload();
+    });
+  });
+});
+
+/* ---------- Contador de visitas ----------
+   Se manda una sola vez por carga de página, sin esperar respuesta ni
+   importar si falla (igual que warmupAppsScript) — nunca debe sentirse en
+   la navegación normal. No usa cookies ni identifica a la persona, solo
+   suma 1 al contador del día para la página actual (ver logPageview_ en
+   Code.gs). Se dispara para cualquier página que incluya este archivo. */
+(function () {
+  try {
+    const pagina = (location.pathname.split('/').pop() || 'index.html');
+    fetch(APPS_SCRIPT_URL + '?action=logPageview&pagina=' + encodeURIComponent(pagina)).catch(() => {});
+  } catch (e) {}
+})();
+
 /* ---------- Llamadas a Apps Script ---------- */
 // Antes, cuando Apps Script respondía con un código que no fuera 200 (por
 // ejemplo por un error interno pasajero de Google, o si el despliegue quedó
@@ -341,6 +384,12 @@ const JobMatchAPI = {
   adminSetTriada: (adminKey, applicationId, enTriada) => asPost('adminSetTriada', { adminKey, applicationId, enTriada }),
   adminSetReporte: (adminKey, applicationId, reporte) => asPost('adminSetReporte', { adminKey, applicationId, reporte }),
   adminExtractJobFromText: (adminKey, rawText) => asPost('adminExtractJobFromText', { adminKey, rawText }),
+  adminPing: (adminKey) => asGet('adminPing', { adminKey }),
+  adminCreateJob: (adminKey, job) => asPost('adminCreateJob', { adminKey, ...job }),
+  adminUploadLogo: (adminKey, fileBase64, fileName) => asPost('adminUploadLogo', { adminKey, fileBase64, fileName }),
+  adminGetPreciosPanel: (adminKey) => asGet('adminGetPreciosPanel', { adminKey }),
+  adminGetMiPerfilPanel: (adminKey) => asGet('adminGetMiPerfilPanel', { adminKey }),
+  adminGetEmpresasImpacto: (adminKey) => asGet('adminGetEmpresasImpacto', { adminKey }),
 
   // Pagos
   billingReceipt: (payload) => asPost('billingReceipt', payload),
