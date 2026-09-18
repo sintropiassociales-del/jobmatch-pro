@@ -201,12 +201,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ---------- Llamadas a Apps Script ---------- */
+// Antes, cuando Apps Script respondía con un código que no fuera 200 (por
+// ejemplo por un error interno pasajero de Google, o si el despliegue quedó
+// mal configurado), solo decíamos "Error de red..." sin más detalle — así
+// era imposible saber si era un problema pasajero, de configuración, o algo
+// que arreglar en el código. Ahora incluimos el código HTTP real y el
+// inicio de la respuesta para poder diagnosticarlo de un vistazo.
 async function asGet(action, params = {}) {
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
-  if (!res.ok) throw new Error('Error de red al consultar Apps Script');
+  if (!res.ok) {
+    const bodySnippet = await res.text().catch(() => '');
+    throw new Error(`Error de red al consultar Apps Script (HTTP ${res.status}): ${bodySnippet.slice(0, 200)}`);
+  }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
@@ -219,10 +228,39 @@ async function asPost(action, payload = {}) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
   });
-  if (!res.ok) throw new Error('Error de red al escribir en Apps Script');
+  if (!res.ok) {
+    const bodySnippet = await res.text().catch(() => '');
+    throw new Error(`Error de red al escribir en Apps Script (HTTP ${res.status}): ${bodySnippet.slice(0, 200)}`);
+  }
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
+}
+
+// "Despierta" a Apps Script en cuanto carga una página de login/registro,
+// ANTES de que la persona termine de leer, escribir su correo o hacer clic
+// en "Entrar con Google". Apps Script tarda varios segundos en arrancar
+// cuando lleva un rato sin recibir peticiones ("arranque en frío") — si
+// esperamos a que la persona de verdad inicie sesión para mandar la
+// primera petición, esa espera la sufre justo en el peor momento. Aquí no
+// esperamos la respuesta ni importa si falla (por eso el .catch vacío):
+// solo nos interesa que el ping haya salido lo antes posible.
+function warmupAppsScript() {
+  fetch(APPS_SCRIPT_URL + '?action=ping').catch(() => {});
+}
+
+// Pone un mensaje "pending" con spinner, y si la espera se alarga, lo hace
+// evidente en vez de dejar el mismo texto quieto (que se siente como que
+// la página se congeló). Se usa en los formularios de login/registro de
+// empresa, donde el arranque en frío de Apps Script es más notorio.
+function setPendingStatus(el, text, opts = {}) {
+  el.className = 'status-msg show pending';
+  el.innerHTML = '<span class="spinner"></span>' + text;
+  if (el._pendingTimer) clearTimeout(el._pendingTimer);
+  const slowText = opts.slowText || 'Esto puede tardar varios segundos, sobre todo si es la primera vez en un rato — no cierres esta pestaña.';
+  el._pendingTimer = setTimeout(() => {
+    el.innerHTML = '<span class="spinner"></span>' + slowText;
+  }, 4000);
 }
 
 /* ---------- API específica del negocio ---------- */
