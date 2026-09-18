@@ -27,10 +27,10 @@
   </div>
 </header>
 
-<section class="mini-hero">
+<section class="mini-hero" id="portal-mini-hero">
   <div class="container" style="max-width:900px">
     <div class="eyebrow">Empresas</div>
-    <h1>Tu cuenta de JobMatch Pro</h1>
+    <h1>Tu cuenta de Sintro</h1>
     <p>Publica, edita, revisa postulaciones y gestiona tu plan — todo desde aquí, con el equipo de Sintropía Social detrás, no solo un panel automatizado.</p>
   </div>
 </section>
@@ -41,7 +41,7 @@
     <!-- ============ MODO ADMINISTRADOR: dash de impacto por empresa ============ -->
     <div id="admin-impacto-view" style="display:none">
       <div class="eyebrow">Modo administrador</div>
-      <h1>Acceso a empresas</h1>
+      <h1>Cuentas Sintro</h1>
       <p class="lead">Todas las empresas registradas, cuánto han publicado y cuántos candidatos han contactado — para medir el impacto real de la plataforma.</p>
       <div id="admin-impacto-list" style="margin-top:20px"></div>
     </div>
@@ -71,6 +71,26 @@
     <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
       <p style="color:var(--ink-soft)"><span class="spinner"></span><span id="session-check-text">Verificando tu sesión…</span></p>
     </div>
+
+    <script>
+      // Anti-parpadeo: si ya hay sesión de administrador guardada, se oculta
+      // de inmediato tanto el login de empresa como el hero de arriba (que
+      // no aplica en modo admin), y se muestra "Verificando…" mientras se
+      // confirma con el servidor — antes se alcanzaba a ver el login de
+      // empresa (y "Tu cuenta de Sintro") un momento antes de que el panel
+      // de admin lo reemplazara, sobre todo con el arranque en frío de
+      // Apps Script. Este bloque corre en cuanto el navegador llega aquí,
+      // sin esperar a que cargue el resto de la página.
+      (function () {
+        try {
+          if (!localStorage.getItem('jobmatch_admin_session')) return;
+          document.getElementById('portal-mini-hero').style.display = 'none';
+          document.getElementById('access-view').style.display = 'none';
+          document.getElementById('session-check-view').style.display = 'block';
+          document.getElementById('session-check-text').textContent = 'Verificando sesión de administrador…';
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- ============ PANEL (oculto hasta entrar) ============ -->
     <div id="panel-view" style="display:none;padding-top:8px">
@@ -1029,6 +1049,7 @@
     try {
       const data = await JobMatchAPI.adminGetEmpresasImpacto(key);
       if (data.error) throw new Error(data.error);
+      document.getElementById('portal-mini-hero').style.display = 'none';
       document.getElementById('access-view').style.display = 'none';
       document.getElementById('session-check-view').style.display = 'none';
       document.getElementById('admin-impacto-view').style.display = 'block';
@@ -1048,6 +1069,11 @@
       return true;
     } catch (err) {
       console.warn('No se pudo cargar el dash de impacto de administrador:', err);
+      // La clave ya no sirve o hubo un error — regresamos a la vista normal
+      // en vez de dejar "Verificando sesión de administrador…" fijo.
+      document.getElementById('portal-mini-hero').style.display = 'block';
+      document.getElementById('session-check-view').style.display = 'none';
+      document.getElementById('access-view').style.display = 'block';
       return false;
     }
   }

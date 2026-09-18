@@ -38,10 +38,26 @@
   <section class="section-tight">
     <div class="container">
       <div id="admin-precios-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px"></div>
-      <div id="admin-termometro"></div>
+      <div id="admin-termometro" style="text-align:center;color:var(--ink-soft);padding:40px 0"><span class="spinner"></span> Cargando panel de administrador…</div>
     </div>
   </section>
 </div>
+
+<script>
+  // Anti-parpadeo: si ya hay sesión de administrador guardada, se muestra el
+  // panel de admin (con un estado "cargando") y se oculta de inmediato la
+  // vista de precios normal — antes se alcanzaba a ver "Empieza gratis..."
+  // un momento antes de que el panel de admin lo reemplazara, sobre todo con
+  // el arranque en frío de Apps Script. Corre en cuanto el navegador llega
+  // aquí, sin esperar al resto de la página.
+  (function () {
+    try {
+      if (!localStorage.getItem('jobmatch_admin_session')) return;
+      document.getElementById('precios-empresa-content').style.display = 'none';
+      document.getElementById('precios-admin-content').style.display = 'block';
+    } catch (e) {}
+  })();
+</script>
 
 <div id="precios-empresa-content">
 <section class="section" style="padding-top:56px;text-align:center">
@@ -492,6 +508,10 @@
         renderAdminPreciosPanel(data);
       } catch (err) {
         console.warn('No se pudo cargar el panel de administrador:', err);
+        // La clave ya no sirve o hubo un error — regresamos a la vista
+        // normal en vez de dejar el "Cargando…" fijo.
+        document.getElementById('precios-admin-content').style.display = 'none';
+        document.getElementById('precios-empresa-content').style.display = 'block';
       }
     })();
   }

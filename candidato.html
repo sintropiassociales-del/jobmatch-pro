@@ -87,8 +87,25 @@
          el servidor — así no parece que "pide volver a entrar" cuando en
          realidad solo está cargando. -->
     <div id="session-check-view" style="display:none;text-align:center;padding:80px 0">
-      <p style="color:var(--ink-soft)">Verificando tu sesión…</p>
+      <p style="color:var(--ink-soft)" id="session-check-text">Verificando tu sesión…</p>
     </div>
+
+    <script>
+      // Anti-parpadeo: si ya hay sesión de administrador guardada, se oculta
+      // de inmediato la pantalla de acceso de candidato y se muestra
+      // "Verificando…" mientras se confirma con el servidor — antes se
+      // alcanzaba a ver el login de candidato un momento antes de que el
+      // panel de admin lo reemplazara. Corre en cuanto el navegador llega
+      // aquí, sin esperar al resto de la página.
+      (function () {
+        try {
+          if (!localStorage.getItem('jobmatch_admin_session')) return;
+          document.getElementById('access-view').style.display = 'none';
+          document.getElementById('session-check-view').style.display = 'block';
+          document.getElementById('session-check-text').textContent = 'Verificando sesión de administrador…';
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- ============ PERFIL (oculto hasta entrar) ============ -->
     <div id="profile-view" style="display:none">
@@ -804,6 +821,10 @@
       return true;
     } catch (err) {
       console.warn('No se pudo cargar el panel de administrador:', err);
+      // La clave ya no sirve o hubo un error — regresamos a la vista normal
+      // en vez de dejar "Verificando sesión de administrador…" fijo.
+      document.getElementById('session-check-view').style.display = 'none';
+      document.getElementById('access-view').style.display = 'block';
       return false;
     }
   }
