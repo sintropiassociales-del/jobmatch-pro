@@ -218,24 +218,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ---------- "Publicar gratis" cierra sesión de admin ----------
-   Si hay una sesión de administrador guardada (iniciada antes en
-   admin-plataforma.html), no tiene sentido que el botón "Publicar gratis"
-   del menú lleve a crear una cuenta de empresa — en su lugar cierra la
-   sesión de administrador, en cualquier página del sitio que tenga ese
-   botón. No se valida la clave contra el servidor aquí (sería una llamada
-   de más solo para pintar un botón); si la clave ya no es válida, el
-   siguiente intento de usarla en admin-plataforma.html la va a limpiar. */
+/* ---------- Menú adaptado cuando hay sesión de administrador ----------
+   Con sesión de admin: "Publicar gratis" cierra la sesión en vez de llevar
+   a crear una cuenta de empresa (no tendría sentido para el admin), y tres
+   nombres de menú cambian para reflejar lo que esa página muestra en modo
+   administrador. No se valida la clave contra el servidor aquí (sería una
+   llamada de más solo para pintar el menú); si ya no es válida, el
+   siguiente intento de usarla en la página correspondiente la va a limpiar. */
 document.addEventListener('DOMContentLoaded', () => {
   if (!getAdminSessionKey()) return;
+
   document.querySelectorAll('a.nav-cta').forEach((a) => {
-    a.textContent = 'Salir (admin)';
+    a.textContent = 'Salir';
     a.setAttribute('href', '#');
     a.addEventListener('click', (e) => {
       e.preventDefault();
       try { localStorage.removeItem(ADMIN_SESSION_KEY); } catch (err) {}
       window.location.reload();
     });
+  });
+
+  const RENOMBRES_NAV_ADMIN = {
+    'precios.html': 'Salud y crecimiento de la plataforma',
+    'candidato.html': 'Panel de control',
+    'portal-empresa.html': 'Cuentas Sintro',
+  };
+  document.querySelectorAll('.nav-links a:not(.nav-cta)').forEach((a) => {
+    const href = a.getAttribute('href');
+    if (RENOMBRES_NAV_ADMIN[href]) a.textContent = RENOMBRES_NAV_ADMIN[href];
   });
 });
 
