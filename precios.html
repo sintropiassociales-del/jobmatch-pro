@@ -11,7 +11,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -26,6 +26,22 @@
     <button class="nav-toggle" aria-label="Abrir menú">☰</button>
   </div>
 </header>
+
+<div id="precios-admin-content" style="display:none">
+  <section class="section" style="padding-top:56px">
+    <div class="container">
+      <div class="eyebrow">Modo administrador</div>
+      <h1>Salud y crecimiento de la plataforma</h1>
+      <p class="lead" style="max-width:60ch">Empresas activas, candidatos registrados y cuándo conviene subir de nivel — según los umbrales de <code>docs/CUANDO-ESCALAR.md</code>.</p>
+    </div>
+  </section>
+  <section class="section-tight">
+    <div class="container">
+      <div id="admin-precios-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px"></div>
+      <div id="admin-termometro"></div>
+    </div>
+  </section>
+</div>
 
 <div id="precios-empresa-content">
 <section class="section" style="padding-top:56px;text-align:center">
@@ -418,6 +434,67 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   let pendingSubscription = null;
+  const adminModeActive = !!getAdminSessionKey();
+
+  // ---------- Modo administrador: panel de crecimiento en vez de precios ----------
+  const ZONA_COLOR = { verde: '#1E8E5A', amarillo: '#B3811C', rojo: '#B3311C' };
+  const ZONA_BG = { verde: '#E7F6EE', amarillo: '#FFF4DE', rojo: '#FCE9E4' };
+  const ZONA_MENSAJE = {
+    verde: 'Zona verde — esta versión ligera sobra por ahora, no hay urgencia de migrar.',
+    amarillo: 'Zona amarilla — empieza a doler. Hay parches en docs/CUANDO-ESCALAR.md que estiran esta versión mientras se decide migrar.',
+    rojo: 'Zona roja — ya vale la pena migrar a la arquitectura completa (jobmatch-pro/). Basta con que una sola métrica llegue aquí.',
+  };
+
+  function tarjetaResumen(numero, etiqueta) {
+    return `<div class="form-card" style="text-align:center;padding:18px 14px">
+      <div style="font-size:1.7rem;font-weight:800;color:var(--purple-900)">${numero}</div>
+      <div style="font-size:.8rem;color:var(--ink-soft);margin-top:4px">${etiqueta}</div>
+    </div>`;
+  }
+
+  function renderAdminPreciosPanel(data) {
+    document.getElementById('admin-precios-resumen').innerHTML = [
+      tarjetaResumen(data.empresasVigentes, 'Empresas pagando vigentes'),
+      tarjetaResumen(data.empresasBajas, 'Empresas dadas de baja'),
+      tarjetaResumen(data.candidatosTotal, 'Candidatos registrados'),
+      tarjetaResumen(data.visitas.hoy, 'Visitas a la plataforma hoy'),
+      tarjetaResumen(data.visitas.semana, 'Visitas en los últimos 7 días'),
+    ].join('');
+
+    const filas = data.metricas.map((m) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+        <span style="font-size:.88rem">${m.nombre}</span>
+        <span style="display:flex;align-items:center;gap:10px">
+          <strong>${m.valor}</strong>
+          <span style="background:${ZONA_BG[m.zona]};color:${ZONA_COLOR[m.zona]};font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:100px;text-transform:uppercase">${m.zona}</span>
+        </span>
+      </div>`).join('');
+
+    document.getElementById('admin-termometro').innerHTML = `
+      <div class="form-card">
+        <div style="background:${ZONA_BG[data.zonaGeneral]};color:${ZONA_COLOR[data.zonaGeneral]};border-radius:var(--radius-sm);padding:12px 14px;font-size:.85rem;font-weight:600;margin-bottom:16px">
+          ${ZONA_MENSAJE[data.zonaGeneral]}
+        </div>
+        ${filas}
+        <p style="font-size:.78rem;color:var(--ink-soft);margin-top:16px">
+          Dos métricas de la tabla de <code>docs/CUANDO-ESCALAR.md</code> no se pueden calcular solas todavía: <strong>correos enviados por día</strong> (revísalo en Apps Script → Configuración del proyecto → Cuotas) y <strong>usuarios simultáneos</strong> (las visitas de arriba son la aproximación más cercana que tenemos sin agregar un servicio de analítica aparte).
+        </p>
+      </div>`;
+  }
+
+  if (adminModeActive) {
+    (async () => {
+      try {
+        const data = await JobMatchAPI.adminGetPreciosPanel(getAdminSessionKey());
+        if (data.error) throw new Error(data.error);
+        document.getElementById('precios-empresa-content').style.display = 'none';
+        document.getElementById('precios-admin-content').style.display = 'block';
+        renderAdminPreciosPanel(data);
+      } catch (err) {
+        console.warn('No se pudo cargar el panel de administrador:', err);
+      }
+    })();
+  }
 
   // ---------- Campos del estudio socioeconómico (deben coincidir 1:1 con
   // SHEET_HEADERS[SHEET_SOCIOECONOMIC] en Code.gs, sin 'candidatoId' ni 'fecha') ----------
@@ -435,6 +512,7 @@
   // ---------- Si hay sesión de candidato, esta página es su estudio
   // socioeconómico privado en vez de los planes de empresa ----------
   window.addEventListener('load', async () => {
+    if (adminModeActive) return; // el panel de admin ya se muestra arriba, sin esperar a 'load'
     const candidateToken = localStorage.getItem(CANDIDATE_TOKEN_KEY);
     if (!candidateToken) return; // sin sesión de candidato, la página se comporta como siempre (planes)
 
@@ -532,6 +610,7 @@
   }
 
   window.addEventListener('load', async () => {
+    if (adminModeActive) return; // el panel de admin ya se muestra arriba — no aplica lo de PayPal/planes
     if (localStorage.getItem(CANDIDATE_TOKEN_KEY)) return; // esta vista es para empresas, no aplica con sesión de candidato
     const token = localStorage.getItem(COMPANY_TOKEN_KEY);
     const slots = document.querySelectorAll('.paypal-slot');

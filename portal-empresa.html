@@ -11,7 +11,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -37,6 +37,14 @@
 
 <section class="section content-lift" style="padding-top:0">
   <div class="container" style="max-width:900px">
+
+    <!-- ============ MODO ADMINISTRADOR: dash de impacto por empresa ============ -->
+    <div id="admin-impacto-view" style="display:none">
+      <div class="eyebrow">Modo administrador</div>
+      <h1>Acceso a empresas</h1>
+      <p class="lead">Todas las empresas registradas, cuánto han publicado y cuántos candidatos han contactado — para medir el impacto real de la plataforma.</p>
+      <div id="admin-impacto-list" style="margin-top:20px"></div>
+    </div>
 
     <!-- ============ ACCESO ============ -->
     <div id="access-view">
@@ -1014,31 +1022,66 @@
     }, 4000);
   }
 
-  // Si vienes de un link de acceso por correo (?token=...), entra directo
-  // y limpia la URL para no dejar el token visible en la barra/historial.
-  const urlParams = new URLSearchParams(window.location.search);
-  const linkToken = urlParams.get('token');
-  if (linkToken) {
-    history.replaceState({}, '', window.location.pathname);
-    showSessionCheck();
-    loadEmpresa(linkToken);
-  } else {
-    const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
-    const cached = getCachedEmpresaSession();
-    if (saved && cached) {
-      // Mostramos el panel de inmediato con los últimos datos que ya
-      // conocíamos, mientras se confirma con el servidor en segundo plano —
-      // así no hay que esperar el arranque en frío de Apps Script para ver
-      // algo en pantalla.
-      document.getElementById('empresa-nombre').textContent = cached.razonSocial;
-      document.getElementById('plan-chip').textContent = `Plan ${cached.plan}`;
-      showPanel();
-      loadEmpresa(saved);
-    } else if (saved) {
-      showSessionCheck();
-      loadEmpresa(saved);
+  // ---------- Modo administrador: dash de impacto en vez del login de empresa ----------
+  async function initAdminImpacto() {
+    const key = getAdminSessionKey();
+    if (!key) return false;
+    try {
+      const data = await JobMatchAPI.adminGetEmpresasImpacto(key);
+      if (data.error) throw new Error(data.error);
+      document.getElementById('access-view').style.display = 'none';
+      document.getElementById('session-check-view').style.display = 'none';
+      document.getElementById('admin-impacto-view').style.display = 'block';
+
+      document.getElementById('admin-impacto-list').innerHTML = data.items.map((e) => `
+        <div class="job-card" style="margin-bottom:12px;${e.activa ? '' : 'opacity:.55'}">
+          <h3 style="font-size:1rem">${escapeHtml(e.razonSocial)} ${!e.activa ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Desactivada</span>' : ''}</h3>
+          <div class="meta">
+            <span>Plan: <strong>${escapeHtml(e.plan)}</strong></span>
+            <span>Alta: ${e.fechaAlta ? escapeHtml(String(e.fechaAlta).slice(0, 10)) : '—'}</span>
+            <span>Vacantes publicadas: <strong>${e.vacantesPublicadas}</strong></span>
+            <span>Postulaciones recibidas: <strong>${e.postulacionesRecibidas}</strong></span>
+            <span>Solicitudes de contacto: <strong>${e.solicitudesContacto}</strong></span>
+            <span>Candidatos contactados: <strong>${e.candidatosContactados}</strong></span>
+          </div>
+        </div>`).join('') || `<div class="empty-state"><p>Todavía no hay empresas registradas.</p></div>`;
+      return true;
+    } catch (err) {
+      console.warn('No se pudo cargar el dash de impacto de administrador:', err);
+      return false;
     }
   }
+
+  (async () => {
+    const esAdmin = await initAdminImpacto();
+    if (esAdmin) return;
+
+    // Si vienes de un link de acceso por correo (?token=...), entra directo
+    // y limpia la URL para no dejar el token visible en la barra/historial.
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkToken = urlParams.get('token');
+    if (linkToken) {
+      history.replaceState({}, '', window.location.pathname);
+      showSessionCheck();
+      loadEmpresa(linkToken);
+    } else {
+      const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
+      const cached = getCachedEmpresaSession();
+      if (saved && cached) {
+        // Mostramos el panel de inmediato con los últimos datos que ya
+        // conocíamos, mientras se confirma con el servidor en segundo plano —
+        // así no hay que esperar el arranque en frío de Apps Script para ver
+        // algo en pantalla.
+        document.getElementById('empresa-nombre').textContent = cached.razonSocial;
+        document.getElementById('plan-chip').textContent = `Plan ${cached.plan}`;
+        showPanel();
+        loadEmpresa(saved);
+      } else if (saved) {
+        showSessionCheck();
+        loadEmpresa(saved);
+      }
+    }
+  })();
 </script>
 </body>
 </html>

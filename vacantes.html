@@ -11,7 +11,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -50,7 +50,9 @@
       <span id="result-count" style="color:var(--ink-soft);font-size:.9rem"></span>
       <select id="orden" style="border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff">
         <option value="reciente">Más recientes</option>
+        <option value="antiguas">Más antiguas</option>
         <option value="sueldo">Mayor sueldo</option>
+        <option value="alfabetico">Alfabético (A-Z)</option>
       </select>
     </div>
     <div id="featured-block" style="display:none;margin-bottom:36px">
@@ -58,6 +60,9 @@
       <div class="grid-jobs" id="jobs-featured" style="margin-top:12px"></div>
     </div>
     <div class="grid-jobs" id="jobs-list"></div>
+    <div style="text-align:center;margin-top:24px">
+      <button class="btn btn-ghost" id="btn-cargar-mas" style="display:none">Cargar más vacantes</button>
+    </div>
   </div>
 </section>
 
@@ -76,9 +81,26 @@
   document.getElementById('q').value = params.get('q') || '';
   document.getElementById('modalidad').value = params.get('modalidad') || '';
 
+  // Con muchas vacantes (30-40+) pintar todo de golpe se siente pesado — se
+  // muestran de PAGE_SIZE en PAGE_SIZE con un botón "Cargar más" en vez de
+  // paginación con números, para no complicar el filtro/orden ya existente.
+  const PAGE_SIZE = 12;
+  let regularesActuales = [];
+  let mostrados = 0;
+
+  function pintarSiguientePagina() {
+    const list = document.getElementById('jobs-list');
+    const siguienteLote = regularesActuales.slice(mostrados, mostrados + PAGE_SIZE);
+    list.insertAdjacentHTML('beforeend', siguienteLote.map(jobCardHTML).join(''));
+    mostrados += siguienteLote.length;
+    const btnMas = document.getElementById('btn-cargar-mas');
+    btnMas.style.display = mostrados < regularesActuales.length ? 'inline-block' : 'none';
+  }
+
   async function loadJobs() {
     const list = document.getElementById('jobs-list');
     list.innerHTML = skeletonCards(6);
+    document.getElementById('btn-cargar-mas').style.display = 'none';
     const filters = {
       q: document.getElementById('q').value,
       modalidad: document.getElementById('modalidad').value,
@@ -100,9 +122,14 @@
         featuredBlock.style.display = 'none';
       }
 
-      list.innerHTML = regulares.length
-        ? regulares.map(jobCardHTML).join('')
-        : (destacadas.length === 0 ? `<div class="empty-state" style="grid-column:1/-1"><p>No encontramos vacantes con esos filtros. Prueba con otros términos, o <a href="mailto:comunicacion@sintropiasocial.com" style="color:var(--purple-700);font-weight:600">escríbele al equipo</a> y te ayudamos a buscar.</p></div>` : '');
+      regularesActuales = regulares;
+      mostrados = 0;
+      if (regulares.length) {
+        list.innerHTML = '';
+        pintarSiguientePagina();
+      } else {
+        list.innerHTML = destacadas.length === 0 ? `<div class="empty-state" style="grid-column:1/-1"><p>No encontramos vacantes con esos filtros. Prueba con otros términos, o <a href="mailto:comunicacion@sintropiasocial.com" style="color:var(--purple-700);font-weight:600">escríbele al equipo</a> y te ayudamos a buscar.</p></div>` : '';
+      }
     } catch (e) {
       list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="mark">⚠️</div><p>No se pudo conectar con la fuente de vacantes. Revisa APPS_SCRIPT_URL en assets/js/app.js.</p></div>`;
     }
@@ -110,6 +137,7 @@
 
   document.getElementById('btn-search').addEventListener('click', loadJobs);
   document.getElementById('orden').addEventListener('change', loadJobs);
+  document.getElementById('btn-cargar-mas').addEventListener('click', pintarSiguientePagina);
   loadJobs();
 </script>
 </body>

@@ -11,7 +11,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -29,6 +29,21 @@
 
 <section class="section" style="padding-top:56px">
   <div class="container" style="max-width:820px">
+
+    <!-- ============ MODO ADMINISTRADOR ============ -->
+    <div id="admin-mi-perfil-view" style="display:none">
+      <div class="eyebrow">Modo administrador</div>
+      <h1>Panel de control</h1>
+      <p class="lead">Empresas y candidatos registrados, claves de acceso y fechas de alta/baja.</p>
+
+      <div id="admin-perfil-visitas" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:20px 0"></div>
+
+      <h2 style="font-size:1.05rem;margin-bottom:10px">Empresas (<span id="admin-perfil-count-empresas">0</span>)</h2>
+      <div id="admin-perfil-empresas" style="margin-bottom:28px"></div>
+
+      <h2 style="font-size:1.05rem;margin-bottom:10px">Candidatos (<span id="admin-perfil-count-candidatos">0</span>)</h2>
+      <div id="admin-perfil-candidatos"></div>
+    </div>
 
     <!-- ============ ACCESO ============ -->
     <div id="access-view">
@@ -731,15 +746,82 @@
     }
   });
 
+  // ---------- Modo administrador ----------
+  // "Mi perfil" no significa nada para un administrador (no es candidato) —
+  // en su lugar ve el panel de control: empresas y candidatos, claves de
+  // acceso y fechas de alta/baja. Se revisa ANTES del auto-login de
+  // candidato de abajo, y si aplica, no se sigue con esa lógica.
+  function tarjetaVisita(numero, etiqueta) {
+    return `<div class="form-card" style="text-align:center;padding:16px 12px">
+      <div style="font-size:1.5rem;font-weight:800;color:var(--purple-900)">${numero}</div>
+      <div style="font-size:.78rem;color:var(--ink-soft);margin-top:4px">${etiqueta}</div>
+    </div>`;
+  }
+
+  function fila(nombre, meta, tokenLabel, token) {
+    return `<div class="job-card" style="margin-bottom:10px;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <h3 style="font-size:.95rem">${escapeHtml(nombre)}</h3>
+        <div class="meta">${meta}</div>
+      </div>
+      <div style="font-size:.75rem;color:var(--ink-soft);font-family:monospace;background:var(--purple-050);padding:4px 8px;border-radius:6px" title="${escapeHtml(tokenLabel)}">${escapeHtml(String(token || '').slice(0, 12))}…</div>
+    </div>`;
+  }
+
+  async function initAdminMiPerfil() {
+    const key = getAdminSessionKey();
+    if (!key) return false;
+    try {
+      const data = await JobMatchAPI.adminGetMiPerfilPanel(key);
+      if (data.error) throw new Error(data.error);
+      document.getElementById('access-view').style.display = 'none';
+      document.getElementById('session-check-view').style.display = 'none';
+      document.getElementById('profile-view').style.display = 'none';
+      document.getElementById('admin-mi-perfil-view').style.display = 'block';
+
+      document.getElementById('admin-perfil-visitas').innerHTML = [
+        tarjetaVisita(data.visitas.hoy, 'Visitas hoy'),
+        tarjetaVisita(data.visitas.semana, 'Visitas últimos 7 días'),
+        tarjetaVisita(data.visitas.total, 'Visitas totales'),
+      ].join('');
+
+      document.getElementById('admin-perfil-count-empresas').textContent = data.empresas.length;
+      document.getElementById('admin-perfil-empresas').innerHTML = data.empresas.map((e) => fila(
+        e.razonSocial + (e.activa ? '' : ' (baja)'),
+        `Plan ${escapeHtml(e.plan)} · Alta: ${e.fechaAlta ? escapeHtml(String(e.fechaAlta).slice(0, 10)) : '—'}` + (e.fechaBaja ? ` · Baja: ${escapeHtml(String(e.fechaBaja).slice(0, 10))}` : ''),
+        'Clave de acceso (companyToken): ' + e.companyToken,
+        e.companyToken
+      )).join('') || `<div class="empty-state"><p>Todavía no hay empresas registradas.</p></div>`;
+
+      document.getElementById('admin-perfil-count-candidatos').textContent = data.candidatos.length;
+      document.getElementById('admin-perfil-candidatos').innerHTML = data.candidatos.map((c) => fila(
+        c.nombre || 'Sin nombre',
+        `Alta: ${c.fechaAlta ? escapeHtml(String(c.fechaAlta).slice(0, 10)) : '—'}`,
+        'Clave de acceso (candidateToken): ' + c.candidateToken,
+        c.candidateToken
+      )).join('') || `<div class="empty-state"><p>Todavía no hay candidatos registrados.</p></div>`;
+
+      return true;
+    } catch (err) {
+      console.warn('No se pudo cargar el panel de administrador:', err);
+      return false;
+    }
+  }
+
   // Auto-login si ya había una sesión guardada en este navegador. Mostramos
   // "Verificando tu sesión…" en vez de dejar la pantalla de acceso, para que
   // no parezca que hay que volver a entrar mientras se confirma el código.
-  const savedToken = localStorage.getItem(STORAGE_KEY);
-  if (savedToken) {
-    document.getElementById('access-view').style.display = 'none';
-    document.getElementById('session-check-view').style.display = 'block';
-    loadProfile(savedToken);
-  }
+  (async () => {
+    const esAdmin = await initAdminMiPerfil();
+    if (esAdmin) return;
+
+    const savedToken = localStorage.getItem(STORAGE_KEY);
+    if (savedToken) {
+      document.getElementById('access-view').style.display = 'none';
+      document.getElementById('session-check-view').style.display = 'block';
+      loadProfile(savedToken);
+    }
+  })();
 </script>
 </body>
 </html>

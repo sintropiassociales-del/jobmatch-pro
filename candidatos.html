@@ -12,7 +12,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -289,6 +289,16 @@
       return;
     }
 
+    // Si ya iniciaste sesión de administrador antes (en admin-plataforma.html
+    // o en cualquier otra página), se reconoce solo aquí también — sin esto
+    // había que volver a escribir la clave de admin en esta tarjeta chica
+    // cada vez, aunque ya hubiera sesión activa en el resto del sitio.
+    const adminSessionKey = getAdminSessionKey();
+    if (adminSessionKey) {
+      const entered = await enterAdminMode(adminSessionKey);
+      if (entered) return;
+    }
+
     const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
     if (saved) {
       const cached = getCachedEmpresaSession();
@@ -392,12 +402,8 @@
     card.style.display = card.style.display === 'none' ? 'block' : 'none';
   });
 
-  document.getElementById('btn-admin-login').addEventListener('click', async () => {
-    const key = document.getElementById('admin-key-input').value.trim();
-    const status = document.getElementById('admin-login-status');
-    if (!key) return;
-    status.className = 'status-msg show pending';
-    status.textContent = 'Verificando...';
+  async function enterAdminMode(key, status) {
+    if (status) { status.className = 'status-msg show pending'; status.textContent = 'Verificando...'; }
     try {
       const data = await JobMatchAPI.adminListCandidatesDirectory(key);
       if (data.error) throw new Error(data.error);
@@ -406,10 +412,17 @@
       document.getElementById('admin-mode-bar').style.display = 'flex';
       const items = data.items.map((c) => ({ ...c, apodo: c.nombre }));
       renderDirectory(items);
+      return true;
     } catch (err) {
-      status.className = 'status-msg show err';
-      status.textContent = err.message;
+      if (status) { status.className = 'status-msg show err'; status.textContent = err.message; }
+      return false;
     }
+  }
+
+  document.getElementById('btn-admin-login').addEventListener('click', () => {
+    const key = document.getElementById('admin-key-input').value.trim();
+    if (!key) return;
+    enterAdminMode(key, document.getElementById('admin-login-status'));
   });
 
   document.getElementById('btn-admin-mode-exit').addEventListener('click', () => {
@@ -572,7 +585,8 @@
   function contactButtonHTML(c) {
     if (isAdminView && c.email) {
       return `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 12px;font-size:.82rem;width:100%">
-        <strong>${escapeHtml(c.nombre)}</strong><br>${escapeHtml(c.email)}
+        <strong>${escapeHtml(c.nombre)}</strong>${c.genero ? ` · ${escapeHtml(c.genero)}` : ''}<br>${escapeHtml(c.email)}
+        ${c.experiencia ? `<br><span style="opacity:.8">${escapeHtml(c.experiencia)}</span>` : ''}
         ${c.cvLink ? `<br><a href="${escapeHtml(c.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a>` : ''}
       </div>`;
     }

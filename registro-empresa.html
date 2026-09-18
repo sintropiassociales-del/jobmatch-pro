@@ -22,7 +22,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
+      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -38,48 +38,161 @@
   </div>
 </header>
 
-<section class="mini-hero">
-  <div class="container" style="max-width:640px">
-    <div class="eyebrow">Para empresas</div>
-    <h1>Crea tu cuenta de empresa</h1>
-    <p>Gratis para empezar: hasta 2 vacantes nuevas al mes, 1 activa a la vez. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, mejora tu plan después desde tu cuenta.</p>
-  </div>
-</section>
-
-<section class="section content-lift" style="padding-top:0">
-  <div class="container" style="max-width:640px">
-    <div class="form-card" style="margin-top:0">
-      <form id="registro-form">
-        <div class="field">
-          <label for="razon-social">Razón social</label>
-          <input type="text" id="razon-social" required placeholder="Nombre legal de tu empresa">
-        </div>
-        <div class="field">
-          <label for="rfc">RFC de la empresa</label>
-          <input type="text" id="rfc" required placeholder="Ej. ABC123456XYZ" maxlength="13" style="text-transform:uppercase">
-          <div class="hint">Siempre obligatorio, sin importar cómo te registres — es lo que verifica que quien publica es una empresa real. No lo compartimos con candidatos.</div>
-        </div>
-
-        <div class="field">
-          <label for="email-contacto">Correo de contacto</label>
-          <input type="email" id="email-contacto" required placeholder="tucorreo@empresa.com">
-          <div class="hint" id="email-hint">Aquí te llegará tu código de acceso y las postulaciones.</div>
-        </div>
-
-        <div id="google-shortcut" style="background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;margin-bottom:20px">
-          <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Atajo opcional: verifica tu correo con Google</p>
-          <div id="google-btn"></div>
-          <p style="font-size:.76rem;color:var(--ink-soft);margin-top:8px;margin-bottom:0">No es obligatorio — solo confirma que el correo es tuyo. Puedes escribirlo directo arriba si prefieres.</p>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Crear mi cuenta</button>
-        <div class="status-msg" id="form-status"></div>
-      </form>
+<div id="admin-publicar-panel" style="display:none">
+  <section class="mini-hero">
+    <div class="container" style="max-width:760px">
+      <div class="eyebrow">Modo administrador</div>
+      <h1>Publicar vacante</h1>
+      <p>Publica una vacante completa (con postulación y matching real dentro de la plataforma), o una de referencia hacia otro sitio — con extracción automática por IA para no copiar campo por campo.</p>
     </div>
+  </section>
 
-    <p style="text-align:center;margin-top:20px;font-size:.85rem">¿Ya tienes cuenta? <a href="portal-empresa.html" style="color:var(--purple-700);font-weight:600">Entra aquí →</a></p>
-  </div>
-</section>
+  <section class="section content-lift" style="padding-top:0">
+    <div class="container" style="max-width:760px">
+
+      <h2 style="font-size:1.1rem;margin-bottom:10px">Vacante completa (interna)</h2>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Se publica a nombre de "Sintropía Social (vacantes internas)" — recibe postulaciones y matching por IA como cualquier vacante de empresa.</p>
+      <div class="form-card">
+        <form id="admin-job-form">
+          <div class="field">
+            <label for="aj-titulo">Puesto</label>
+            <input type="text" id="aj-titulo" required placeholder="Ej. Coordinador/a de Vinculación Comunitaria">
+          </div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="aj-modalidad">Modalidad</label>
+              <select id="aj-modalidad" required>
+                <option value="">Selecciona...</option>
+                <option>Remoto</option><option>Híbrido</option><option>Presencial</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="aj-ubicacion">Ubicación</label>
+              <input type="text" id="aj-ubicacion" placeholder="Ciudad de México">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="aj-min">Sueldo mínimo (MXN, opcional)</label>
+              <input type="number" id="aj-min" min="0">
+            </div>
+            <div class="field">
+              <label for="aj-max">Sueldo máximo (MXN, opcional)</label>
+              <input type="number" id="aj-max" min="0">
+            </div>
+          </div>
+          <div class="field">
+            <label for="aj-descripcion">Descripción del puesto</label>
+            <textarea id="aj-descripcion" required placeholder="Responsabilidades, requisitos, qué hace especial a esta vacante..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="aj-submit-btn">Publicar vacante completa</button>
+          <div class="status-msg" id="aj-status"></div>
+        </form>
+      </div>
+
+      <h2 style="font-size:1.1rem;margin:28px 0 10px">Logo de "Sintropía Social (vacantes internas)"</h2>
+      <div class="form-card">
+        <div class="field">
+          <label for="aj-logo-file">Sube el logo (PNG)</label>
+          <input type="file" id="aj-logo-file" accept="image/png">
+        </div>
+        <button class="btn btn-ghost" id="btn-aj-upload-logo">Subir logo</button>
+        <div class="status-msg" id="aj-logo-status"></div>
+      </div>
+
+      <h2 style="font-size:1.1rem;margin:28px 0 10px">Vacante externa (referencia a otro sitio)</h2>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Para vacantes que viste en otro sitio y quieres listar aquí como referencia. No tienen postulación ni matching dentro de la plataforma — solo mandan al candidato al link original.</p>
+
+      <div class="form-card">
+        <div class="eyebrow">Paso 1 (opcional) — Extraer con IA</div>
+        <div class="field">
+          <label for="ex-raw">Pega aquí el texto completo de la vacante (de cualquier fuente)</label>
+          <textarea id="ex-raw" placeholder="Copia y pega el texto tal cual lo viste en LinkedIn, un correo, donde sea..." style="min-height:140px"></textarea>
+        </div>
+        <button type="button" class="btn btn-ghost" id="btn-extract">Extraer con IA</button>
+        <div class="status-msg" id="extract-status"></div>
+      </div>
+
+      <div class="form-card" style="margin-top:16px">
+        <div class="eyebrow">Paso 2 — Revisa y publica</div>
+        <form id="external-form">
+          <div class="field"><label for="ex-empresa">Empresa (texto libre, tal como la quieres mostrar)</label><input type="text" id="ex-empresa" required placeholder="Ej. Nombre de la empresa que vi en LinkedIn"></div>
+          <div class="field"><label for="ex-titulo">Puesto</label><input type="text" id="ex-titulo" required></div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="ex-modalidad">Modalidad</label>
+              <select id="ex-modalidad"><option value="">No especificado</option><option>Remoto</option><option>Híbrido</option><option>Presencial</option></select>
+            </div>
+            <div class="field"><label for="ex-ubicacion">Ubicación</label><input type="text" id="ex-ubicacion"></div>
+          </div>
+          <div class="form-grid-2">
+            <div class="field"><label for="ex-min">Sueldo mínimo (opcional)</label><input type="number" id="ex-min"></div>
+            <div class="field"><label for="ex-max">Sueldo máximo (opcional)</label><input type="number" id="ex-max"></div>
+          </div>
+          <div class="field"><label for="ex-descripcion">Descripción general</label><textarea id="ex-descripcion" placeholder="Lo que sepas de la vacante, aunque sea breve"></textarea></div>
+          <div class="field"><label for="ex-link">Link donde está la vacante original</label><input type="url" id="ex-link" required placeholder="https://..."></div>
+          <div class="form-grid-2">
+            <div class="field">
+              <label for="ex-expiracion">Quitarla sola de la página el (opcional)</label>
+              <input type="date" id="ex-expiracion">
+            </div>
+            <div class="field">
+              <label style="display:flex;align-items:center;gap:8px;margin-top:28px"><input type="checkbox" id="ex-destacada"> Marcarla como destacada desde ya</label>
+            </div>
+          </div>
+          <div class="field"><label for="ex-nota">Nota que verá el candidato</label><input type="text" id="ex-nota" value="Sin relación directa con la vacante — solo referencia informativa."></div>
+          <button type="submit" class="btn btn-primary btn-block">Publicar vacante externa</button>
+          <div class="status-msg" id="external-status"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="normal-registro-view">
+  <section class="mini-hero">
+    <div class="container" style="max-width:640px">
+      <div class="eyebrow">Para empresas</div>
+      <h1>Crea tu cuenta de empresa</h1>
+      <p>Gratis para empezar: hasta 2 vacantes nuevas al mes, 1 activa a la vez. Si quieres más vacantes, editar libremente, subir tu logo o acceder a perfiles socioeconómicos, mejora tu plan después desde tu cuenta.</p>
+    </div>
+  </section>
+
+  <section class="section content-lift" style="padding-top:0">
+    <div class="container" style="max-width:640px">
+      <div class="form-card" style="margin-top:0">
+        <form id="registro-form">
+          <div class="field">
+            <label for="razon-social">Razón social</label>
+            <input type="text" id="razon-social" required placeholder="Nombre legal de tu empresa">
+          </div>
+          <div class="field">
+            <label for="rfc">RFC de la empresa</label>
+            <input type="text" id="rfc" required placeholder="Ej. ABC123456XYZ" maxlength="13" style="text-transform:uppercase">
+            <div class="hint">Siempre obligatorio, sin importar cómo te registres — es lo que verifica que quien publica es una empresa real. No lo compartimos con candidatos.</div>
+          </div>
+
+          <div class="field">
+            <label for="email-contacto">Correo de contacto</label>
+            <input type="email" id="email-contacto" required placeholder="tucorreo@empresa.com">
+            <div class="hint" id="email-hint">Aquí te llegará tu código de acceso y las postulaciones.</div>
+          </div>
+
+          <div id="google-shortcut" style="background:var(--purple-050);border-radius:var(--radius-sm);padding:14px;margin-bottom:20px">
+            <p style="font-size:.82rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Atajo opcional: verifica tu correo con Google</p>
+            <div id="google-btn"></div>
+            <p style="font-size:.76rem;color:var(--ink-soft);margin-top:8px;margin-bottom:0">No es obligatorio — solo confirma que el correo es tuyo. Puedes escribirlo directo arriba si prefieres.</p>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Crear mi cuenta</button>
+          <div class="status-msg" id="form-status"></div>
+        </form>
+      </div>
+
+      <p style="text-align:center;margin-top:20px;font-size:.85rem">¿Ya tienes cuenta? <a href="portal-empresa.html" style="color:var(--purple-700);font-weight:600">Entra aquí →</a></p>
+    </div>
+  </section>
+</div>
 
 <footer class="site-footer">
   <div class="container">
@@ -99,6 +212,123 @@
   // para que Apps Script ya no esté arrancando en frío cuando la persona
   // realmente envíe el formulario de registro.
   warmupAppsScript();
+
+  // ---------- Modo administrador ----------
+  // Si ya hay sesión de admin guardada (de admin-plataforma.html o de
+  // cualquier otra página), esta pantalla no tiene sentido como "crea tu
+  // cuenta de empresa" — en vez de eso se muestran las herramientas de
+  // publicar vacante que el admin necesita, sin volver a pedir la clave.
+  (async function initAdminPublicar() {
+    const key = getAdminSessionKey();
+    if (!key) return;
+    try {
+      const data = await JobMatchAPI.adminPing(key);
+      if (!data.ok) return;
+    } catch (err) {
+      return; // sin conexión momentánea: se queda la vista normal, no hay nada roto que mostrar
+    }
+    document.getElementById('normal-registro-view').style.display = 'none';
+    document.getElementById('admin-publicar-panel').style.display = 'block';
+
+    document.getElementById('admin-job-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('aj-submit-btn');
+      const status = document.getElementById('aj-status');
+      btn.disabled = true;
+      setPendingStatus(status, 'Publicando...');
+      try {
+        await JobMatchAPI.adminCreateJob(key, {
+          titulo: document.getElementById('aj-titulo').value,
+          modalidad: document.getElementById('aj-modalidad').value,
+          ubicacion: document.getElementById('aj-ubicacion').value,
+          salarioMin: document.getElementById('aj-min').value,
+          salarioMax: document.getElementById('aj-max').value,
+          descripcion: document.getElementById('aj-descripcion').value,
+        });
+        clearTimeout(status._pendingTimer);
+        status.className = 'status-msg show ok';
+        status.textContent = '¡Vacante publicada!';
+        document.getElementById('admin-job-form').reset();
+      } catch (err) {
+        clearTimeout(status._pendingTimer);
+        status.className = 'status-msg show err';
+        status.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-aj-upload-logo').addEventListener('click', async () => {
+      const status = document.getElementById('aj-logo-status');
+      const fileInput = document.getElementById('aj-logo-file');
+      if (!fileInput.files[0]) { status.className = 'status-msg show err'; status.textContent = 'Elige un archivo primero.'; return; }
+      status.className = 'status-msg show pending';
+      status.textContent = 'Subiendo...';
+      try {
+        const fileBase64 = await fileToBase64(fileInput.files[0]);
+        await JobMatchAPI.adminUploadLogo(key, fileBase64, fileInput.files[0].name);
+        status.className = 'status-msg show ok';
+        status.textContent = 'Logo actualizado.';
+      } catch (err) {
+        status.className = 'status-msg show err';
+        status.textContent = err.message;
+      }
+    });
+
+    document.getElementById('btn-extract').addEventListener('click', async () => {
+      const rawText = document.getElementById('ex-raw').value.trim();
+      const status = document.getElementById('extract-status');
+      if (!rawText) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de la vacante primero.'; return; }
+      status.className = 'status-msg show pending';
+      status.textContent = 'Leyendo con IA... esto puede tardar unos segundos.';
+      try {
+        const data = await JobMatchAPI.adminExtractJobFromText(key, rawText);
+        if (data.error) throw new Error(data.error);
+        const j = data.extracted;
+        document.getElementById('ex-empresa').value = j.empresa || '';
+        document.getElementById('ex-titulo').value = j.titulo || '';
+        document.getElementById('ex-modalidad').value = ['Remoto', 'Híbrido', 'Presencial'].includes(j.modalidad) ? j.modalidad : '';
+        document.getElementById('ex-ubicacion').value = j.ubicacion || '';
+        document.getElementById('ex-min').value = j.salarioMin ?? '';
+        document.getElementById('ex-max').value = j.salarioMax ?? '';
+        document.getElementById('ex-descripcion').value = j.descripcion || '';
+        if (j.linkExterno) document.getElementById('ex-link').value = j.linkExterno;
+        status.className = 'status-msg show ok';
+        status.textContent = 'Listo — revisa los campos de abajo (sobre todo el link) antes de publicar.';
+      } catch (err) {
+        status.className = 'status-msg show err';
+        status.textContent = err.message;
+      }
+    });
+
+    document.getElementById('external-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('external-status');
+      status.className = 'status-msg show pending';
+      status.textContent = 'Publicando...';
+      try {
+        await JobMatchAPI.adminCreateExternalJob(key, {
+          empresaNombre: document.getElementById('ex-empresa').value,
+          titulo: document.getElementById('ex-titulo').value,
+          modalidad: document.getElementById('ex-modalidad').value,
+          ubicacion: document.getElementById('ex-ubicacion').value,
+          salarioMin: document.getElementById('ex-min').value,
+          salarioMax: document.getElementById('ex-max').value,
+          descripcion: document.getElementById('ex-descripcion').value,
+          linkExterno: document.getElementById('ex-link').value,
+          fechaExpiracion: document.getElementById('ex-expiracion').value,
+          destacada: document.getElementById('ex-destacada').checked,
+          notaAdmin: document.getElementById('ex-nota').value,
+        });
+        status.className = 'status-msg show ok';
+        status.textContent = 'Vacante externa publicada (aparecerá después de las de empresas registradas).';
+        document.getElementById('external-form').reset();
+      } catch (err) {
+        status.className = 'status-msg show err';
+        status.textContent = err.message;
+      }
+    });
+  })();
 
   window.addEventListener('load', () => {
     if (typeof google === 'undefined' || !google.accounts) return; // el atajo es opcional; si no carga, el formulario normal sigue funcionando

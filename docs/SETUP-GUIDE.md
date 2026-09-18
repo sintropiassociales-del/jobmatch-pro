@@ -383,6 +383,116 @@ const CF_LINKEDIN_WORKER_URL = "PEGA_AQUI_LA_URL_DEL_WORKER_DE_LINKEDIN";
    en los tres lugares (tu app de LinkedIn, la variable del Worker, y desde
    dónde estás probando) — es el error más común en este tipo de login.
 
+## 10. Alertas automáticas de matches para empresas (plan Business+)
+
+Cada vez que un candidato nuevo se registra con habilidades que hacen buen
+match con las vacantes activas de una empresa con plan Business o A la
+medida, `Code.gs` puede mandarle un correo-resumen — pero esto necesita un
+**disparador de tiempo**, que solo se configura una vez y a mano (el código
+no puede crear este disparador por sí solo).
+
+### 10.1 Crea el disparador (una sola vez)
+
+1. En el editor de Apps Script (el mismo donde pegaste `Code.gs`): ícono del
+   reloj ⏰ en el menú izquierdo, **Activadores** (o **Triggers**).
+2. **+ Añadir activador** (esquina inferior derecha).
+3. Configura así:
+   - Función a ejecutar: **`enviarAlertasMatches`** (sin guión bajo al
+     final — el editor esconde del selector cualquier función cuyo nombre
+     termine en `_`, así que verás `enviarAlertasMatches` sola en la lista,
+     no `enviarAlertasMatches_`; ambas hacen lo mismo, la primera solo
+     llama a la segunda).
+   - Fuente del evento: **Basado en tiempo**
+   - Tipo de activador basado en tiempo: **Temporizador diario**
+   - Elige el rango de horas que prefieras (ej. entre 8:00 y 9:00 am).
+4. Guarda. Google te puede pedir que autorices permisos de nuevo la primera
+   vez — es normal, dale que sí.
+
+Con esto, todos los días se revisa automáticamente si hay candidatos nuevos
+que califiquen para las vacantes activas de cada empresa Business+, y si los
+hay, se les manda un correo. Si no hay candidatos nuevos que califiquen ese
+día, no se manda nada — no satura con correos vacíos.
+
+### 10.2 Probar sin esperar al disparador diario (opcional)
+
+Puedes forzar una corrida de prueba visitando en el navegador (reemplaza por
+tu URL de Apps Script y tu ADMIN_KEY real):
+
+```
+https://TU-URL-DE-APPS-SCRIPT/exec?action=adminEnviarAlertasMatches&adminKey=TU_ADMIN_KEY
+```
+
+### 10.3 (Opcional) Si el sitio cambia de dirección algún día
+
+Los links que van dentro de estos correos (y de los correos de "agenda de
+entrevistas", sección 11) usan por default
+`https://sintropiassociales-del.github.io/jobmatch-pro/`. Si el sitio se
+muda de dirección más adelante, no hace falta tocar el código: agrega una
+propiedad de script nueva llamada `SITE_URL` con la nueva dirección completa
+(Configuración del proyecto → Propiedades del script → Añadir propiedad).
+
+## 11. Agenda de entrevistas integrada (plan Business+)
+
+No requiere ninguna configuración adicional — funciona en cuanto subes
+`Code.gs`, `assets/js/app.js` y el archivo nuevo `agendar-entrevista.html`.
+
+Cómo funciona: desde la pestaña "Postulaciones" del panel de empresa (vista
+kanban), al mover a un candidato a la columna "Entrevista" aparece un botón
+**"📅 Proponer horarios de entrevista"**. La empresa escribe hasta 3 opciones
+de horario en texto libre (no se conecta a Google Calendar ni a ningún
+calendario externo, a propósito — mismo criterio de "con toque humano" que
+el resto de JobMatch Pro) y el candidato recibe un correo con un link a
+`agendar-entrevista.html`, donde elige la opción que le funcione o avisa que
+ninguna le sirve. La empresa recibe un correo con la respuesta.
+
+## 12. Perfil administrador en las páginas públicas
+
+No requiere ninguna configuración adicional — reutiliza el mismo `ADMIN_KEY`
+que ya usas para entrar a `admin-plataforma.html`. En cuanto inicias sesión
+ahí (con Google o con la clave), esa sesión queda guardada en el navegador y
+las demás páginas del sitio la reconocen solas, sin volver a pedirte nada:
+
+- **Buscar vacantes** (`vacantes.html`): ahora cualquier persona (no solo
+  admin) puede ordenar por más recientes, más antiguas, mayor sueldo o
+  alfabético, y la lista se pinta en tandas de 12 con un botón "Cargar más"
+  para que no se sienta pesado cuando haya 30-40+ vacantes.
+- **Candidatos** (`candidatos.html`): con sesión de administrador ves el
+  directorio completo (nombre, correo, CV, género, experiencia) en vez de la
+  versión anónima — los mismos filtros avanzados de las empresas (área,
+  búsqueda) siguen funcionando igual.
+- **Publicar vacante** (`registro-empresa.html`): en vez del formulario de
+  "crear cuenta", ves tres herramientas — publicar una vacante completa
+  (con postulación y matching real, a nombre de "Sintropía Social (vacantes
+  internas)", una empresa interna que se crea sola la primera vez que la
+  usas), subir su logo, y publicar una vacante externa con extracción por IA
+  (la misma herramienta que ya tenías en `admin-plataforma.html`, ahora
+  también aquí).
+- **Precios** (`precios.html`): en vez de los planes, ves un panel de
+  crecimiento — empresas vigentes/dadas de baja, candidatos registrados,
+  visitas a la plataforma, y un "termómetro" con los mismos umbrales de
+  `docs/CUANDO-ESCALAR.md` (verde/amarillo/rojo) para saber cuándo conviene
+  migrar a la arquitectura completa.
+- **Mi perfil** (`candidato.html`): en vez de tu perfil de candidato, ves un
+  panel de control con todas las empresas y candidatos registrados, sus
+  claves de acceso (companyToken/candidateToken, útiles si alguien pierde
+  su código) y fecha de alta/baja.
+- **Acceso empresas** (`portal-empresa.html`): en vez del login de empresa,
+  ves un dash de impacto — cada empresa registrada con cuántas vacantes ha
+  publicado, postulaciones recibidas, solicitudes de contacto y candidatos
+  que efectivamente contactó.
+- **"Publicar gratis"** (botón del menú, en cualquier página): con sesión de
+  administrador cambia a "Salir (admin)" y cierra tu sesión en vez de
+  llevarte al registro de empresa (no tendría sentido para ti).
+
+### 12.1 Contador de visitas
+
+Se agrega una hoja nueva, `Visitas`, que se crea sola la primera vez que
+alguien carga cualquier página del sitio — no hay que crearla a mano. Guarda
+un renglón por día y página (no uno por visita) para no crecer sin control
+con tráfico público. No usa cookies ni identifica a nadie: solo cuenta
+cargas de página, como aproximación de cuánta gente entra a ver la
+plataforma aunque no se registre.
+
 ---
 
 > **Nota de seguridad**: los códigos de acceso (empresa y candidato) funcionan
