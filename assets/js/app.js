@@ -303,9 +303,16 @@ const JobMatchAPI = {
   adminSetJobFeatured: (adminKey, jobId, destacada) => asPost('adminSetJobFeatured', { adminKey, jobId, destacada }),
   adminUpdateJob: (adminKey, jobId, job) => asPost('adminUpdateJob', { adminKey, jobId, ...job }),
   matchCandidatesToVacancy: (companyToken, texto, jobId) => asPost('matchCandidatesToVacancy', { companyToken, texto: texto || '', jobId: jobId || '' }),
+  updateApplicationStatus: (companyToken, applicationId, estado) => asPost('updateApplicationStatus', { companyToken, applicationId, estado }),
   requestContact: (companyToken, candidatoId) => asPost('requestContact', { companyToken, candidatoId }),
   getCandidateContactInfo: (companyToken, candidatoId) => asGet('getCandidateContactInfo', { companyToken, candidatoId }),
   getResumenSocioeconomicoEmpresa: (companyToken, candidatoId) => asGet('getResumenSocioeconomicoEmpresa', { companyToken, candidatoId }),
+  toggleFavorito: (companyToken, candidatoId) => asPost('toggleFavorito', { companyToken, candidatoId }),
+  listFavoritos: (companyToken) => asGet('listFavoritos', { companyToken }),
+  getReportesEmpresa: (companyToken) => asGet('getReportesEmpresa', { companyToken }),
+  proponerHorariosEntrevista: (companyToken, applicationId, opciones, notas) => asPost('proponerHorariosEntrevista', { companyToken, applicationId, opciones: JSON.stringify(opciones), notas: notas || '' }),
+  getEntrevistaPublica: (entrevistaId) => asGet('getEntrevistaPublica', { entrevistaId }),
+  confirmarEntrevista: (entrevistaId, horarioElegido) => asPost('confirmarEntrevista', { entrevistaId, horarioElegido }),
 
   // Estudio socioeconómico completo (perfil del candidato, una sola vez)
   getMySocioeconomicoCompleto: (candidateToken) => asGet('getMySocioeconomicoCompleto', { token: candidateToken }),
