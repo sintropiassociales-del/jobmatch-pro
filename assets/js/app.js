@@ -114,9 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const hasCompanySession = !!localStorage.getItem(COMPANY_TOKEN_KEY);
   if (!hasCompanySession) return;
   document.querySelectorAll('.nav-links a').forEach((a) => {
-    if (a.getAttribute('href') === 'candidato.html') {
+    const href = a.getAttribute('href');
+    if (href === 'candidato.html') {
       a.setAttribute('href', 'portal-empresa.html');
       a.textContent = 'Mi cuenta';
+    } else if (href === 'registro-empresa.html') {
+      // Antes "Publicar vacante" (y el botón "Publicar gratis") mandaban
+      // aquí SIEMPRE, incluso con sesión de empresa ya abierta — la persona
+      // terminaba en la pantalla de "crear cuenta nueva" (con el atajo de
+      // verificar con Google y todo) en vez de ir directo a publicar desde
+      // su cuenta real. Ahora, con sesión activa, van directo al panel.
+      a.setAttribute('href', 'portal-empresa.html');
+      if (a.classList.contains('nav-cta')) a.textContent = 'Ir a mi panel';
     } else if (a.textContent.trim() === 'Acceso empresas') {
       a.style.display = 'none';
     }
