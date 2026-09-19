@@ -4,6 +4,12 @@
 
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbBawOkz0E5K8lQ-9EPz4-BRBY29GaIHTH9sTlhhobJFIqR8rndnTd5/exec";
 const CF_WORKER_URL = "jobmatch-ai-matching.coordinador1-ce.workers.dev";
+// Worker de caché para picos de tráfico (ver cloudflare-worker/cache-proxy-worker.js
+// y docs/SETUP-GUIDE.md sección 3.1). Mientras esto quede vacío, listJobs y
+// getJob siguen yendo directo a Apps Script como antes — no rompe nada si
+// todavía no desplegaste este Worker. Rellena con tu URL cuando lo hagas,
+// ej: "https://jobmatch-cache.tu-usuario.workers.dev"
+const CF_CACHE_WORKER_URL = "jobmatch-cache.coordinador1-ce.workers.dev";
 const GOOGLE_CLIENT_ID = "1048097062338-9dj7eluj20ie8721vt5rfdgi1djk7ihj.apps.googleusercontent.com";
 const LINKEDIN_CLIENT_ID = "78058rf4ovum4p"; // opcional — solo si activaste "Entrar con LinkedIn"
 const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.workers.dev"; // opcional, ver docs/SETUP-GUIDE.md
@@ -269,8 +275,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // era imposible saber si era un problema pasajero, de configuración, o algo
 // que arreglar en el código. Ahora incluimos el código HTTP real y el
 // inicio de la respuesta para poder diagnosticarlo de un vistazo.
+// Acciones que el Worker de caché sabe repetir (ver cache-proxy-worker.js).
+// Solo lecturas públicas y sin token — todo lo demás sigue yendo directo a
+// Apps Script, sin pasar por el Worker.
+const ACCIONES_CACHEABLES = ['listJobs', 'getJob'];
+
 async function asGet(action, params = {}) {
-  const url = new URL(APPS_SCRIPT_URL);
+  const usarCache = CF_CACHE_WORKER_URL && ACCIONES_CACHEABLES.includes(action);
+  const base = usarCache ? CF_CACHE_WORKER_URL : APPS_SCRIPT_URL;
+  const url = new URL(base);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
