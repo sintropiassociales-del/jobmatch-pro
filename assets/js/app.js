@@ -9,7 +9,17 @@ const CF_WORKER_URL = "jobmatch-ai-matching.coordinador1-ce.workers.dev";
 // getJob siguen yendo directo a Apps Script como antes — no rompe nada si
 // todavía no desplegaste este Worker. Rellena con tu URL cuando lo hagas,
 // ej: "https://jobmatch-cache.tu-usuario.workers.dev"
-const CF_CACHE_WORKER_URL = "jobmatch-cache.coordinador1-ce.workers.dev";
+const CF_CACHE_WORKER_URL = "";
+// Los Workers de Cloudflare a veces se pegan aquí sin "https://" delante
+// (ej. "jobmatch-cache.tu-usuario.workers.dev" en vez de
+// "https://jobmatch-cache.tu-usuario.workers.dev") — antes eso rompía
+// silenciosamente la llamada (el navegador lo interpretaba como una
+// dirección relativa a esta misma página, no como el Worker). Esta función
+// arregla eso automáticamente, sin importar si la URL configurada trae el
+// protocolo o no.
+function conProtocolo_(u) {
+  return /^https?:\/\//i.test(u) ? u : 'https://' + u;
+}
 const GOOGLE_CLIENT_ID = "1048097062338-9dj7eluj20ie8721vt5rfdgi1djk7ihj.apps.googleusercontent.com";
 const LINKEDIN_CLIENT_ID = "78058rf4ovum4p"; // opcional — solo si activaste "Entrar con LinkedIn"
 const CF_LINKEDIN_WORKER_URL = "https://jobmatch-linkedin-auth.coordinador1-ce.workers.dev"; // opcional, ver docs/SETUP-GUIDE.md
@@ -282,7 +292,7 @@ const ACCIONES_CACHEABLES = ['listJobs', 'getJob'];
 
 async function asGet(action, params = {}) {
   const usarCache = CF_CACHE_WORKER_URL && ACCIONES_CACHEABLES.includes(action);
-  const base = usarCache ? CF_CACHE_WORKER_URL : APPS_SCRIPT_URL;
+  const base = usarCache ? conProtocolo_(CF_CACHE_WORKER_URL) : APPS_SCRIPT_URL;
   const url = new URL(base);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -421,7 +431,7 @@ const JobMatchAPI = {
 
   // Matching por IA vía Cloudflare Worker
   matchScore: async (cvText, jobDescription) => {
-    const res = await fetch(CF_WORKER_URL, {
+    const res = await fetch(conProtocolo_(CF_WORKER_URL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cvText, jobDescription }),
