@@ -2,6 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script>
+  // "Despierta" a Apps Script lo antes posible — antes incluso de cargar el
+  // CSS o assets/js/app.js. En las páginas con panel de administrador, la
+  // consulta al panel sale en cuanto la página carga (a diferencia del
+  // login de empresa normal, aquí no hay tiempo de "leer el formulario"
+  // para que el arranque en frío de Apps Script se absorba solo) — este
+  // ping adelanta esa espera lo más posible, en paralelo a lo que tarda en
+  // descargarse el resto de la página. Nota: si cambias APPS_SCRIPT_URL en
+  // assets/js/app.js, cambia también esta línea (este script corre antes
+  // de que app.js exista, así que no puede reusar esa constante). Si esta
+  // línea queda desactualizada no rompe nada — solo se pierde el adelanto.
+  try { fetch("https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbBawOkz0E5K8lQ-9EPz4-BRBY29GaIHTH9sTlhhobJFIqR8rndnTd5/exec?action=ping").catch(() => {}); } catch (e) {}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mi cuenta de empresa — JobMatch Pro</title>
 <link rel="stylesheet" href="assets/css/style.css">

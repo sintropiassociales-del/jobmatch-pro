@@ -120,6 +120,33 @@ después).
    `https://jobmatch-ai-matching.tu-usuario.workers.dev`) — esta es la que va
    en `CF_WORKER_URL` dentro de `assets/js/app.js`.
 
+### 3.1 (Recomendado) Worker de caché para picos de tráfico
+
+Este Worker es distinto al de matching por IA — protege el sitio cuando una
+vacante se vuelve viral y cientos o miles de personas la ven al mismo
+tiempo. El detalle de por qué hace falta y qué tanto ayuda está en la
+sección 14 de esta guía.
+
+1. **Workers & Pages → Create application → Start with Hello World!**,
+   nómbralo `jobmatch-cache` (o el nombre que prefieras). Deploy.
+2. **Edit code** → borra el ejemplo → pega el contenido de
+   `cloudflare-worker/cache-proxy-worker.js`. Deploy de nuevo.
+3. **Settings → Variables and Secrets** → agrega `APPS_SCRIPT_URL` con la
+   misma URL `/exec` que ya tienes en `APPS_SCRIPT_URL` dentro de
+   `assets/js/app.js` (Type: puede ser Text, no es secreta) → Deploy.
+4. Copia la URL del Worker (ej.
+   `https://jobmatch-cache.tu-usuario.workers.dev`) — esta es la que va en
+   `CF_CACHE_WORKER_URL` dentro de `assets/js/app.js`. Mientras ese campo
+   quede vacío, el sitio sigue funcionando exactamente igual que antes (sin
+   caché); no lo actives hasta terminar este paso. (No importa si pegas la
+   URL con o sin `https://` delante — el código la completa solo.)
+5. Para probar que funciona: abre
+   `https://jobmatch-cache.tu-usuario.workers.dev/?action=listJobs` dos
+   veces seguidas en el navegador — la primera respuesta trae el header
+   `X-Cache: MISS`, la segunda (dentro de los siguientes 30 segundos) trae
+   `X-Cache: HIT` (puedes verlo en la pestaña Network de las herramientas de
+   desarrollador).
+
 ## 4. PayPal — botones listos + activación automática (opcional pero recomendada)
 
 Los 4 botones de suscripción ya están integrados en `portal-empresa.html`
@@ -493,9 +520,123 @@ con tráfico público. No usa cookies ni identifica a nadie: solo cuenta
 cargas de página, como aproximación de cuánta gente entra a ver la
 plataforma aunque no se registre.
 
----
+### 12.2 Sobre el "delay" al navegar entre páginas del panel de administrador
 
-> **Nota de seguridad**: los códigos de acceso (empresa y candidato) funcionan
-> como "contraseña" simple para que cada quien vea solo lo suyo — no es un
-> login con contraseña real. Si alguien pierde su código, búscalo en el Sheet
-> y reenvíalo por correo.
+Cada página del panel (Salud y crecimiento, Panel de control, Cuentas
+Sintro, etc.) es una página distinta — al hacer clic en el menú, el
+navegador recarga todo desde cero y vuelve a pedirle los datos a Apps
+Script. Ya se agregó un ping de "despertar" a Apps Script lo antes posible
+en cada una de esas páginas (antes incluso de cargar el CSS), para adelantar
+el arranque en frío mientras el resto de la página todavía se está
+descargando — esto reduce la espera, pero no la elimina del todo: parte de
+ese tiempo es Apps Script leyendo el Sheet y validando tu clave en cada
+consulta, algo que no se puede acelerar más sin cambiar de base de datos
+(ver sección 14). Si después de subir este cambio la espera sigue
+sintiéndose igual de larga (varios segundos, no una fracción de segundo),
+avísame — puede que valga la pena medirlo con datos reales en vez de a
+ojo.
+
+## 13. Parche de seguridad — claves fuera de la URL y freno a abuso
+
+Tres cambios, sin configuración nueva que hacer (solo subir los archivos):
+
+1. **La clave de administrador ya no viaja en la URL.** Las once consultas
+   del panel de administrador (listar empresas, candidatos, el panel de
+   "Salud y crecimiento", etc.) usaban `?action=...&adminKey=...` — eso
+   queda guardado en texto plano en el historial del navegador, indefinidamente,
+   en cualquier computadora donde hayas entrado como admin. Ahora esas once
+   viajan por POST (dentro de la petición, no en la dirección visible).
+   **Recomendación**: si has estado probando el panel de administrador estos
+   días, vale la pena cambiar tu `ADMIN_KEY` en Apps Script (Configuración
+   del proyecto → Propiedades del script) una vez que subas este parche, por
+   si la clave vieja quedó guardada en el historial de algún navegador.
+2. **Registro de candidatos con freno anti-spam.** Antes cualquiera podía
+   automatizar cientos de registros con correos inventados — cada uno manda
+   un correo, y eso podía agotar el límite diario de Gmail (100/día) sin que
+   te enteraras, dejando de avisar a empresas reales de postulaciones
+   nuevas. Ahora hay una pausa de 20 segundos entre registros nuevos con el
+   mismo correo (no afecta guardar CV, habilidades, etc. de un perfil ya
+   existente).
+3. **El contador de visitas ya no se puede inflar.** Solo cuenta páginas
+   reales del sitio (una lista cerrada) — antes aceptaba cualquier texto
+   como nombre de página, lo que hubiera permitido hacer crecer la hoja
+   `Visitas` sin límite mandando miles de peticiones con nombres inventados.
+4. **Los códigos de sesión de empresa y candidato ya no viajan por GET.**
+   Ver tu panel de empresa, tu perfil de candidato, el directorio de
+   candidatos, los favoritos, los reportes, etc. — las 10 consultas que
+   quedaban usando `?token=...` o `?companyToken=...` en la URL ahora van
+   por POST, igual que la clave de administrador. Con esto ya no queda
+   ninguna clave ni código de sesión viajando en texto plano por la URL en
+   toda la plataforma.
+
+> **Nota de seguridad**: los códigos de acceso (empresa y candidato) siguen
+> funcionando como "contraseña" simple para que cada quien vea solo lo
+> suyo — no es un login con contraseña real (eso ya requeriría el motor de
+> autenticación de la arquitectura completa, ver sección 14). Si alguien
+> pierde su código, búscalo en el Sheet y reenvíalo por correo.
+
+## 14. ¿Cuánto tráfico simultáneo aguanta esta versión, y qué se necesita para más?
+
+El límite de fondo no es un bug que se pueda "parchar" por completo — es el
+techo de diseño de Google Apps Script como backend (el detalle con la tabla
+de umbrales está en [`CUANDO-ESCALAR.md`](./CUANDO-ESCALAR.md)). Pero **el
+escenario real que más preocupa en este proyecto tiene una solución barata
+y ya implementada**, así que vale la pena separar los dos casos.
+
+### El escenario real: una vacante se vuelve viral
+
+Cuando una vacante buena llega a la comunidad latina a nivel continente, lo
+que pasa no es "400-600 personas postulando en el mismo segundo" — postular
+implica llenar un formulario, así que aunque lleguen 300 postulaciones en un
+día, se reparten en el tiempo. Lo que sí puede pasar al mismo tiempo es que
+cientos o miles de personas **vean** esa vacante o el listado de vacantes en
+el mismo minuto, porque la vieron en redes sociales a la misma hora. Esa
+lectura masiva y simultánea es justo el tipo de carga que tumba Apps Script
+a partir de ~30 usuarios al mismo tiempo.
+
+**Ya está resuelto para ese caso**: agregué un segundo Worker de Cloudflare
+(`cloudflare-worker/cache-proxy-worker.js`, instrucciones de despliegue en
+la sección 3.1) que se pone enfrente de las dos consultas de lectura que se
+disparan ahí — listar vacantes y ver el detalle de una — y guarda la
+respuesta en el borde de Cloudflare por 30 segundos. Durante ese pico, sin
+importar si son 50 o 5,000 personas viendo la misma vacante al mismo
+tiempo, Apps Script solo se ejecuta una vez cada 30 segundos; el resto lo
+reparte Cloudflare, que aguanta picos de lectura enormes sin costo extra
+(capa gratuita). El costo es que una vacante recién publicada puede tardar
+hasta 30 segundos en aparecer en el listado — un intercambio razonable a
+cambio de que el sitio no se caiga justo cuando más gente te está
+conociendo.
+
+Esto no cambia el límite de ~30 usuarios simultáneos para todo lo demás
+(postularse, registrarse, iniciar sesión, guardar un perfil) — esas
+escrituras siguen yendo directo a Apps Script porque no se pueden cachear
+sin arriesgar perder o duplicar información. Pero como esas acciones se
+reparten en el tiempo de forma natural (nadie postula en el mismo segundo
+exacto que otros mil), el riesgo real de colapso está mayormente cubierto
+con este cambio.
+
+### El escenario distinto: cientos de personas usando el sitio a fondo, al mismo tiempo, de forma sostenida
+
+Si lo que esperas no es un pico de gente *viendo* una vacante sino cientos
+de personas *usando* la plataforma activamente al mismo tiempo — llenando
+formularios, aplicando, entrando a sus cuentas — de forma sostenida (no un
+pico de minutos sino, por ejemplo, un evento en vivo con 400 personas
+registrándose a la vez), ahí sí no hay parche barato: la única ruta seria es
+migrar del stack ligero (Sheets + Apps Script) a un backend con base de
+datos real y servidor propio — Postgres en vez de Sheets, autenticación
+real en vez de códigos sueltos, y hosting (Render, Vercel, Railway o
+similar) sin el límite de ejecuciones concurrentes de Apps Script. No es un
+ajuste de un día: implica retomar/armar esa segunda arquitectura, migrar los
+datos actuales del Sheet a la base nueva, y probarla de punta a punta antes
+de apagar la versión ligera. El costo de hosting para ese volumen sigue
+siendo modesto — los niveles de entrada de Render/Vercel/Railway alcanzan
+sin problema — pero el esfuerzo de construcción es real, no un parche.
+
+**Recomendación práctica**: con el Worker de caché ya en su lugar, el
+escenario de "vacante viral" que describiste está cubierto sin costo
+adicional. Si además esperas el segundo escenario (uso sostenido y masivo,
+no solo gente viendo una publicación), avísame para planear la migración con
+tiempo — y de paso revisa si otros umbrales de `CUANDO-ESCALAR.md` (empresas
+pagando, vacantes activas, correos/día) ya están en zona amarilla, porque si
+varios se acercan al rojo juntos, migrar de una vez conviene más que por
+partes.

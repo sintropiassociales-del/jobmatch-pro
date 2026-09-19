@@ -14,10 +14,17 @@ cuándo dejar de parcharla y migrar a lo que ya armamos en `jobmatch-pro/`
 | **Vacantes activas simultáneas** | 0–50 | 50–200 | **200+** |
 | **Postulaciones por mes** | 0–300 | 300–1,500 | **1,500+** |
 | **Correos enviados por día** (publicaciones + notificaciones de postulación) | 0–80 | 80–100 | **100+** |
-| **Usuarios simultáneos en el sitio** | 0–20 | 20–30 | **30+** |
+| **Usuarios simultáneos en el sitio** (postulando, registrándose, iniciando sesión — ver nota¹) | 0–20 | 20–30 | **30+** |
 
 Basta con que **una sola** columna llegue a zona roja para que valga la pena
 migrar, aunque las demás sigan en verde.
+
+¹ Desde que se agregó el Worker de caché (`cloudflare-worker/cache-proxy-worker.js`,
+ver `docs/SETUP-GUIDE.md` sección 3.1 y 14), esta fila **ya no aplica a
+gente viendo vacantes o el listado** — eso lo absorbe Cloudflare y aguanta
+picos mucho más grandes sin costo extra. Sigue aplicando tal cual a todo lo
+que escribe datos (postularse, registrarse, iniciar sesión, guardar un
+perfil, panel de administrador), que no se puede cachear.
 
 ## Por qué esos números específicos (no son arbitrarios)
 
