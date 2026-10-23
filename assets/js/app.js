@@ -296,7 +296,13 @@ async function asGet(action, params = {}) {
   const url = new URL(base);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url.toString());
+  // Cache-busting: evita que el navegador reutilice una respuesta GET vieja
+  // en vez de volver a preguntarle a Apps Script (ej. una vacante que ya
+  // expiró pero sigue viéndose "activa"). Solo cuando se va DIRECTO a Apps
+  // Script — si ya pasa por tu Worker de caché (CF_CACHE_WORKER_URL), ese
+  // caché es intencional y lo controla el propio Worker, no lo forzamos aquí.
+  if (!usarCache) url.searchParams.set('_', Date.now());
+  const res = await fetch(url.toString(), usarCache ? {} : { cache: 'no-store' });
   if (!res.ok) {
     const bodySnippet = await res.text().catch(() => '');
     throw new Error(`Error de red al consultar Apps Script (HTTP ${res.status}): ${bodySnippet.slice(0, 200)}`);
