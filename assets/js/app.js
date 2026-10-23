@@ -587,10 +587,10 @@ function expandableFeaturedCardHTML(job) {
       <span>🕒 ${timeAgo(job.fecha)}</span>
     </div>
     <p class="desc">${escapeHtml((job.descripcion || '').slice(0, 110))}${job.descripcion && job.descripcion.length > 110 ? '…' : ''}</p>
+    ${shareButtonsHTML(job)}
     <button type="button" class="btn btn-ghost expand-toggle" style="align-self:flex-start;padding:8px 16px;font-size:.82rem" onclick="toggleFeaturedExpand(this)">Ver más detalles ▾</button>
     <div class="expand-panel" style="display:none">
       <p class="desc" style="-webkit-line-clamp:unset">${escapeHtml(job.descripcion || 'Sin descripción disponible.')}</p>
-      ${shareButtonsHTML(job)}
     </div>
     <div class="foot">
       <span class="salary">${formatSalary(job.salarioMin, job.salarioMax)}</span>
