@@ -499,7 +499,17 @@ function shareButtonsHTML(job) {
   // los íconos SVG de adentro usan comillas dobles — si el atributo también
   // usara comillas dobles, el navegador cerraría el atributo a la mitad
   // (nos pasó una vez: se veía texto roto tipo `',1500)">` en la tarjeta).
-  const abrir = (href) => `event.preventDefault();event.stopPropagation();window.open("${href}","_blank","noopener,width=600,height=500")`;
+  // "noopener" (abajo, para LinkedIn/X) es buena práctica de seguridad en un
+  // popup normal — pero el diálogo "nuevo" de Facebook (el que muestra
+  // "Configuración de la publicación" con destinatarios, programación, etc.)
+  // necesita hablar de regreso con la ventana que lo abrió (window.opener)
+  // para saber que terminó y cerrarse solo. Con "noopener" esa referencia
+  // queda en null, Facebook nunca puede avisar que ya terminó, y el botón
+  // "Compartir" se queda pegado en "Publicando" para siempre — no es que
+  // Facebook esté caído ni que falte algo en nuestras meta etiquetas (esas
+  // ya están bien, por eso el título y la descripción sí se ven en la vista
+  // previa). Por eso Facebook es el único caso sin "noopener".
+  const abrir = (href, sinNoopener) => `event.preventDefault();event.stopPropagation();window.open("${href}","_blank","${sinNoopener ? '' : 'noopener,'}width=600,height=500")`;
   const icons = {
     facebook: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.86c0-2.51 1.5-3.9 3.79-3.9 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>',
     linkedin: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.15 1.45-2.15 2.94v5.67H9.34V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.61 0 4.28 2.38 4.28 5.47v6.27zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>',
@@ -510,7 +520,7 @@ function shareButtonsHTML(job) {
   const copyOnClick = `event.preventDefault();event.stopPropagation();navigator.clipboard.writeText("${url}");this.innerHTML=this.dataset.check;setTimeout(()=>{this.innerHTML=this.dataset.clip},1500)`;
   return `
     <div class="share-row" style="display:flex;gap:6px;margin-top:10px" onclick="event.preventDefault();event.stopPropagation()">
-      <button class="share-btn" title="Compartir en Facebook" onclick='${abrir(`https://www.facebook.com/sharer/sharer.php?u=${urlEnc}`)}'>${icons.facebook}</button>
+      <button class="share-btn" title="Compartir en Facebook" onclick='${abrir(`https://www.facebook.com/sharer/sharer.php?u=${urlEnc}`, true)}'>${icons.facebook}</button>
       <button class="share-btn" title="Compartir en LinkedIn" onclick='${abrir(`https://www.linkedin.com/sharing/share-offsite/?url=${urlEnc}`)}'>${icons.linkedin}</button>
       <button class="share-btn" title="Compartir en X" onclick='${abrir(`https://twitter.com/intent/tweet?url=${urlEnc}&text=${texto}`)}'>${icons.x}</button>
       <button class="share-btn" title="Copiar link para Instagram u otros" data-clip='${icons.clip}' data-check='${icons.check}' onclick='${copyOnClick}'>${icons.clip}</button>
@@ -526,6 +536,7 @@ function featuredJobCardHTML(job) {
 
   return `
   <a class="job-card featured-job-card" href="vacante.html?id=${encodeURIComponent(job.id)}">
+    <div class="featured-star-badge">⭐</div>
     <div class="featured-ribbon">Vacante destacada</div>
     <div class="tag-row" style="justify-content:space-between;align-items:flex-start;margin-top:8px">
       <div class="tag-row" style="margin:0">
@@ -558,6 +569,7 @@ function expandableFeaturedCardHTML(job) {
 
   return `
   <div class="job-card featured-job-card">
+    <div class="featured-star-badge">⭐</div>
     <div class="featured-ribbon">Vacante destacada</div>
     <div class="tag-row" style="justify-content:space-between;align-items:flex-start;margin-top:8px">
       <div class="tag-row" style="margin:0">
