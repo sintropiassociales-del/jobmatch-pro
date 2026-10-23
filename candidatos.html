@@ -108,15 +108,21 @@
       <div class="grid-jobs" id="directory-list"></div>
     </div>
 
-    <!-- ============ VISTA DE MAPA (estilo Obsidian, en colores del sitio) ============ -->
-    <div id="map-view" style="display:none">
-      <div class="field" style="max-width:400px;margin-bottom:14px">
+  </div>
+
+  <!-- ============ VISTA DE MAPA — franja morada oscura de borde a borde
+       (sale a propósito del .container de arriba, que acota a 1100px) ============ -->
+  <div id="map-view" class="full-bleed-dark" style="display:none">
+    <div class="fbd-inner">
+      <div class="fbd-eyebrow">Directorio de talento</div>
+      <h2>Explora el mapa de candidatos</h2>
+      <p>Cada nodo es una habilidad o un candidato. Busca por palabra, o arrastra los nodos para explorar las conexiones.</p>
+      <div class="field" style="max-width:400px;margin:20px 0 4px">
         <input type="text" id="graph-search" placeholder="Buscar por hashtag/habilidad o candidato...">
       </div>
-      <div id="graph-container" class="graph-quadrants" style="height:600px;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"></div>
+      <div id="graph-container" class="graph-quadrants" style="height:600px;position:relative;border-radius:20px;overflow:hidden;margin-top:14px"></div>
       <div id="graph-panel" style="display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px;margin-top:20px"></div>
     </div>
-
   </div>
 </section>
 
@@ -423,7 +429,7 @@
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
     if (!items || items.length === 0) {
-      container.insertAdjacentHTML('beforeend', `<p style="color:var(--ink-soft);text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
+      container.insertAdjacentHTML('beforeend', `<p style="color:#B8AED9;text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
       return;
     }
 
