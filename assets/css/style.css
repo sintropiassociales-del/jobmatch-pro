@@ -395,14 +395,27 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
 }
 .view-switch-btn.active{background:#fff;color:var(--purple-700);box-shadow:var(--shadow-card);}
 
-/* ---------- Fondo tipo cuadrantes para el mapa de candidatos (24 divisiones: 6x4) ---------- */
+/* ---------- Fondo del mapa de candidatos: morado oscuro Sintropía con
+   cuadrícula tenue (24 divisiones: 6x4) y dos resplandores de ambiente ---------- */
 .graph-quadrants{
-  background-color:#FAF9F7;
+  background-color:#0D0620;
   background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size:100% 25%, 16.6667% 100%;
-  background-position:0 0, 0 0;
+    radial-gradient(circle at 30% 20%, rgba(139,92,246,0.18), transparent 55%),
+    radial-gradient(circle at 75% 70%, rgba(168,85,247,0.14), transparent 55%),
+    linear-gradient(rgba(139,92,246,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139,92,246,0.08) 1px, transparent 1px);
+  background-size:100% 100%, 100% 100%, 100% 25%, 16.6667% 100%;
+  background-position:0 0, 0 0, 0 0, 0 0;
+}
+.graph-quadrants .legend{
+  position:absolute;bottom:14px;left:14px;
+  background:rgba(26,15,51,0.85);border:1px solid #3B2A66;border-radius:14px;
+  padding:10px 16px;display:flex;gap:16px;flex-wrap:wrap;max-width:90%;
+  font-size:.76rem;color:#D8CFF2;backdrop-filter:blur(6px);z-index:2;
+}
+.graph-quadrants .legend .dot{
+  width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;
+  box-shadow:0 0 8px currentColor;
 }
 
 /* ---------- Tarjetas de candidato (directorio) ---------- */
