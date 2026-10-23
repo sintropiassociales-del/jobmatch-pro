@@ -2,19 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<script>
-  // "Despierta" a Apps Script lo antes posible — antes incluso de cargar el
-  // CSS o assets/js/app.js. En las páginas con panel de administrador, la
-  // consulta al panel sale en cuanto la página carga (a diferencia del
-  // login de empresa, aquí no hay tiempo de "leer el formulario" para que
-  // el arranque en frío de Apps Script se absorba solo) — este ping
-  // adelanta esa espera lo más posible, en paralelo a lo que tarda en
-  // descargarse el resto de la página. Nota: si cambias APPS_SCRIPT_URL en
-  // assets/js/app.js, cambia también esta línea (este script corre antes
-  // de que app.js exista, así que no puede reusar esa constante). Si esta
-  // línea queda desactualizada no rompe nada — solo se pierde el adelanto.
-  try { fetch("https://script.google.com/macros/s/AKfycbz-PlmaDw5_8NbBawOkz0E5K8lQ-9EPz4-BRBY29GaIHTH9sTlhhobJFIqR8rndnTd5/exec?action=ping").catch(() => {}); } catch (e) {}
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Candidatos — JobMatch Pro</title>
 <meta name="description" content="Directorio anónimo y público de candidatos organizado por habilidades — el match se basa en competencias, no en quién es la persona.">
@@ -25,7 +12,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
+      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -58,26 +45,6 @@
     </div>
 
     <div id="login-area">
-      <!-- Si hay sesión de candidato activa (inició sesión en candidato.html),
-           no tiene sentido mostrarle el login de empresa ni el acceso admin —
-           en su lugar ve un resumen de su propio perfil y una invitación al
-           diagnóstico de proceso. -->
-      <div id="candidato-session-card" style="display:none;max-width:520px;margin-bottom:12px">
-        <div class="form-card" style="margin-bottom:12px">
-          <p style="font-size:.85rem">👋 Hola, <strong id="candidato-nombre"></strong></p>
-          <p style="font-size:.82rem;color:var(--ink-soft);margin-top:4px" id="candidato-resumen"></p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <a href="candidato.html" class="btn btn-ghost" style="padding:8px 16px;font-size:.82rem">Ver mi perfil completo →</a>
-            <button class="btn btn-ghost" id="btn-candidato-logout" style="padding:8px 16px;font-size:.82rem">Salir</button>
-          </div>
-        </div>
-        <div class="form-card" style="background:var(--purple-050);border:none">
-          <p style="font-size:.85rem;font-weight:600;color:var(--purple-900);margin-bottom:6px">¿Cómo va tu búsqueda?</p>
-          <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:12px">15 preguntas breves sobre tu proceso actual — menos de 4 minutos. Primero cuéntanos un poco de ti para poder mostrarte tu resultado.</p>
-          <a href="https://sintropiassociales-del.github.io/panel/muestra_candidato.html" target="_blank" rel="noopener" class="btn btn-primary" style="padding:9px 18px;font-size:.82rem">Hacer mi diagnóstico →</a>
-        </div>
-      </div>
-
       <!-- Sesión de empresa opcional: solo desbloquea comparar/contactar -->
       <div id="empresa-session-card" class="form-card" style="max-width:520px;margin-bottom:12px">
         <div id="session-logged-out">
@@ -85,8 +52,8 @@
           <div id="google-btn"></div>
           <div style="text-align:center;color:var(--ink-soft);font-size:.8rem;margin:10px 0">— o —</div>
           <div style="display:flex;gap:10px">
-            <input type="email" id="login-email" placeholder="Tu correo de empresa (te mandamos un link)" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
-            <button class="btn btn-primary" id="btn-login">Enviarme acceso</button>
+            <input type="text" id="login-token" placeholder="Código de acceso de tu empresa" style="flex:1;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:11px 14px;font-family:var(--font-body)">
+            <button class="btn btn-primary" id="btn-login">Entrar</button>
           </div>
           <div class="status-msg" id="login-status"></div>
         </div>
@@ -96,7 +63,7 @@
         </div>
       </div>
 
-      <p id="admin-access-row" style="max-width:520px;margin-bottom:12px">
+      <p style="max-width:520px;margin-bottom:12px">
         <a href="#" id="toggle-admin-login" style="font-size:.8rem;color:var(--ink-soft)">Acceso admin (Sintropía Social) →</a>
       </p>
       <div id="admin-login-card" class="form-card" style="max-width:520px;margin-bottom:12px;display:none">
@@ -109,46 +76,6 @@
       </div>
     </div>
 
-    <script>
-      // Anti-parpadeo: en esta página, después de este punto todavía falta
-      // cargar d3.js (para la vista de mapa) antes de que corra el script
-      // grande de abajo que decide qué tarjeta mostrar (empresa vs.
-      // candidato) — con conexiones lentas eso tarda uno o dos segundos, y
-      // en ese lapso se alcanzaba a ver la tarjeta de "¿Tienes cuenta de
-      // empresa?" aunque hubiera sesión de candidato. Como este bloque va
-      // justo después de las tarjetas en el HTML, corre en cuanto el
-      // navegador llega aquí (mucho antes de d3.js) y oculta de una vez la
-      // tarjeta de empresa/admin si ya hay un token de candidato guardado,
-      // sin esperar a confirmar la sesión con el servidor.
-      //
-      // Además, si ya guardamos antes el nombre/resumen de este candidato
-      // (ver cacheCandidateSession en assets/js/app.js), lo mostramos de
-      // inmediato en la tarjeta "Hola, <nombre>" en vez de dejarla vacía —
-      // el arranque en frío de Apps Script puede tardar varios segundos, y
-      // así no hay que esperarlo para ver algo útil. El script grande de
-      // abajo sigue confirmando los datos reales con el servidor y
-      // actualiza la tarjeta si algo cambió.
-      (function () {
-        try {
-          if (!localStorage.getItem('jobmatch_candidate_token')) return;
-          var empresaCard = document.getElementById('empresa-session-card');
-          var adminRow = document.getElementById('admin-access-row');
-          if (empresaCard) empresaCard.style.display = 'none';
-          if (adminRow) adminRow.style.display = 'none';
-
-          var cached = JSON.parse(localStorage.getItem('jobmatch_candidate_cache') || 'null');
-          if (cached) {
-            var nombreEl = document.getElementById('candidato-nombre');
-            var resumenEl = document.getElementById('candidato-resumen');
-            var cardEl = document.getElementById('candidato-session-card');
-            if (nombreEl) nombreEl.textContent = cached.nombre || 'tu cuenta';
-            if (resumenEl) resumenEl.textContent = cached.resumen || '';
-            if (cardEl) cardEl.style.display = 'block';
-          }
-        } catch (e) {}
-      })();
-    </script>
-
     <div class="view-switch" style="margin-bottom:16px">
       <button class="view-switch-btn active" id="btn-view-list">Vista de lista</button>
       <button class="view-switch-btn" id="btn-view-map">Vista de mapa</button>
@@ -159,9 +86,9 @@
 
       <div class="form-card" style="margin-bottom:24px">
         <p style="font-size:.88rem;font-weight:600;color:var(--purple-900);margin-bottom:8px">Comparar contra una vacante</p>
-        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante, el link de una vacante publicada en JobMatch Pro, o el link de una vacante de otro sitio (lo intentamos leer — algunos sitios no lo permiten), y vemos qué candidatos del directorio tienen más habilidades en común. Requiere plan Business o A la medida.</p>
+        <p style="font-size:.82rem;color:var(--ink-soft);margin-bottom:14px">Pega el texto de una vacante y vemos qué candidatos del directorio tienen más habilidades en común. Requiere plan Business o A la medida.</p>
         <div class="field">
-          <textarea id="vacancy-text" placeholder="Pega aquí el texto de la vacante, o el link..." style="min-height:100px"></textarea>
+          <textarea id="vacancy-text" placeholder="Pega aquí el texto completo de la vacante..." style="min-height:100px"></textarea>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" id="btn-match-vacancy">Comparar candidatos</button>
@@ -171,23 +98,9 @@
       </div>
 
       <div class="form-card" style="margin-bottom:24px">
-        <div class="field" style="margin-bottom:14px">
+        <div class="field" style="margin-bottom:0">
           <label for="skill-search">O busca por habilidad directamente</label>
           <input type="text" id="skill-search" placeholder="Ej. Excel, atención a clientes, Python...">
-        </div>
-        <div class="form-grid-2" style="margin-bottom:0">
-          <div class="field" style="margin-bottom:0">
-            <label for="filter-categoria">Filtrar por área</label>
-            <select id="filter-categoria">
-              <option value="">Todas las áreas</option>
-            </select>
-          </div>
-          <div class="field" style="margin-bottom:0;display:flex;align-items:flex-end">
-            <label style="display:flex;align-items:center;gap:8px;font-weight:500;font-size:.85rem;cursor:pointer">
-              <input type="checkbox" id="filter-solo-autorizados" style="width:16px;height:16px">
-              Solo candidatos que ya me autorizaron
-            </label>
-          </div>
         </div>
       </div>
 
@@ -197,11 +110,9 @@
 
     <!-- ============ VISTA DE MAPA (estilo Obsidian, en colores del sitio) ============ -->
     <div id="map-view" style="display:none">
-      <p style="font-size:.82rem;color:var(--ink-soft);max-width:640px;margin-bottom:14px">Cada punto grande es un candidato y cada punto chico es una habilidad — las líneas los conectan. Arrastra para reacomodar, rueda/pellizca para hacer zoom, y da clic en un candidato para ver su detalle.</p>
-      <div class="field" style="max-width:400px;margin-bottom:10px">
+      <div class="field" style="max-width:400px;margin-bottom:14px">
         <input type="text" id="graph-search" placeholder="Buscar por hashtag/habilidad o candidato...">
       </div>
-      <div id="graph-hashtags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px"></div>
       <div id="graph-container" class="graph-quadrants" style="height:600px;position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line)"></div>
       <div id="graph-panel" style="display:none;background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px;margin-top:20px"></div>
     </div>
@@ -227,106 +138,15 @@
   let currentView = 'list';
   let currentShowScore = false;
   let currentItems = [];
-  let lastFetchedItems = []; // el set "crudo" que vino de Apps Script — los filtros de abajo (área, autorizados) se aplican sobre este SIN volver a pedirle nada al backend
   let isAdminView = false;
   let simulation = null;
 
-  // El acceso admin no tiene sentido mientras hay una sesión de empresa
-  // abierta (confunde — no es para eso), así que se oculta en ese caso y
-  // reaparece en cuanto se cierra sesión.
-  function setAdminAccessVisible(visible) {
-    const row = document.getElementById('admin-access-row');
-    const card = document.getElementById('admin-login-card');
-    if (row) row.style.display = visible ? 'block' : 'none';
-    if (!visible && card) card.style.display = 'none';
-  }
-
-  // ---------- Sesión de candidato (oculta login de empresa/admin) ----------
-  function setCandidateAreaVisible(visible) {
-    document.getElementById('candidato-session-card').style.display = visible ? 'block' : 'none';
-    document.getElementById('empresa-session-card').style.display = visible ? 'none' : 'block';
-    setAdminAccessVisible(!visible);
-  }
-
-  async function initCandidateArea() {
-    const token = localStorage.getItem(CANDIDATE_TOKEN_KEY);
-    if (!token) return false;
-    try {
-      const data = await JobMatchAPI.getCandidateProfile(token);
-      if (data.error) { localStorage.removeItem(CANDIDATE_TOKEN_KEY); clearCachedCandidateSession(); setCandidateAreaVisible(false); return false; }
-      const c = data.candidate;
-      const nHabilidades = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean).length;
-      const nombre = c.nombre || 'tu cuenta';
-      const resumen = nHabilidades
-        ? `Tienes ${nHabilidades} habilidad(es) registradas en tu perfil.`
-        : 'Todavía no tienes habilidades registradas en tu perfil.';
-      document.getElementById('candidato-nombre').textContent = nombre;
-      document.getElementById('candidato-resumen').textContent = resumen;
-      cacheCandidateSession({ nombre, resumen });
-      setCandidateAreaVisible(true);
-      return true;
-    } catch (err) {
-      console.warn('No se pudo verificar la sesión de candidato:', err);
-      // El token existe pero no se pudo confirmar (ej. sin internet): no lo
-      // borramos (podría ser válido), pero si el anti-parpadeo de arriba ya
-      // ocultó la tarjeta de empresa, la regresamos para no dejar la
-      // pantalla sin ninguna tarjeta visible.
-      setCandidateAreaVisible(false);
-      return false;
-    }
-  }
-
-  document.getElementById('btn-candidato-logout').addEventListener('click', () => {
-    localStorage.removeItem(CANDIDATE_TOKEN_KEY);
-    clearCachedCandidateSession();
-    // Recargamos (en vez de solo alternar tarjetas) para que el menú de
-    // arriba, que mientras había sesión ocultaba "Publicar vacante"/"Acceso
-    // empresas" y mostraba "Cerrar sesión", también vuelva a la normalidad.
-    window.location.reload();
-  });
-
   // ---------- Sesión de empresa (opcional, no bloquea el directorio) ----------
-  window.addEventListener('load', async () => {
+  window.addEventListener('load', () => {
     loadDirectory(); // el directorio se carga siempre, con o sin sesión
-
-    const esCandidato = await initCandidateArea();
-    if (esCandidato) return; // no tiene sentido mostrar el login de empresa/admin
-
-    // Si vienes de un link de acceso por correo (?token=...), entra directo
-    // y limpia la URL para no dejar el token visible en la barra/historial.
-    const urlParams = new URLSearchParams(window.location.search);
-    const linkToken = urlParams.get('token');
-    if (linkToken) {
-      history.replaceState({}, '', window.location.pathname);
-      checkSession(linkToken);
-      return;
-    }
-
-    // Si ya iniciaste sesión de administrador antes (en admin-plataforma.html
-    // o en cualquier otra página), se reconoce solo aquí también — sin esto
-    // había que volver a escribir la clave de admin en esta tarjeta chica
-    // cada vez, aunque ya hubiera sesión activa en el resto del sitio.
-    const adminSessionKey = getAdminSessionKey();
-    if (adminSessionKey) {
-      const entered = await enterAdminMode(adminSessionKey);
-      if (entered) return;
-    }
 
     const saved = localStorage.getItem(COMPANY_TOKEN_KEY);
     if (saved) {
-      const cached = getCachedEmpresaSession();
-      if (cached) {
-        // Mostramos la tarjeta "con sesión" de inmediato con los últimos
-        // datos conocidos, mientras se confirma en segundo plano — evita el
-        // hueco en blanco mientras Apps Script arranca en frío.
-        currentEmpresaToken = saved;
-        currentPuedeSolicitar = !!cached.puedeSolicitarContacto;
-        document.getElementById('session-logged-out').style.display = 'none';
-        document.getElementById('session-logged-in').style.display = 'block';
-        document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(cached.razonSocial)}</strong> · Plan ${escapeHtml(cached.plan)}` +
-          (currentPuedeSolicitar ? ' — puedes comparar, solicitar contacto y guardar tu banco de talento favorito.' : ' — mejora tu plan a Business o A la medida para comparar, contactar y guardar tu banco de talento de candidatos favoritos.');
-        setAdminAccessVisible(false);
-      }
       checkSession(saved);
     } else if (typeof google !== 'undefined' && google.accounts) {
       google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleLogin });
@@ -350,30 +170,17 @@
     }
   }
 
-  document.getElementById('btn-login').addEventListener('click', async () => {
-    const email = document.getElementById('login-email').value.trim();
-    const status = document.getElementById('login-status');
-    if (!email) { status.className = 'status-msg show err'; status.textContent = 'Escribe tu correo primero.'; return; }
-    status.className = 'status-msg show pending';
-    status.textContent = 'Enviando...';
-    try {
-      await JobMatchAPI.requestEmpresaLoginLink(email, window.location.origin + window.location.pathname);
-      status.className = 'status-msg show ok';
-      status.textContent = 'Listo — revisa tu correo (y spam) y da clic en el link para entrar. No hace falta copiar nada.';
-    } catch (err) {
-      status.className = 'status-msg show err';
-      status.textContent = err.message;
-    }
+  document.getElementById('btn-login').addEventListener('click', () => {
+    const token = document.getElementById('login-token').value.trim();
+    if (token) checkSession(token);
   });
 
   document.getElementById('btn-session-logout').addEventListener('click', () => {
     localStorage.removeItem(COMPANY_TOKEN_KEY);
-    clearCachedEmpresaSession();
     currentEmpresaToken = null;
     currentPuedeSolicitar = false;
     document.getElementById('session-logged-in').style.display = 'none';
     document.getElementById('session-logged-out').style.display = 'block';
-    setAdminAccessVisible(true);
     loadDirectory();
   });
 
@@ -391,21 +198,14 @@
       // El backend sí respondió, y de forma explícita dice que ese código
       // ya no es válido — ahí sí lo borramos.
       localStorage.removeItem(COMPANY_TOKEN_KEY);
-      clearCachedEmpresaSession();
-      document.getElementById('session-logged-in').style.display = 'none';
-      document.getElementById('session-logged-out').style.display = 'block';
-      setAdminAccessVisible(true);
       return;
     }
     currentEmpresaToken = token;
     currentPuedeSolicitar = data.puedeSolicitarContacto;
-    setAdminAccessVisible(false);
     document.getElementById('session-logged-out').style.display = 'none';
     document.getElementById('session-logged-in').style.display = 'block';
     document.getElementById('session-plan-label').innerHTML = `<strong>${escapeHtml(data.empresaNombre)}</strong> · Plan ${escapeHtml(data.empresaPlan)}` +
       (currentPuedeSolicitar ? ' — puedes comparar y solicitar contacto.' : ' — mejora tu plan a Business o A la medida para comparar/contactar.');
-    cacheEmpresaSession({ razonSocial: data.empresaNombre, plan: data.empresaPlan, puedeSolicitarContacto: currentPuedeSolicitar });
-    localStorage.setItem(COMPANY_TOKEN_KEY, token);
     renderDirectory(data.items);
   }
 
@@ -415,8 +215,12 @@
     card.style.display = card.style.display === 'none' ? 'block' : 'none';
   });
 
-  async function enterAdminMode(key, status) {
-    if (status) { status.className = 'status-msg show pending'; status.textContent = 'Verificando...'; }
+  document.getElementById('btn-admin-login').addEventListener('click', async () => {
+    const key = document.getElementById('admin-key-input').value.trim();
+    const status = document.getElementById('admin-login-status');
+    if (!key) return;
+    status.className = 'status-msg show pending';
+    status.textContent = 'Verificando...';
     try {
       const data = await JobMatchAPI.adminListCandidatesDirectory(key);
       if (data.error) throw new Error(data.error);
@@ -425,17 +229,10 @@
       document.getElementById('admin-mode-bar').style.display = 'flex';
       const items = data.items.map((c) => ({ ...c, apodo: c.nombre }));
       renderDirectory(items);
-      return true;
     } catch (err) {
-      if (status) { status.className = 'status-msg show err'; status.textContent = err.message; }
-      return false;
+      status.className = 'status-msg show err';
+      status.textContent = err.message;
     }
-  }
-
-  document.getElementById('btn-admin-login').addEventListener('click', () => {
-    const key = document.getElementById('admin-key-input').value.trim();
-    if (!key) return;
-    enterAdminMode(key, document.getElementById('admin-login-status'));
   });
 
   document.getElementById('btn-admin-mode-exit').addEventListener('click', () => {
@@ -469,55 +266,18 @@
     renderGraph(currentItems, currentShowScore);
   });
 
-  // ---------- Filtros avanzados (área + solo autorizados) ----------
-  // Se aplican del lado del cliente sobre el último set que trajo Apps
-  // Script (búsqueda por habilidad o comparación contra vacante) — así
-  // cambiar de filtro es instantáneo, sin ida y vuelta al servidor.
-  function applyClientFilters(items) {
-    const categoria = document.getElementById('filter-categoria').value;
-    const soloAutorizados = document.getElementById('filter-solo-autorizados').checked;
-    return items.filter((c) => {
-      if (soloAutorizados && c.estadoSolicitud !== 'autorizado') return false;
-      if (categoria) {
-        const skills = (c.habilidades || '').split(',').map((h) => h.trim()).filter(Boolean);
-        if (!skills.some((s) => categorizar(s).nombre === categoria)) return false;
-      }
-      return true;
-    });
-  }
-
-  ['filter-categoria', 'filter-solo-autorizados'].forEach((id) => {
-    document.getElementById(id).addEventListener('change', () => {
-      renderDirectory(lastFetchedItems, { showScore: currentShowScore });
-    });
-  });
-
   // ---------- Vista de lista ----------
-  function renderDirectory(rawItems, { showScore = false } = {}) {
-    lastFetchedItems = rawItems;
-    currentShowScore = showScore;
-
-    // El filtro "solo autorizados" no tiene sentido sin sesión de empresa
-    // (Business+) — sin eso, ningún candidato tendría ese estado nunca.
-    const autorizadosCheckbox = document.getElementById('filter-solo-autorizados');
-    const autorizadosField = autorizadosCheckbox.closest('.field');
-    if (!currentPuedeSolicitar) {
-      autorizadosCheckbox.checked = false;
-      autorizadosField.style.display = 'none';
-    } else {
-      autorizadosField.style.display = '';
-    }
-
-    const items = applyClientFilters(rawItems);
+  function renderDirectory(items, { showScore = false } = {}) {
     currentItems = items;
+    currentShowScore = showScore;
     if (currentView === 'map') renderGraph(items, showScore);
 
     document.getElementById('directory-count').textContent = showScore
-      ? `${items.length} de ${rawItems.length} candidato(s) con habilidades en común`
-      : `${items.length} de ${rawItems.length} candidato(s) con habilidades registradas`;
+      ? `${items.length} candidato(s) con habilidades en común`
+      : `${items.length} candidato(s) con habilidades registradas`;
     const list = document.getElementById('directory-list');
     if (items.length === 0) {
-      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${rawItems.length === 0 ? (showScore ? 'Ningún candidato tiene habilidades en común con esta vacante todavía.' : 'Todavía no hay candidatos con habilidades registradas.') : 'Ningún candidato coincide con los filtros que elegiste — prueba quitando alguno.'}</p></div>`;
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>${showScore ? 'Ningún candidato tiene habilidades en común con esta vacante todavía.' : 'Todavía no hay candidatos con habilidades registradas.'}</p></div>`;
       return;
     }
     list.innerHTML = items.map((c) => {
@@ -528,11 +288,10 @@
       <div class="candidate-card">
         <div class="candidate-card-top">
           <div class="candidate-avatar">${escapeHtml(iniciales)}</div>
-          <div style="flex:1">
+          <div>
             <div class="candidate-apodo">${escapeHtml(c.apodo)}</div>
             ${showScore ? `<div class="candidate-score">${c.score}% en común con esta vacante</div>` : ''}
           </div>
-          ${currentPuedeSolicitar && !isAdminView ? `<button class="fav-star-btn" title="${c.esFavorito ? 'Quitar de favoritos' : 'Guardar en banco de talento'}" data-candidato-id="${c.candidatoId}" onclick="toggleFavoritoClick('${c.candidatoId}', this)">${c.esFavorito ? '★' : '☆'}</button>` : ''}
         </div>
         <div class="tag-row" style="margin-top:14px">
           ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
@@ -546,60 +305,10 @@
     }).join('');
   }
 
-  // Guarda o quita a un candidato del banco de talento — actualiza también
-  // el objeto en memoria (currentItems/lastFetchedItems) para que si la
-  // lista se vuelve a pintar (ej. al cambiar de filtro) el estado quede
-  // correcto sin tener que volver a pedirle nada a Apps Script.
-  //
-  // Actualización OPTIMISTA: el ícono cambia al instante al hacer clic, sin
-  // esperar la respuesta de Apps Script (que puede tardar unos segundos) —
-  // si la llamada falla, se revierte al estado anterior y se avisa. Antes se
-  // esperaba la respuesta antes de mover el ícono, lo que se sentía como que
-  // el clic "no hacía nada" durante 3-4 segundos.
-  async function toggleFavoritoClick(candidatoId, btn) {
-    const estabaFavorito = btn.textContent.trim() === '★';
-    const nuevoValor = !estabaFavorito;
-
-    btn.disabled = true;
-    btn.textContent = nuevoValor ? '★' : '☆';
-    btn.title = nuevoValor ? 'Quitar de favoritos' : 'Guardar en banco de talento';
-    [currentItems, lastFetchedItems].forEach((list) => {
-      const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
-      if (item) item.esFavorito = nuevoValor;
-    });
-
-    try {
-      const data = await JobMatchAPI.toggleFavorito(currentEmpresaToken, candidatoId);
-      if (data.error) throw new Error(data.error);
-      // Por si el servidor regresa algo distinto de lo que asumimos (ej. dos
-      // pestañas abiertas a la vez), nos alineamos con lo real.
-      if (data.favorito !== nuevoValor) {
-        btn.textContent = data.favorito ? '★' : '☆';
-        btn.title = data.favorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
-        [currentItems, lastFetchedItems].forEach((list) => {
-          const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
-          if (item) item.esFavorito = data.favorito;
-        });
-      }
-    } catch (err) {
-      // Revertimos al estado anterior — el clic no se guardó.
-      btn.textContent = estabaFavorito ? '★' : '☆';
-      btn.title = estabaFavorito ? 'Quitar de favoritos' : 'Guardar en banco de talento';
-      [currentItems, lastFetchedItems].forEach((list) => {
-        const item = list.find((c) => String(c.candidatoId) === String(candidatoId));
-        if (item) item.esFavorito = estabaFavorito;
-      });
-      alert(err.message);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
   function contactButtonHTML(c) {
     if (isAdminView && c.email) {
       return `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 12px;font-size:.82rem;width:100%">
-        <strong>${escapeHtml(c.nombre)}</strong>${c.genero ? ` · ${escapeHtml(c.genero)}` : ''}<br>${escapeHtml(c.email)}
-        ${c.experiencia ? `<br><span style="opacity:.8">${escapeHtml(c.experiencia)}</span>` : ''}
+        <strong>${escapeHtml(c.nombre)}</strong><br>${escapeHtml(c.email)}
         ${c.cvLink ? `<br><a href="${escapeHtml(c.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a>` : ''}
       </div>`;
     }
@@ -624,13 +333,12 @@
   async function solicitarContacto(candidatoId, btn) {
     btn.disabled = true;
     btn.textContent = 'Enviando...';
-    const foot = btn.closest('.foot');
     try {
       const data = await JobMatchAPI.requestContact(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
       btn.outerHTML = `<span class="badge-pill">⏳ Esperando respuesta del candidato</span>`;
     } catch (err) {
-      showFootError(foot, err.message);
+      alert(err.message);
       btn.disabled = false;
       btn.textContent = 'Solicitar contacto';
     }
@@ -638,85 +346,33 @@
 
   async function verContacto(candidatoId, btn) {
     btn.disabled = true;
-    const foot = btn.closest('.foot');
     try {
       const data = await JobMatchAPI.getCandidateContactInfo(currentEmpresaToken, candidatoId);
       if (data.error) throw new Error(data.error);
-
-      // El estudio socioeconómico es aparte: si Sintropía Social ya lo
-      // verificó, aquí solo mostramos su RESULTADO final y la recomendación
-      // (nunca los datos crudos que llenó el candidato) — ver
-      // getResumenSocioeconomicoEmpresa_ en Code.gs. Si falla o no hay nada
-      // que mostrar, no rompe lo demás.
-      let socioHTML = '';
-      try {
-        const socio = await JobMatchAPI.getResumenSocioeconomicoEmpresa(currentEmpresaToken, candidatoId);
-        if (socio.disponible) {
-          const recColor = /no continuar|no recomend/i.test(socio.recomendacion || '') ? 'var(--orange-600)' : 'var(--purple-700)';
-          socioHTML = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
-            <strong>Estudio socioeconómico (verificado por Sintropía Social):</strong><br>
-            Nivel: ${escapeHtml(socio.nivelSocioeconomico || 'sin definir')} · Resultado: ${escapeHtml(socio.resultado || 'sin definir')}
-            ${socio.recomendacion ? `<br><span style="color:${recColor};font-weight:600">Recomendación de Sintropía: ${escapeHtml(socio.recomendacion)}</span>` : ''}
-          </div>`;
-        }
-      } catch (socioErr) { /* si falla, simplemente no se muestra esa parte */ }
-
       btn.outerHTML = `<div style="background:var(--purple-050);border-radius:var(--radius-sm);padding:12px 14px;font-size:.85rem;width:100%">
         <strong>${escapeHtml(data.nombre)}</strong><br>${escapeHtml(data.email)}
         ${data.cvLink ? `<br><a href="${escapeHtml(data.cvLink)}" target="_blank" style="color:var(--purple-700);font-weight:600">Ver CV →</a>` : ''}
-        ${socioHTML}
       </div>`;
     } catch (err) {
-      showFootError(foot, err.message);
+      alert(err.message);
       btn.disabled = false;
     }
   }
 
-  // Muestra un error justo debajo del botón de contacto en vez de un alert()
-  // que interrumpe la navegación — se quita solo después de unos segundos.
-  function showFootError(foot, message) {
-    if (!foot) { alert(message); return; }
-    let box = foot.querySelector('.foot-error');
-    if (!box) {
-      box = document.createElement('div');
-      box.className = 'foot-error';
-      box.style.cssText = 'width:100%;margin-top:8px;font-size:.78rem;color:var(--orange-600);background:#FFF4EC;border-radius:8px;padding:8px 10px';
-      foot.appendChild(box);
-    }
-    box.textContent = message;
-    clearTimeout(box._hideTimer);
-    box._hideTimer = setTimeout(() => box.remove(), 6000);
-  }
-
   document.getElementById('btn-match-vacancy').addEventListener('click', () => runMatch());
 
-  // Si lo que se pegó es un link a una vacante publicada en JobMatch Pro
-  // (vacante.html?id=...), usamos directo su descripción real guardada en
-  // el Sheet — sale más exacto y no hay que copiar/pegar nada. Cualquier
-  // otro link (de otro sitio) se manda tal cual al backend, que intenta
-  // leerlo directamente de la página (ver fetchTextFromUrl_ en Code.gs); si
-  // ese sitio arma su contenido con JavaScript (común en varios ATS), la
-  // lectura automática no va a encontrar texto real y el backend regresa un
-  // error pidiendo que se pegue el texto a mano.
-  function resolveVacancyInput(raw) {
-    const m = raw.match(/vacante\.html\?[^\s]*\bid=([^&\s]+)/i);
-    if (m) return { jobId: decodeURIComponent(m[1]), texto: '' };
-    return { jobId: '', texto: raw };
-  }
-
   async function runMatch(textoOverride) {
-    const raw = textoOverride || document.getElementById('vacancy-text').value.trim();
+    const texto = textoOverride || document.getElementById('vacancy-text').value.trim();
     const status = document.getElementById('match-status');
     if (!currentEmpresaToken) { status.className = 'status-msg show err'; status.textContent = 'Inicia sesión con una cuenta de empresa Business o A la medida primero.'; return; }
-    if (!raw) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
-    const { jobId, texto } = resolveVacancyInput(raw);
+    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto de una vacante primero.'; return; }
     status.className = 'status-msg show pending';
-    status.textContent = jobId || !/^https?:\/\/\S+$/i.test(raw) ? 'Leyendo la vacante y comparando candidatos...' : 'Intentando leer esa página y comparando candidatos...';
+    status.textContent = 'Leyendo la vacante y comparando candidatos...';
     try {
-      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto, jobId);
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
       if (data.error) throw new Error(data.error);
       status.className = 'status-msg show ok';
-      status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}` + (data.fuenteExtraccion === 'ia' ? ' (con ayuda de IA)' : '');
+      status.textContent = `Habilidades detectadas: ${data.habilidadesVacante}`;
       document.getElementById('btn-clear-match').style.display = 'inline-flex';
       renderDirectory(data.items, { showScore: true });
       return data;
@@ -744,34 +400,30 @@
 
   // ---------- Vista de mapa: habilidades y candidatos como nodos, en los
   // colores del propio sitio (nada de fondo negro), integrado a la página. ----------
-  // El mapa de categorías (SKILL_MAP) vive en assets/js/app.js — es el mismo
-  // que usa candidato.html para sugerir habilidades al armar el perfil, así
-  // que solo hay que mantenerlo actualizado en un lugar.
-  const SKILL_CATEGORIES = SKILL_MAP;
-  const CATEGORIA_GENERAL = SKILL_CATEGORIA_GENERAL;
+  // Categorías aproximadas por palabra clave — no es un dato que capturemos,
+  // es una clasificación automática para poder darle más color al mapa.
+  // Colores "neón" — pensados para resaltar sobre el fondo morado oscuro
+  // del mapa (los de antes eran para fondo blanco y aquí se verían apagados).
+  const SKILL_CATEGORIES = [
+    { nombre: 'Finanzas y contabilidad', color: '#34D399', rx: /excel|contabilidad|finan|\bsat\b|impuest|n[oó]mina|conciliaci|presupuest|reportes financ/i },
+    { nombre: 'Tecnología', color: '#60A5FA', rx: /javascript|python|\bsql\b|react|node|programa|desarroll|software|base(s)? de datos|machine learning|\bgit\b|visualizaci[oó]n de datos/i },
+    { nombre: 'Marketing y ventas', color: '#F472B6', rx: /marketing|ventas|\bseo\b|redes sociales|publicidad|contenido|\bads\b|\bcrm\b/i },
+    { nombre: 'Recursos humanos', color: '#FBBF24', rx: /reclutamiento|selecci[oó]n|talento|capacitaci|clima laboral|onboarding|desarrollo organiz|entrevistas/i },
+    { nombre: 'Logística y operaciones', color: '#FB923C', rx: /log[ií]stica|inventario|cadena de suministro|proveedor|operaciones|almac[eé]n/i },
+    { nombre: 'Legal y administrativo', color: '#93C5FD', rx: /legal|contrato|jur[ií]dic|administrativ/i },
+    { nombre: 'Salud', color: '#2DD4BF', rx: /salud|enfermer[ií]a|m[eé]dic|paciente/i },
+  ];
+  const CATEGORIA_GENERAL = { nombre: 'General', color: '#FF8A3D' };
+  const CANDIDATO_COLOR = '#A855F7';
   function categorizar(skill) {
-    return categorizarHabilidad(skill);
+    return SKILL_CATEGORIES.find((cat) => cat.rx.test(skill)) || CATEGORIA_GENERAL;
   }
-
-  // Llena el filtro de "área" con las mismas categorías del mapa de
-  // habilidades (una sola fuente de verdad, ver SKILL_MAP en app.js).
-  (function fillCategoriaFilter() {
-    const select = document.getElementById('filter-categoria');
-    [...SKILL_CATEGORIES, CATEGORIA_GENERAL].forEach((cat) => {
-      const opt = document.createElement('option');
-      opt.value = cat.nombre;
-      opt.textContent = cat.nombre;
-      select.appendChild(opt);
-    });
-  })();
 
   function renderGraph(items, showScore) {
     const container = document.getElementById('graph-container');
     container.innerHTML = '';
     if (!items || items.length === 0) {
       container.insertAdjacentHTML('beforeend', `<p style="color:var(--ink-soft);text-align:center;padding-top:260px;position:relative">No hay candidatos que mostrar en el mapa todavía.</p>`);
-      const hashtagsEl = document.getElementById('graph-hashtags');
-      if (hashtagsEl) hashtagsEl.innerHTML = '';
       return;
     }
 
@@ -801,11 +453,29 @@
       .attr('width', width).attr('height', height)
       .attr('viewBox', [0, 0, width, height])
       .style('position', 'relative').style('z-index', 1);
+
+    // Filtro de brillo ("glow") — hace que los nodos se vean luminosos
+    // sobre el fondo oscuro en vez de planos.
+    const defs = svg.append('defs');
+    const glowFilter = defs.append('filter').attr('id', 'node-glow').attr('x', '-150%').attr('y', '-150%').attr('width', '400%').attr('height', '400%');
+    glowFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', 6).attr('result', 'blur');
+    const glowMerge = glowFilter.append('feMerge');
+    glowMerge.append('feMergeNode').attr('in', 'blur');
+    glowMerge.append('feMergeNode').attr('in', 'blur');
+    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
     const g = svg.append('g');
     svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', (event) => g.attr('transform', event.transform)));
 
-    const link = g.append('g').attr('stroke', '#D8CFF2')
-      .selectAll('line').data(links).join('line').attr('stroke-width', 1);
+    const link = g.append('g').attr('stroke', '#8B5CF6').attr('stroke-opacity', .28)
+      .selectAll('line').data(links).join('line').attr('stroke-width', 1.2);
+
+    // Halo tenue detrás de cada nodo (anillo exterior) — da sensación de
+    // "constelación" en vez de puntos planos sobre el fondo oscuro.
+    const halo = g.append('g').selectAll('circle').data(nodes).join('circle')
+      .attr('r', (d) => (d.tipo === 'habilidad' ? 9 : 7) + 7)
+      .attr('fill', (d) => d.tipo === 'habilidad' ? d.categoria.color : CANDIDATO_COLOR)
+      .attr('opacity', .16);
 
     // Detección de clic propia (más confiable que el evento "click" nativo,
     // que a veces se traga el arrastre de D3 si hay el más mínimo movimiento
@@ -813,8 +483,9 @@
     let downPos = null;
     const node = g.append('g').selectAll('circle').data(nodes).join('circle')
       .attr('r', (d) => d.tipo === 'habilidad' ? 9 : 7)
-      .attr('fill', (d) => d.tipo === 'habilidad' ? d.categoria.color : '#6B21F5')
-      .attr('stroke', '#fff').attr('stroke-width', 1.5)
+      .attr('fill', (d) => d.tipo === 'habilidad' ? d.categoria.color : CANDIDATO_COLOR)
+      .attr('stroke', '#fff').attr('stroke-width', 1.2)
+      .attr('filter', 'url(#node-glow)')
       .style('cursor', 'pointer')
       .call(d3.drag()
         .clickDistance(4)
@@ -839,68 +510,38 @@
       .text((d) => d.label)
       .attr('font-size', '11px')
       .attr('font-weight', (d) => d.tipo === 'candidato' ? '600' : '400')
-      .attr('fill', '#1A1523').attr('opacity', .85)
-      .attr('dx', 12).attr('dy', 4)
+      .attr('fill', '#EDE9FE').attr('opacity', .9)
+      .attr('dx', 13).attr('dy', 4)
       .style('pointer-events', 'none').style('font-family', 'var(--font-body)');
 
     // Leyenda de categorías, para entender los colores del mapa
     const categoriasUsadas = [...new Set(nodes.filter((n) => n.tipo === 'habilidad').map((n) => n.categoria.nombre))]
       .map((nombre) => SKILL_CATEGORIES.find((c) => c.nombre === nombre) || CATEGORIA_GENERAL);
     const legend = document.createElement('div');
-    legend.style.cssText = 'position:absolute;bottom:14px;left:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:14px;flex-wrap:wrap;max-width:90%;font-size:.76rem;z-index:2';
-    legend.innerHTML = categoriasUsadas.map((c) => `<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:${c.color};display:inline-block"></span>${escapeHtml(c.nombre)}</span>`).join('');
+    legend.className = 'legend';
+    legend.innerHTML = categoriasUsadas.map((c) => `<span style="display:inline-flex;align-items:center;gap:6px;color:${c.color}"><span class="dot" style="background:${c.color}"></span>${escapeHtml(c.nombre)}</span>`).join('')
+      + `<span style="display:inline-flex;align-items:center;gap:6px;color:${CANDIDATO_COLOR}"><span class="dot" style="background:${CANDIDATO_COLOR}"></span>Candidato</span>`;
     container.appendChild(legend);
 
     // Filtro en vivo: buscar por hashtag/habilidad o candidato (apodo) atenúa lo que no coincide
     const searchInput = document.getElementById('graph-search');
-    function filtrarMapa(q) {
-      const query = (q || '').trim().toLowerCase();
-      node.attr('opacity', (d) => !query || d.label.toLowerCase().includes(query) ? 1 : .12);
-      label.attr('opacity', (d) => !query || d.label.toLowerCase().includes(query) ? .85 : .1);
-    }
     if (searchInput) {
-      searchInput.oninput = () => filtrarMapa(searchInput.value);
+      searchInput.oninput = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        node.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? 1 : .12);
+        label.attr('opacity', (d) => !q || d.label.toLowerCase().includes(q) ? .85 : .1);
+      };
     }
-
-    // Hashtags de ejemplo: las habilidades más comunes en ESTE directorio
-    // (recién cargado), para dar ideas de búsqueda rápida sin tener que
-    // adivinar cómo las escribió cada quien. Como se recalculan cada vez que
-    // se dibuja el mapa a partir de los candidatos reales, la lista crece y
-    // cambia sola conforme se registran más personas — no hay nada fijo aquí.
-    const hashtagsEl = document.getElementById('graph-hashtags');
-    if (hashtagsEl) {
-      const topSkills = [...skillCandidatos.entries()]
-        .sort((a, b) => b[1].length - a[1].length)
-        .slice(0, 12)
-        .map(([key]) => skillNodes.get(key).label);
-      hashtagsEl.innerHTML = topSkills
-        .map((skillLabel) => `<button type="button" class="tag hashtag-btn" data-skill="${escapeHtml(skillLabel)}">#${escapeHtml(skillLabel)}</button>`)
-        .join('');
-      hashtagsEl.querySelectorAll('.hashtag-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const value = btn.dataset.skill;
-          if (searchInput) searchInput.value = value;
-          hashtagsEl.querySelectorAll('.hashtag-btn').forEach((b) => b.classList.toggle('active', b === btn));
-          filtrarMapa(value);
-        });
-      });
-    }
-
-    // El radio de colisión toma en cuenta el largo de la etiqueta (no solo
-    // el tamaño del punto): antes usaba un radio fijo, y por eso los nombres
-    // largos (apodos, habilidades) se enciman cuando hay varios nodos cerca.
-    // Con esto cada nodo empuja a los demás lo suficiente para dejarle
-    // espacio a su propio texto.
-    const collideRadius = (d) => (d.tipo === 'habilidad' ? 9 : 7) + Math.min(d.label.length * 2.6, 60);
 
     simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id((d) => d.id).distance(66))
-      .force('charge', d3.forceManyBody().strength(-170))
+      .force('link', d3.forceLink(links).id((d) => d.id).distance(60))
+      .force('charge', d3.forceManyBody().strength(-140))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collide', d3.forceCollide().radius(collideRadius).iterations(2))
+      .force('collide', d3.forceCollide().radius(26))
       .on('tick', () => {
         link.attr('x1', (d) => d.source.x).attr('y1', (d) => d.source.y)
           .attr('x2', (d) => d.target.x).attr('y2', (d) => d.target.y);
+        halo.attr('cx', (d) => d.x).attr('cy', (d) => d.y);
         node.attr('cx', (d) => d.x).attr('cy', (d) => d.y);
         label.attr('x', (d) => d.x).attr('y', (d) => d.y);
       });
@@ -958,19 +599,12 @@
         ${primera ? `<span class="tag" style="background:#FFEADB;color:var(--orange-600);font-weight:700">${escapeHtml(primera)}</span>` : ''}
         ${resto.map((h) => `<span class="tag" style="background:var(--purple-050)">${escapeHtml(h)}</span>`).join('')}
       </div>
-      ${c.resumenPerfil ? `
-      <div style="margin-top:14px;background:var(--purple-050);border-radius:var(--radius-sm);padding:10px 12px">
-        <p style="font-size:.78rem;font-weight:600;color:var(--purple-900);margin-bottom:4px">Sobre este candidato</p>
-        <p style="font-size:.82rem;white-space:pre-line">${escapeHtml(c.resumenPerfil)}</p>
-      </div>` : ''}
       <div style="margin-top:14px" data-candidato-id="${c.candidatoId}">${contactButtonHTML(c)}</div>
       ${puedeComparar ? `
       <div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:14px">
         <label style="font-size:.82rem;font-weight:600;color:var(--purple-900)">Calcular match con una vacante</label>
-        <p style="font-size:.78rem;color:var(--ink-soft);margin:4px 0 8px">Pega el link de una vacante publicada en JobMatch Pro (la leemos directo), el link de una vacante de otro sitio (lo intentamos leer — algunos sitios no lo permiten), o el texto completo de la descripción del puesto.</p>
-        <textarea id="panel-vacancy-text" placeholder="Pega el texto, o el link de la vacante..." style="min-height:70px;width:100%;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
+        <textarea id="panel-vacancy-text" placeholder="Pega el texto de la vacante..." style="min-height:70px;width:100%;margin-top:6px;border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:10px;font-family:var(--font-body)"></textarea>
         <button class="btn btn-ghost" style="margin-top:8px;padding:9px 16px;font-size:.82rem" onclick="matchOneInPanel('${c.candidatoId}', this)">Calcular match</button>
-        <div id="panel-match-result" style="display:none;margin-top:12px"></div>
         <div class="status-msg" id="panel-match-status"></div>
       </div>` : ''}`;
 
@@ -982,30 +616,18 @@
   }
 
   async function matchOneInPanel(candidatoId, btn) {
-    const raw = document.getElementById('panel-vacancy-text').value.trim();
+    const texto = document.getElementById('panel-vacancy-text').value.trim();
     const status = document.getElementById('panel-match-status');
-    const result = document.getElementById('panel-match-result');
-    result.style.display = 'none';
-    if (!raw) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
-    const { jobId, texto } = resolveVacancyInput(raw);
+    if (!texto) { status.className = 'status-msg show err'; status.textContent = 'Pega el texto primero.'; return; }
     btn.disabled = true;
     status.className = 'status-msg show pending';
-    status.textContent = jobId || !/^https?:\/\/\S+$/i.test(raw) ? 'Calculando...' : 'Intentando leer esa página...';
+    status.textContent = 'Calculando...';
     try {
-      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto, jobId);
+      const data = await JobMatchAPI.matchCandidatesToVacancy(currentEmpresaToken, texto);
       if (data.error) throw new Error(data.error);
       const match = data.items.find((i) => String(i.candidatoId) === String(candidatoId));
-      const score = match ? match.score : 0;
-      status.className = 'status-msg';
-      status.textContent = '';
-      result.style.display = 'block';
-      result.innerHTML = `
-        <div class="match">
-          <div class="match-track"><div class="match-fill" style="width:${score}%"></div></div>
-          <span class="match-label">${score}% afinidad</span>
-        </div>
-        ${data.fuenteExtraccion === 'ia' ? `<p style="font-size:.72rem;color:var(--ink-soft);margin-top:4px">Habilidades detectadas con ayuda de IA.</p>` : ''}
-        ${score === 0 ? `<p style="font-size:.78rem;color:var(--ink-soft);margin-top:6px">Este candidato no tiene habilidades en común con lo que detectamos en ese texto.</p>` : ''}`;
+      status.className = 'status-msg show ok';
+      status.textContent = match ? `${match.score}% de habilidades en común con esta vacante.` : 'Este candidato no tiene habilidades en común con esta vacante.';
     } catch (err) {
       status.className = 'status-msg show err';
       status.textContent = err.message;

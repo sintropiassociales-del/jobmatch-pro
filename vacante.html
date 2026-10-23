@@ -4,6 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="page-title">Vacante — JobMatch Pro</title>
+<!-- Open Graph / Facebook — sin esto, el "scraper" de Facebook (que no
+     ejecuta JavaScript) no encuentra título, descripción ni imagen al
+     leer esta página, y el diálogo de compartir se queda cargando
+     ("Publicando") o nunca termina de generar la vista previa. Ponemos
+     valores por defecto aquí; el script más abajo los actualiza con los
+     datos reales de la vacante en cuanto cargan, para navegadores y
+     "crawlers" que sí ejecutan JS (LinkedIn, por ejemplo). -->
+<meta id="og-title" property="og:title" content="Vacante — JobMatch Pro">
+<meta id="og-description" property="og:description" content="Encuentra tu próxima vacante con el acompañamiento humano de Sintropía Social.">
+<meta id="og-image" property="og:image" content="https://sintropiassociales-del.github.io/jobmatch-pro/assets/img/sintropia-marca-circulo.png">
+<meta id="og-url" property="og:url" content="https://sintropiassociales-del.github.io/jobmatch-pro/vacante.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="JobMatch Pro">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -11,7 +25,7 @@
 <header class="site-header">
   <div class="container bar">
     <div style="display:flex;align-items:center;gap:14px">
-      <a href="index.html" class="logo"><span class="mark">S</span> Sintro</a>
+      <a href="index.html" class="logo"><span class="mark">JM</span> JobMatch Pro</a>
       <a href="https://sintropiassociales-del.github.io/" target="_blank" rel="noopener" class="sintropia-badge">un proyecto de <strong>Sintropía Social</strong></a>
     </div>
     <nav class="nav-links">
@@ -126,7 +140,13 @@
     try {
       const { job } = await JobMatchAPI.getJob(jobId);
       currentJob = job;
-      document.getElementById('page-title').textContent = `${job.titulo} — ${job.empresaNombre} — JobMatch Pro`;
+      const tituloCompleto = `${job.titulo} — ${job.empresaNombre} — JobMatch Pro`;
+      document.getElementById('page-title').textContent = tituloCompleto;
+      const descripcionCorta = (job.descripcion || '').slice(0, 160) || 'Encuentra tu próxima vacante con el acompañamiento humano de Sintropía Social.';
+      document.getElementById('og-title').setAttribute('content', tituloCompleto);
+      document.getElementById('og-description').setAttribute('content', descripcionCorta);
+      document.getElementById('og-url').setAttribute('content', window.location.href);
+      if (job.logoUrl) document.getElementById('og-image').setAttribute('content', job.logoUrl);
 
       const isExternal = job.fuente === 'admin';
 
