@@ -179,20 +179,30 @@ p{line-height:1.6;color:var(--ink-soft);margin:0 0 1em;}
   width:100%;max-width:440px;justify-self:center;
   opacity:.35;
 }
-/* Versión más grande y difuminada (ej. avatar-toro en la sección "Detrás de
-   JobMatch Pro") — el blur suaviza el trazo y el mask con degradado desvanece
-   los bordes para que se sienta integrada al fondo, no una imagen recortada. */
-.sintropia-block-img--diffused{
-  max-width:620px;
-  filter:blur(2.5px);
-  -webkit-mask-image:radial-gradient(ellipse at center, #000 55%, transparent 85%);
-  mask-image:radial-gradient(ellipse at center, #000 55%, transparent 85%);
-}
 @media (max-width:800px){
   .sintropia-block{grid-template-columns:1fr;text-align:center;}
   .sintropia-block-img{max-width:200px;}
-  .sintropia-block-img--diffused{max-width:280px;}
   .sintropia-block .eyebrow{justify-content:center;}
+}
+
+/* ---------- Marca de agua editorial (avatar-toro) ----------
+   Una sola imagen grande, de fondo, que atraviesa de arriba a abajo las
+   secciones "No competimos", "Detrás de JobMatch Pro" y "Recién publicadas".
+   mix-blend-mode:multiply es la clave: el blanco de la imagen (no es un PNG
+   recortado, es un rectángulo blanco con la ilustración en gris/negro) se
+   vuelve invisible contra cualquier fondo que tenga debajo — tarjetas
+   blancas incluidas — y solo el trazo de la ilustración se nota, como una
+   marca de agua. pointer-events:none para que nunca tape un clic. */
+.toro-watermark-wrap{position:relative;overflow:hidden;}
+.toro-watermark{
+  position:absolute;top:300px;left:50%;
+  width:1450px;max-width:none;
+  transform:translateX(-50%);
+  mix-blend-mode:multiply;opacity:.42;
+  z-index:1;pointer-events:none;user-select:none;
+}
+@media (max-width:900px){
+  .toro-watermark{display:none;}
 }
 
 /* Dos caminos (hero) ---------- */
