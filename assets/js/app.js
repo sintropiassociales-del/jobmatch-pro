@@ -418,6 +418,7 @@ const JobMatchAPI = {
   adminSetVerificada: (adminKey, companyToken, verificada) => asPost('adminSetVerificada', { adminKey, companyToken, verificada }),
   adminSetEmpresaActive: (adminKey, companyToken, activa) => asPost('adminSetEmpresaActive', { adminKey, companyToken, activa }),
   adminSetJobActive: (adminKey, jobId, activa) => asPost('adminSetJobActive', { adminKey, jobId, activa }),
+  adminSetJobArchived: (adminKey, jobId, archivada) => asPost('adminSetJobArchived', { adminKey, jobId, archivada }),
   adminDeleteJob: (adminKey, jobId) => asPost('adminDeleteJob', { adminKey, jobId }),
   adminDeleteCandidate: (adminKey, candidatoId) => asPost('adminDeleteCandidate', { adminKey, candidatoId }),
   adminCreateExternalJob: (adminKey, job) => asPost('adminCreateExternalJob', { adminKey, ...job }),

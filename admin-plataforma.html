@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%236B21F5%27/%3E%3Ctext x=%2732%27 y=%2743%27 font-family=%27Montserrat, Arial, sans-serif%27 font-weight=%27700%27 font-size=%2725%27 fill=%27%23fff%27 text-anchor=%27middle%27%3ESS%3C/text%3E%3C/svg%3E">
 <script>
   // "Despierta" a Apps Script lo antes posible — antes incluso de cargar el
   // CSS o assets/js/app.js. En cuanto entras con tu clave, este panel hace
@@ -87,7 +88,7 @@
 
       <!-- TAB: Vacantes (todas, de cualquier fuente) -->
       <div class="tab-panel" id="tab-vacantes-admin">
-        <p style="font-size:.85rem">Todas las vacantes de la plataforma, publicadas por empresas o agregadas por ti. Pausar las oculta del sitio público sin borrar sus datos ni postulaciones; eliminar sí es permanente.</p>
+        <p style="font-size:.85rem">Todas las vacantes de la plataforma, publicadas por empresas o agregadas por ti, organizadas en cuatro grupos — da clic en cada uno para desplegarlo. Pausar u archivar las oculta del sitio público sin borrar sus datos ni postulaciones; eliminar sí es permanente.</p>
         <div id="admin-jobs-list" style="margin-top:16px"></div>
       </div>
 
@@ -453,18 +454,38 @@
     }
   }
 
-  async function loadAdminJobs() {
-    const list = document.getElementById('admin-jobs-list');
-    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
-    try {
-      const data = await JobMatchAPI.adminListAllJobs(adminKey);
-      if (data.error) throw new Error(data.error);
-      if (data.items.length === 0) {
-        list.innerHTML = `<div class="empty-state"><p>Todavía no hay vacantes.</p></div>`;
-        return;
-      }
-      list.innerHTML = data.items.map((j) => `
-        <div class="job-card" style="margin-bottom:12px;${j.activa === false ? 'opacity:.55' : ''}">
+  // Quita la hora de un valor de fecha que a veces llega como fecha completa
+  // serializada (ej. "2026-09-11T06:00:00.000Z", cuando Sheets guardó la
+  // celda como fecha real) y a veces como texto simple ("2026-09-11") — para
+  // mostrar siempre solo el día, sin la parte de hora/zona horaria.
+  function soloFecha(v) {
+    return v ? String(v).slice(0, 10) : '';
+  }
+
+  // Aproximación en el navegador de isJobExpired_ (Code.gs) — solo para
+  // decidir en qué grupo visual cae cada vacante aquí en el panel. La regla
+  // real de qué se oculta del sitio público siempre la decide el backend.
+  function pareceVencida(j) {
+    if (!j.fechaExpiracion) return false;
+    const hoy = new Date().toISOString().slice(0, 10);
+    return soloFecha(j.fechaExpiracion) <= hoy;
+  }
+
+  // Cada vacante cae en EXACTAMENTE uno de los 4 grupos, en este orden de
+  // prioridad: Archivada > Cerrada (pausada o vencida) > Destacada > Activa.
+  const STATUS_GROUPS = [
+    { key: 'archivada', label: 'Archivada', dot: '#8A8396', match: (j) => j.archivada === true },
+    { key: 'cerrada', label: 'Cerrada', dot: '#B3311C', match: (j) => j.activa === false || pareceVencida(j) },
+    { key: 'destacada', label: 'Destacada', dot: 'var(--orange-500)', match: (j) => j.destacada === true },
+    { key: 'activa', label: 'Vacante Activa', dot: '#1E8F5F', match: (j) => true },
+  ];
+  function grupoDeVacante(j) {
+    return STATUS_GROUPS.find((g) => g.match(j));
+  }
+
+  function adminJobCardHTML(j) {
+    return `
+        <div class="job-card" style="margin-bottom:12px;${j.activa === false || j.archivada === true ? 'opacity:.55' : ''}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
             <div>
               <h3 style="font-size:1rem">${escapeHtml(j.titulo)} ${j.destacada === true ? '<span class="tag tag-orange">Destacada</span>' : ''}</h3>
@@ -472,7 +493,8 @@
                 <span>${escapeHtml(j.empresaNombre)}</span>
                 <span>${j.fuente === 'admin' ? 'Vacante externa' : 'De empresa'}</span>
                 ${j.activa === false ? '<span class="tag" style="background:#FCE9E4;color:#B3311C">Pausada</span>' : ''}
-                ${j.fechaExpiracion ? `<span>Se quita el ${escapeHtml(j.fechaExpiracion)}</span>` : ''}
+                ${j.archivada === true ? '<span class="tag" style="background:#ECEAEF;color:#5B5568">Archivada</span>' : ''}
+                ${j.fechaExpiracion ? `<span>Se quita el ${escapeHtml(soloFecha(j.fechaExpiracion))}</span>` : ''}
               </div>
             </div>
             <a class="badge-pill" href="vacante.html?id=${j.id}" target="_blank">Ver →</a>
@@ -483,6 +505,7 @@
               <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="toggleAdminEdit('${j.id}', this)">✏️ Editar</button>
               <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="setJobActive('${j.id}', ${j.activa === false}, this)">${j.activa === false ? 'Reactivar' : 'Pausar'}</button>
               <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="adminToggleFeatured('${j.id}', ${j.destacada !== true}, this)">${j.destacada === true ? 'Quitar destacada' : '⭐ Destacar'}</button>
+              <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem" onclick="adminToggleArchived('${j.id}', ${j.archivada !== true}, this)">${j.archivada === true ? 'Desarchivar' : '🗄️ Archivar'}</button>
             </div>
             <button class="btn btn-ghost" style="padding:9px 16px;font-size:.82rem;color:#B3311C;border-color:#F3C6BB" onclick="deleteJob('${j.id}', this)">Eliminar</button>
           </div>
@@ -491,10 +514,55 @@
 
           <div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap">
             <label style="font-size:.8rem;color:var(--ink-soft)">Quitarla sola el:</label>
-            <input type="date" class="exp-input" value="${j.fechaExpiracion || ''}" style="border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem">
+            <input type="date" class="exp-input" value="${soloFecha(j.fechaExpiracion)}" style="border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.82rem">
             <button class="btn btn-ghost" style="padding:7px 14px;font-size:.78rem" onclick="adminSaveExpiration('${j.id}', this)">Guardar fecha</button>
           </div>
-        </div>`).join('');
+        </div>`;
+  }
+
+  // true/false por grupo (se guarda aparte del DOM para que no se cierren
+  // solos los que ya tenías abiertos cada vez que loadAdminJobs() refresca
+  // la lista después de una acción).
+  const adminStatusGroupOpen = { archivada: false, cerrada: false, destacada: false, activa: true };
+
+  function toggleStatusGroup(key) {
+    adminStatusGroupOpen[key] = !adminStatusGroupOpen[key];
+    document.getElementById('status-group-' + key).classList.toggle('open', adminStatusGroupOpen[key]);
+  }
+
+  async function loadAdminJobs() {
+    const list = document.getElementById('admin-jobs-list');
+    list.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
+    try {
+      const data = await JobMatchAPI.adminListAllJobs(adminKey);
+      if (data.error) throw new Error(data.error);
+      if (data.items.length === 0) {
+        list.innerHTML = `<div class="empty-state"><p>Todavía no hay vacantes.</p></div>`;
+        return;
+      }
+
+      const porGrupo = { archivada: [], cerrada: [], destacada: [], activa: [] };
+      data.items.forEach((j) => porGrupo[grupoDeVacante(j).key].push(j));
+      // Más recientes primero dentro de cada grupo (la "organización conforme
+      // a la fecha" que ves al desplegar cada uno).
+      Object.values(porGrupo).forEach((arr) => arr.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)));
+
+      list.innerHTML = STATUS_GROUPS.map((g) => {
+        const jobs = porGrupo[g.key];
+        const open = adminStatusGroupOpen[g.key];
+        return `
+        <div class="status-group${open ? ' open' : ''}" id="status-group-${g.key}">
+          <button type="button" class="status-group-header" onclick="toggleStatusGroup('${g.key}')">
+            <span class="status-group-dot" style="background:${g.dot}"></span>
+            <span class="status-group-title">${g.label}</span>
+            <span class="status-group-count">${jobs.length}</span>
+            <span class="status-group-caret">▾</span>
+          </button>
+          <div class="status-group-body">
+            ${jobs.length === 0 ? '<p class="status-group-empty">No hay vacantes en este grupo.</p>' : jobs.map(adminJobCardHTML).join('')}
+          </div>
+        </div>`;
+      }).join('');
 
       const curaduriaSelect = document.getElementById('curaduria-job-select');
       const empresaJobs = data.items.filter((j) => j.fuente === 'empresa');
@@ -509,6 +577,17 @@
     btn.disabled = true;
     try {
       await JobMatchAPI.adminSetJobActive(adminKey, jobId, value);
+      loadAdminJobs();
+    } catch (err) {
+      alert(err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function adminToggleArchived(jobId, value, btn) {
+    btn.disabled = true;
+    try {
+      await JobMatchAPI.adminSetJobArchived(adminKey, jobId, value);
       loadAdminJobs();
     } catch (err) {
       alert(err.message);
