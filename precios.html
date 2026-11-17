@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -654,7 +653,7 @@
       // (es lo que permite activar el plan solo) — pedimos login primero
       // en vez de mostrar un botón que rompería esa automatización.
       slots.forEach((slot) => {
-        slot.innerHTML = `<a href="portal-empresa.html" class="btn btn-ghost-orange btn-block">Inicia sesión para contratar</a>`;
+        slot.innerHTML = `<a href="registro-empresa.html" class="btn btn-ghost-orange btn-block">Registrar</a>`;
       });
       return;
     }
@@ -680,6 +679,14 @@
 
     const script = document.createElement('script');
     script.src = 'https://www.paypal.com/sdk/js?client-id=AeQMZbOYXQsYdzl5qFzSjN3iBJlHoSbpD5RRsnzsssArO5nZRm_TwkVzxCTP5x8E2-EfPLOaPO4CEykz&vault=true&intent=subscription';
+    script.onerror = () => {
+      // El SDK de PayPal no cargó (red, bloqueador de anuncios, client-id
+      // inválido). Antes esto dejaba los slots vacíos sin ninguna pista.
+      console.error('[PayPal] No se pudo cargar el SDK de PayPal (sdk/js). Revisa la consola/red del navegador.');
+      slots.forEach((slot) => {
+        slot.innerHTML = `<p class="status-msg show err" style="margin:0">No se pudo cargar PayPal. Revisa tu conexión o intenta de nuevo en unos minutos.</p>`;
+      });
+    };
     script.onload = () => {
       slots.forEach((slot) => {
         const plan = slot.dataset.plan;
@@ -699,6 +706,21 @@
           return;
         }
 
+        // Aviso debajo del botón si PayPal truena al momento del cobro (ej.
+        // "Please try again"): antes esto se quedaba solo con el popup
+        // genérico de PayPal, sin ninguna pista de qué pasó ni para el
+        // usuario ni en la consola para poder diagnosticarlo después.
+        const errorBoxId = `paypal-error-${plan}`;
+        slot.insertAdjacentHTML('afterend', `<p id="${errorBoxId}" class="status-msg err" style="margin-top:8px"></p>`);
+        const showPaypalError = (err) => {
+          console.error(`[PayPal] Error en el botón del plan ${plan}:`, err);
+          const box = document.getElementById(errorBoxId);
+          if (box) {
+            box.classList.add('show');
+            box.textContent = 'No se pudo completar el pago con PayPal. Puede que tu cuenta de PayPal necesite revisión, o que el plan esté temporalmente no disponible. Intenta de nuevo o escríbenos a contacto@sintropiasocial.com con la hora en que ocurrió.';
+          }
+        };
+
         paypal.Buttons({
           style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
           createSubscription: (d, actions) => actions.subscription.create({ plan_id: planId, custom_id: token }),
@@ -712,6 +734,8 @@
             document.getElementById('billing-plan-name').textContent = plan;
             document.getElementById('billing-modal').style.display = 'flex';
           },
+          onError: showPaypalError,
+          onCancel: () => console.warn(`[PayPal] El usuario canceló el checkout del plan ${plan}.`),
         }).render(slot);
       });
     };
