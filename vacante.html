@@ -50,6 +50,10 @@
       <div class="skel" style="height:32px;width:60%;margin-bottom:12px"></div>
       <div class="skel" style="height:18px;width:30%;margin-bottom:24px"></div>
       <div class="skel" style="height:120px;width:100%"></div>
+      <!-- Si Apps Script tarda (arranque en frío) esto se muestra a los 4s para
+           que no se vea como una página en blanco/congelada — ver loadJob()
+           más abajo y el mismo patrón en setPendingStatus (assets/js/app.js). -->
+      <p id="job-detail-slow" class="status-msg pending" style="display:none;margin-top:16px"><span class="spinner"></span> Esto puede tardar varios segundos, sobre todo si es la primera visita en un rato — no cierres esta pestaña.</p>
     </div>
 
     <!-- ============ Vacante EXTERNA: solo un link de salida ============ -->
@@ -132,12 +136,27 @@
   const jobId = new URLSearchParams(window.location.search).get('id');
   let currentJob = null;
 
+  // Quien llega aquí desde un link compartido (LinkedIn, Facebook, etc.) es
+  // casi siempre una visita "en frío": nadie pasó antes por login/registro
+  // en este navegador, así que Apps Script no se había despertado todavía.
+  // Disparamos el ping de arranque lo antes posible, en paralelo a loadJob(),
+  // para no sumarle esa espera a la carga de la vacante.
+  warmupAppsScript();
+
   async function loadJob() {
     const el = document.getElementById('job-detail');
+    const slowMsg = document.getElementById('job-detail-slow');
     if (!jobId) {
       el.innerHTML = `<div class="empty-state"><p>No se especificó una vacante.</p></div>`;
       return;
     }
+    // Si Apps Script tarda en responder (arranque en frío), a los 4s avisamos
+    // que sigue cargando — sin esto, la persona solo ve los 3 bloques grises
+    // de siempre, sin ningún cambio, y lo percibe como una página en blanco
+    // o congelada en vez de "está cargando, espera un poco".
+    const slowTimer = setTimeout(() => {
+      if (slowMsg) slowMsg.style.display = 'block';
+    }, 4000);
     try {
       const { job } = await JobMatchAPI.getJob(jobId);
       currentJob = job;
@@ -191,6 +210,8 @@
         </div>`;
     } catch (e) {
       el.innerHTML = `<div class="empty-state"><div class="mark">⚠️</div><p>No se pudo cargar la vacante. Revisa APPS_SCRIPT_URL en assets/js/app.js.</p></div>`;
+    } finally {
+      clearTimeout(slowTimer);
     }
   }
   loadJob();
